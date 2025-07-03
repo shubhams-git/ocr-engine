@@ -1,7 +1,18 @@
 import { motion } from 'framer-motion'
 import { Eye, FileText, Zap } from 'lucide-react'
 
-const Header = () => {
+const Header = ({ backendStatus = 'unknown' }) => {
+  const getStatusText = (status) => {
+    switch (status) {
+      case 'connected':
+        return 'Backend Connected'
+      case 'disconnected':
+        return 'Backend Offline (Mock Mode)'
+      default:
+        return 'Checking Backend...'
+    }
+  }
+
   return (
     <header className="header">
       <motion.div
@@ -41,6 +52,10 @@ const Header = () => {
           <div className="badge">
             <Zap size={16} />
             <span>AI Powered</span>
+          </div>
+          <div className={`badge backend-status ${backendStatus}`}>
+            <div className={`status-indicator ${backendStatus}`}></div>
+            <span>{getStatusText(backendStatus)}</span>
           </div>
         </motion.div>
       </motion.div>

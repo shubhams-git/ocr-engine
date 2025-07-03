@@ -10,16 +10,13 @@ const MOCK_MODE = import.meta.env.VITE_MOCK_MODE === 'true' || !import.meta.env.
 // Create axios instance with default config
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 30000, // 30 seconds timeout
-  headers: {
-    'Content-Type': 'multipart/form-data',
-  },
+  timeout: 60000, // 60 seconds timeout for OCR processing
 })
 
 // Request interceptor
 apiClient.interceptors.request.use(
   (config) => {
-    console.log(`Making API request to: ${config.url}`)
+    console.log(`Making API request to: ${config.baseURL}${config.url}`)
     return config
   },
   (error) => {
@@ -37,7 +34,7 @@ apiClient.interceptors.response.use(
     
     if (error.response) {
       // Server responded with error status
-      const message = error.response.data?.message || error.response.data?.error || 'Server error occurred'
+      const message = error.response.data?.error || error.response.data?.message || 'Server error occurred'
       throw new Error(`${error.response.status}: ${message}`)
     } else if (error.request) {
       // Request made but no response received
@@ -96,18 +93,25 @@ export const processOCR = async (file, options = {}) => {
       formData.append('language', options.language)
     }
 
-    // Make API request
-    const startTime = Date.now()
-    const response = await apiClient.post('/ocr/process', formData)
-    const endTime = Date.now()
+    // Make API request with proper headers for file upload
+    const response = await apiClient.post('/ocr/process', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      }
+    })
 
-    // Add processing time to response
-    const result = {
-      ...response.data,
-      processingTime: endTime - startTime
+    // Process backend response
+    const result = response.data
+    
+    // Ensure consistent response format for frontend
+    return {
+      text: result.text,
+      extractedText: result.text, // Alias for backward compatibility
+      confidence: result.confidence,
+      metadata: result.metadata,
+      processingTime: result.processing_time_ms, // Use backend's timing
+      processing_time_ms: result.processing_time_ms // Keep original field
     }
-
-    return result
   } catch (error) {
     throw error
   }
@@ -115,7 +119,7 @@ export const processOCR = async (file, options = {}) => {
 
 /**
  * Get available models
- * @returns {Promise<Array>} - List of available models
+ * @returns {Promise<Object>} - Available models information
  */
 export const getAvailableModels = async () => {
   try {
@@ -123,13 +127,38 @@ export const getAvailableModels = async () => {
     return response.data
   } catch (error) {
     console.warn('Failed to fetch models:', error.message)
-    // Return default models if API fails
-    return [
-      { id: 'openai-gpt4-vision', name: 'OpenAI GPT-4 Vision', provider: 'openai' },
-      { id: 'gemini-pro-vision', name: 'Google Gemini Pro Vision', provider: 'google' },
-      { id: 'claude-3-vision', name: 'Anthropic Claude 3 Vision', provider: 'anthropic' },
-      { id: 'mistral-vision', name: 'Mistral Vision', provider: 'mistral' }
-    ]
+    // Return default Gemini models if API fails
+    return {
+      models: [
+        { 
+          id: 'gemini-2.5-pro', 
+          name: 'Gemini 2.5 Pro', 
+          provider: 'google',
+          description: 'Most capable model for complex OCR tasks'
+        },
+        { 
+          id: 'gemini-2.5-flash', 
+          name: 'Gemini 2.5 Flash', 
+          provider: 'google',
+          description: 'Fast and efficient model for quick OCR (recommended)'
+        },
+        { 
+          id: 'gemini-1.5-pro', 
+          name: 'Gemini 1.5 Pro', 
+          provider: 'google',
+          description: 'Previous generation pro model'
+        },
+        { 
+          id: 'gemini-1.5-flash', 
+          name: 'Gemini 1.5 Flash', 
+          provider: 'google',
+          description: 'Previous generation flash model'
+        }
+      ],
+      default: 'gemini-2.5-flash',
+      recommended: 'gemini-2.5-flash',
+      total_count: 4
+    }
   }
 }
 
@@ -147,7 +176,48 @@ export const getHealthStatus = async () => {
 }
 
 /**
- * Mock API function for testing when backend is not available
+ * Get supported file formats
+ * @returns {Promise<Object>} - Supported formats
+ */
+export const getSupportedFormats = async () => {
+  try {
+    const response = await apiClient.get('/formats')
+    return response.data
+  } catch (error) {
+    console.warn('Failed to fetch supported formats:', error.message)
+    // Return default formats if API fails
+    return {
+      supported_formats: {
+        images: {
+          extensions: ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.webp'],
+          mime_types: ['image/png', 'image/jpeg', 'image/gif', 'image/bmp', 'image/tiff', 'image/webp']
+        },
+        documents: {
+          extensions: ['.pdf'],
+          mime_types: ['application/pdf']
+        }
+      },
+      total_types: 8
+    }
+  }
+}
+
+/**
+ * Get API statistics
+ * @returns {Promise<Object>} - API usage statistics
+ */
+export const getApiStats = async () => {
+  try {
+    const response = await apiClient.get('/stats')
+    return response.data
+  } catch (error) {
+    console.warn('Failed to fetch API stats:', error.message)
+    return null
+  }
+}
+
+/**
+ * Enhanced mock API function that simulates real OCR processing
  * @param {File} file - The file to process
  * @returns {Promise<Object>} - Mock OCR results
  */
@@ -155,31 +225,61 @@ export const mockProcessOCR = async (file) => {
   // Simulate API delay
   await new Promise(resolve => setTimeout(resolve, 2000 + Math.random() * 3000))
   
-  // Return mock data
-  return {
-    text: `Mock OCR Results for: ${file.name}
-    
-This is a simulated OCR response. In a real implementation, this would contain the actual text extracted from your uploaded image or PDF.
+  // Generate realistic mock data based on file type
+  let mockText = ""
+  let confidence = 0.95
+  
+  if (file.type === 'application/pdf') {
+    mockText = `Mock PDF OCR Results for: ${file.name}
+
+This is a simulated OCR response for a PDF document. In a real implementation, this would contain the actual text extracted from your uploaded PDF.
 
 The text extraction would be performed by advanced AI models like:
-- OpenAI GPT-4 Vision
-- Google Gemini Pro Vision  
-- Anthropic Claude 3 Vision
-- Mistral Vision
+- Gemini 2.5 Pro
+- Gemini 2.5 Flash (recommended)
+- Gemini 1.5 Pro
+- Gemini 1.5 Flash
 
-Your file: ${file.name}
+Your PDF file: ${file.name}
 File size: ${(file.size / 1024).toFixed(2)} KB
 File type: ${file.type}
 
-This mock response demonstrates the structure that the frontend expects from the backend API.`,
-    confidence: 0.95,
+This mock response demonstrates the structure that the frontend expects from the backend API. The real backend would use Google's Gemini API to extract text from your PDF document.`
+  } else {
+    mockText = `Mock Image OCR Results for: ${file.name}
+
+This is a simulated OCR response for an image file. In a real implementation, this would contain the actual text extracted from your uploaded image.
+
+The text extraction would be performed by advanced AI models like:
+- Gemini 2.5 Pro
+- Gemini 2.5 Flash (recommended)
+- Gemini 1.5 Pro
+- Gemini 1.5 Flash
+
+Your image file: ${file.name}
+File size: ${(file.size / 1024).toFixed(2)} KB
+File type: ${file.type}
+
+This mock response demonstrates the structure that the frontend expects from the backend API. The real backend would use Google's Gemini API to extract text from your image.`
+  }
+  
+  // Return mock data
+  return {
+    text: mockText,
+    extractedText: mockText, // Alias for compatibility
+    confidence: confidence,
     metadata: {
-      model: 'mock-model',
+      model: 'gemini-2.5-flash',
       language: 'en',
+      filename: file.name,
+      file_type: file.type,
+      file_size: file.size,
       pages: 1,
-      words: 87,
-      characters: 542
-    }
+      words: mockText.split(/\s+/).length,
+      characters: mockText.length
+    },
+    processingTime: 2500,
+    processing_time_ms: 2500
   }
 }
 
@@ -212,5 +312,7 @@ export default {
   processOCRWithFallback,
   getAvailableModels,
   getHealthStatus,
+  getSupportedFormats,
+  getApiStats,
   mockProcessOCR
 } 

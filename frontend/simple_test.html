@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OCR Engine Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #fff;
+        }
+        .upload-area {
+            border: 2px dashed rgba(255, 255, 255, 0.5);
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .upload-area:hover {
+            border-color: #4ade80;
+            background: rgba(74, 222, 128, 0.1);
+        }
+        .upload-area.dragover {
+            border-color: #4ade80;
+            background: rgba(74, 222, 128, 0.2);
+        }
+        .model-selection {
+            margin-bottom: 20px;
+        }
+        .model-selection label {
+            display: block;
+            margin: 10px 0;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .model-selection input[type="radio"] {
+            margin-right: 10px;
+        }
+        button {
+            background: #4ade80;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #22c55e;
+        }
+        button:disabled {
+            background: #6b7280;
+            cursor: not-allowed;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+        }
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid #4ade80;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .results {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .error {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid #ef4444;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        .success {
+            background: rgba(34, 197, 94, 0.2);
+            border: 1px solid #22c55e;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        .file-info {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 OCR Engine Test</h1>
+        
+        <div class="model-selection">
+            <h3>Select AI Model:</h3>
+            <label>
+                <input type="radio" name="model" value="gemini-2.5-flash" checked>
+                Gemini 2.5 Flash (Recommended)
+            </label>
+            <label>
+                <input type="radio" name="model" value="gemini-2.5-pro">
+                Gemini 2.5 Pro
+            </label>
+            <label>
+                <input type="radio" name="model" value="gemini-1.5-flash">
+                Gemini 1.5 Flash
+            </label>
+            <label>
+                <input type="radio" name="model" value="gemini-1.5-pro">
+                Gemini 1.5 Pro
+            </label>
+        </div>
+
+        <div class="upload-area" id="uploadArea">
+            <h3>📁 Upload File</h3>
+            <p>Drag & drop your PDF or image file here, or click to browse</p>
+            <p><small>Supported: PNG, JPG, JPEG, GIF, BMP, TIFF, WEBP, PDF (max 10MB)</small></p>
+            <input type="file" id="fileInput" accept=".png,.jpg,.jpeg,.gif,.bmp,.tiff,.webp,.pdf" style="display: none;">
+        </div>
+
+        <div id="fileInfo" style="display: none;"></div>
+        
+        <div style="text-align: center;">
+            <button id="processBtn" disabled>🔍 Process OCR</button>
+            <button id="resetBtn" onclick="resetForm()">🔄 Reset</button>
+        </div>
+
+        <div id="loading" class="loading" style="display: none;">
+            <div class="spinner"></div>
+            <p>Processing your file with AI...</p>
+        </div>
+
+        <div id="results"></div>
+    </div>
+
+    <script>
+        let selectedFile = null;
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('fileInfo');
+        const processBtn = document.getElementById('processBtn');
+        const loading = document.getElementById('loading');
+        const results = document.getElementById('results');
+
+        // Drag and drop functionality
+        uploadArea.addEventListener('click', () => fileInput.click());
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileSelect(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileSelect(e.target.files[0]);
+            }
+        });
+
+        function handleFileSelect(file) {
+            // Validate file type
+            const allowedTypes = [
+                'image/png', 'image/jpeg', 'image/jpg', 'image/gif', 
+                'image/bmp', 'image/tiff', 'image/webp', 'application/pdf'
+            ];
+            
+            if (!allowedTypes.includes(file.type)) {
+                showError('Unsupported file type. Please upload an image or PDF file.');
+                return;
+            }
+
+            // Validate file size (10MB)
+            if (file.size > 10 * 1024 * 1024) {
+                showError('File size too large. Maximum size is 10MB.');
+                return;
+            }
+
+            selectedFile = file;
+            processBtn.disabled = false;
+            
+            // Show file info
+            fileInfo.innerHTML = `
+                <div class="file-info">
+                    <h4>📄 Selected File:</h4>
+                    <p><strong>Name:</strong> ${file.name}</p>
+                    <p><strong>Type:</strong> ${file.type}</p>
+                    <p><strong>Size:</strong> ${(file.size / 1024).toFixed(2)} KB</p>
+                </div>
+            `;
+            fileInfo.style.display = 'block';
+            
+            clearResults();
+        }
+
+        processBtn.addEventListener('click', async () => {
+            if (!selectedFile) return;
+            
+            const model = document.querySelector('input[name="model"]:checked').value;
+            
+            // Show loading
+            loading.style.display = 'block';
+            processBtn.disabled = true;
+            clearResults();
+            
+            try {
+                // Simulate API call with mock data
+                const result = await mockProcessOCR(selectedFile, model);
+                showResults(result);
+            } catch (error) {
+                showError('Error processing file: ' + error.message);
+            } finally {
+                loading.style.display = 'none';
+                processBtn.disabled = false;
+            }
+        });
+
+        async function mockProcessOCR(file, model) {
+            // Simulate processing delay
+            await new Promise(resolve => setTimeout(resolve, 2000 + Math.random() * 3000));
+            
+            // Generate realistic mock data
+            let mockText = "";
+            
+            if (file.type === 'application/pdf') {
+                mockText = `Mock PDF OCR Results for: ${file.name}
+
+This is a simulated OCR response for a PDF document. In a real implementation, this would contain the actual text extracted from your uploaded PDF using the ${model} model.
+
+The text extraction would be performed by Google's Gemini AI model:
+- Model: ${model}
+- File: ${file.name}
+- Size: ${(file.size / 1024).toFixed(2)} KB
+- Type: ${file.type}
+
+This mock response demonstrates the structure that the frontend expects from the backend API. The real backend would use Google's Gemini API to extract text from your PDF document.
+
+Sample extracted text would include:
+- Headers and titles
+- Body paragraphs
+- Tables and structured data
+- Lists and bullet points
+- Any other textual content present in the document`;
+            } else {
+                mockText = `Mock Image OCR Results for: ${file.name}
+
+This is a simulated OCR response for an image file. In a real implementation, this would contain the actual text extracted from your uploaded image using the ${model} model.
+
+The text extraction would be performed by Google's Gemini AI model:
+- Model: ${model}
+- File: ${file.name}
+- Size: ${(file.size / 1024).toFixed(2)} KB
+- Type: ${file.type}
+
+This mock response demonstrates the structure that the frontend expects from the backend API. The real backend would use Google's Gemini API to extract text from your image.
+
+Sample extracted text would include:
+- Text in images
+- Signs and labels
+- Handwritten text
+- Printed documents
+- Any other textual content visible in the image`;
+            }
+            
+            return {
+                text: mockText,
+                confidence: 0.95,
+                metadata: {
+                    model: model,
+                    language: 'en',
+                    filename: file.name,
+                    file_type: file.type,
+                    file_size: file.size,
+                    pages: 1,
+                    words: mockText.split(/\s+/).length,
+                    characters: mockText.length
+                },
+                processing_time_ms: 2500
+            };
+        }
+
+        function showResults(result) {
+            const wordCount = result.text.split(/\s+/).length;
+            const charCount = result.text.length;
+            
+            results.innerHTML = `
+                <div class="success">
+                    <h3>✅ OCR Processing Complete!</h3>
+                    <p><strong>Model:</strong> ${result.metadata.model}</p>
+                    <p><strong>Confidence:</strong> ${Math.round(result.confidence * 100)}%</p>
+                    <p><strong>Processing Time:</strong> ${result.processing_time_ms}ms</p>
+                    <p><strong>Words:</strong> ${wordCount}</p>
+                    <p><strong>Characters:</strong> ${charCount}</p>
+                </div>
+                <div class="results">
+                    <h4>📄 Extracted Text:</h4>
+                    ${result.text}
+                </div>
+            `;
+        }
+
+        function showError(message) {
+            results.innerHTML = `
+                <div class="error">
+                    <h3>❌ Error</h3>
+                    <p>${message}</p>
+                </div>
+            `;
+        }
+
+        function clearResults() {
+            results.innerHTML = '';
+        }
+
+        function resetForm() {
+            selectedFile = null;
+            fileInput.value = '';
+            fileInfo.style.display = 'none';
+            processBtn.disabled = true;
+            loading.style.display = 'none';
+            clearResults();
+            uploadArea.classList.remove('dragover');
+        }
+    </script>
+</body>
+</html> 

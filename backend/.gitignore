@@ -1,0 +1,52 @@
+# Backend Python .gitignore
+
+# Environment files with API keys (CRITICAL)
+.env*
+!.env.template
+!.env.example
+
+# Virtual Environment
+venv/
+env/
+.venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# FastAPI specific
+.pytest_cache/
+*.log
+
+# Uploads and temporary files
+uploads/
+temp/
+*.tmp
+*.temp
+.DS_Store
+
+# Testing
+.coverage
+htmlcov/
+.cache
+
+# Local development
+local_settings.py
+debug.log
+*.sqlite
+*.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Backup files
+*~
+*.bak 

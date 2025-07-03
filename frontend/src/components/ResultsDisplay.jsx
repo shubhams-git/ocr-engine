@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Copy, Download, RefreshCw, CheckCircle, FileText, Clock, Zap } from 'lucide-react'
+import { Copy, Download, RefreshCw, CheckCircle, FileText, Clock, Zap, Cpu } from 'lucide-react'
 
-const ResultsDisplay = ({ results, fileName, onReset }) => {
+const ResultsDisplay = ({ results, fileName, selectedModel, onReset }) => {
   const [copied, setCopied] = useState(false)
 
   const handleCopy = async () => {
@@ -60,12 +60,16 @@ const ResultsDisplay = ({ results, fileName, onReset }) => {
                 <Clock size={14} />
                 Processed at {new Date().toLocaleTimeString()}
               </span>
-              {results.processingTime && (
+              {(results.processingTime || results.processing_time_ms) && (
                 <span className="meta-item">
                   <Zap size={14} />
-                  {results.processingTime}ms
+                  {results.processingTime || results.processing_time_ms}ms
                 </span>
               )}
+              <span className="meta-item">
+                <Cpu size={14} />
+                {results.metadata?.model || selectedModel}
+              </span>
             </div>
           </div>
         </div>
@@ -175,7 +179,7 @@ const ResultsDisplay = ({ results, fileName, onReset }) => {
           <div className="metadata-grid">
             {Object.entries(results.metadata).map(([key, value]) => (
               <div key={key} className="metadata-item">
-                <span className="metadata-key">{key}:</span>
+                <span className="metadata-key">{key.replace(/_/g, ' ')}:</span>
                 <span className="metadata-value">{String(value)}</span>
               </div>
             ))}
