@@ -4,7 +4,7 @@ import FileUpload from './components/FileUpload'
 import ResultsDisplay from './components/ResultsDisplay'
 import Header from './components/Header'
 import LoadingSpinner from './components/LoadingSpinner'
-import { processOCRWithFallback as processOCR, getAvailableModels, getHealthStatus } from './services/api'
+import { processOCR, getAvailableModels, getHealthStatus } from './services/api'
 import './App.css'
 
 function App() {
@@ -13,7 +13,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
   const [availableModels, setAvailableModels] = useState([])
-  const [selectedModel, setSelectedModel] = useState('gemini-2.5-flash')
+  const [selectedModel, setSelectedModel] = useState('gemini-1.5-flash')
   const [backendStatus, setBackendStatus] = useState('unknown')
 
   // Check backend status and load models on component mount
@@ -26,16 +26,21 @@ function App() {
         
         // Load available models
         const modelsData = await getAvailableModels()
-        setAvailableModels(modelsData.models || modelsData)
+        if (modelsData.models) {
+          setAvailableModels(modelsData.models)
+        }
         if (modelsData.default) {
           setSelectedModel(modelsData.default)
         }
       } catch (err) {
         console.warn('Backend not available:', err.message)
         setBackendStatus('disconnected')
-        // Load default models for offline mode
-        const modelsData = await getAvailableModels()
-        setAvailableModels(modelsData.models || modelsData)
+        // Set fallback models if backend is not available
+        setAvailableModels([
+          { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash' },
+          { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro' },
+          { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash (Experimental)' }
+        ])
       }
     }
 
@@ -49,14 +54,10 @@ function App() {
     setOcrResults(null)
 
     try {
-      const options = {
-        model: selectedModel,
-        language: 'en' // You can add language selection later
-      }
-      
-      const results = await processOCR(file, options)
+      const results = await processOCR(file, { model: selectedModel })
       setOcrResults(results)
     } catch (err) {
+      console.error('OCR processing error:', err)
       setError(err.message || 'Failed to process OCR')
     } finally {
       setIsLoading(false)
@@ -101,10 +102,12 @@ function App() {
                       onChange={(e) => setSelectedModel(e.target.value)}
                     />
                     <div className="model-info">
-                      <span className="model-name">{model.name}</span>
-                      {model.description && (
-                        <span className="model-description">{model.description}</span>
-                      )}
+                      <span className="model-name">
+                        {model.name}
+                        {model.id === 'gemini-1.5-flash' && (
+                          <span className="recommended-badge">Recommended</span>
+                        )}
+                      </span>
                     </div>
                   </label>
                 ))}
@@ -127,9 +130,16 @@ function App() {
               <div className="error-message">
                 <h3>Error Processing File</h3>
                 <p>{error}</p>
-                <button onClick={handleReset} className="retry-button">
-                  Try Again
-                </button>
+                <div className="error-actions">
+                  <button onClick={handleReset} className="retry-button">
+                    Try Again
+                  </button>
+                  {backendStatus === 'disconnected' && (
+                    <div className="error-hint">
+                      <p><strong>Tip:</strong> Make sure the backend server is running on port 8000</p>
+                    </div>
+                  )}
+                </div>
               </div>
             </motion.div>
           )}

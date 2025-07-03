@@ -3,14 +3,14 @@ fastapi==0.104.1
 uvicorn[standard]==0.24.0
 python-multipart==0.0.6
 
-# Environment variables
+# Google Gemini AI
+google-generativeai==0.8.3
+
+# Environment variables (optional)
 python-dotenv==1.0.0
 
 # Pydantic for data validation
 pydantic==2.5.0
-
-# Google Gemini AI
-google-generativeai==0.3.2
 
 # Image processing
 Pillow==10.1.0
@@ -26,6 +26,7 @@ aiofiles==23.2.1
 
 # HTTP client (if needed for testing)
 httpx==0.25.2
+aiohttp==3.9.1
 
 # Development dependencies (optional)
 pytest==7.4.3

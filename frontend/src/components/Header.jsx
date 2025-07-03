@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { Eye, FileText, Zap } from 'lucide-react'
+import { Eye, FileText, Zap, Server } from 'lucide-react'
 
 const Header = ({ backendStatus = 'unknown' }) => {
   const getStatusText = (status) => {
@@ -7,7 +7,7 @@ const Header = ({ backendStatus = 'unknown' }) => {
       case 'connected':
         return 'Backend Connected'
       case 'disconnected':
-        return 'Backend Offline (Mock Mode)'
+        return 'Backend Offline'
       default:
         return 'Checking Backend...'
     }
@@ -27,7 +27,7 @@ const Header = ({ backendStatus = 'unknown' }) => {
           transition={{ type: "spring", stiffness: 300 }}
         >
           <Eye className="logo-icon" />
-          <h1>OCR Engine Tester</h1>
+          <h1>OCR Engine</h1>
         </motion.div>
         
         <motion.p
@@ -36,7 +36,7 @@ const Header = ({ backendStatus = 'unknown' }) => {
           transition={{ duration: 0.8, delay: 0.6 }}
           className="header-description"
         >
-          Upload images or documents to extract text using advanced AI models
+          Extract text from images and PDFs using Google Gemini AI
         </motion.p>
         
         <motion.div
@@ -47,15 +47,15 @@ const Header = ({ backendStatus = 'unknown' }) => {
         >
           <div className="badge">
             <FileText size={16} />
-            <span>Multiple Formats</span>
+            <span>Images & PDFs</span>
           </div>
           <div className="badge">
             <Zap size={16} />
-            <span>AI Powered</span>
+            <span>Google Gemini AI</span>
           </div>
           <div className={`badge backend-status ${backendStatus}`}>
-            <div className={`status-indicator ${backendStatus}`}></div>
-            <span>{getStatusText(backendStatus)}</span>
+            <Server size={16} className={`status-icon ${backendStatus}`} />
+            <span className="status-text">{getStatusText(backendStatus)}</span>
           </div>
         </motion.div>
       </motion.div>

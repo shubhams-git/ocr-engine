@@ -2,12 +2,12 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Copy, Download, RefreshCw, CheckCircle, FileText, Clock, Zap, Cpu } from 'lucide-react'
 
-const ResultsDisplay = ({ results, fileName, selectedModel, onReset }) => {
+const ResultsDisplay = ({ results, fileName, onReset }) => {
   const [copied, setCopied] = useState(false)
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(results.text || results.extractedText || '')
+      await navigator.clipboard.writeText(results.text || '')
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch (err) {
@@ -17,7 +17,7 @@ const ResultsDisplay = ({ results, fileName, selectedModel, onReset }) => {
 
   const handleDownload = () => {
     const element = document.createElement('a')
-    const file = new Blob([results.text || results.extractedText || ''], { type: 'text/plain' })
+    const file = new Blob([results.text || ''], { type: 'text/plain' })
     element.href = URL.createObjectURL(file)
     element.download = `${fileName?.split('.')[0] || 'ocr'}_extracted.txt`
     document.body.appendChild(element)
@@ -30,6 +30,18 @@ const ResultsDisplay = ({ results, fileName, selectedModel, onReset }) => {
     const sizes = ['Bytes', 'KB', 'MB', 'GB']
     const i = Math.floor(Math.log(bytes) / Math.log(1024))
     return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i]
+  }
+
+  const getWordsCount = () => {
+    return (results.text || '').split(/\s+/).filter(word => word.length > 0).length
+  }
+
+  const getCharactersCount = () => {
+    return (results.text || '').length
+  }
+
+  const getLinesCount = () => {
+    return (results.text || '').split('\n').filter(line => line.trim().length > 0).length
   }
 
   return (
@@ -54,22 +66,22 @@ const ResultsDisplay = ({ results, fileName, selectedModel, onReset }) => {
         <div className="file-info">
           <FileText className="file-icon" />
           <div className="file-details">
-            <h3>{fileName || 'Uploaded File'}</h3>
+            <h3>{results.file_name || fileName || 'Uploaded File'}</h3>
             <div className="file-meta">
               <span className="meta-item">
                 <Clock size={14} />
-                Processed at {new Date().toLocaleTimeString()}
+                {results.processing_time_ms}ms
               </span>
-              {(results.processingTime || results.processing_time_ms) && (
-                <span className="meta-item">
-                  <Zap size={14} />
-                  {results.processingTime || results.processing_time_ms}ms
-                </span>
-              )}
               <span className="meta-item">
                 <Cpu size={14} />
-                {results.metadata?.model || selectedModel}
+                {results.model_used}
               </span>
+              {results.file_size && (
+                <span className="meta-item">
+                  <Zap size={14} />
+                  {formatFileSize(results.file_size)}
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -83,29 +95,21 @@ const ResultsDisplay = ({ results, fileName, selectedModel, onReset }) => {
         className="results-stats"
       >
         <div className="stat">
-          <div className="stat-value">
-            {(results.text || results.extractedText || '').split(/\s+/).filter(word => word.length > 0).length}
-          </div>
+          <div className="stat-value">{getWordsCount()}</div>
           <div className="stat-label">Words</div>
         </div>
         <div className="stat">
-          <div className="stat-value">
-            {(results.text || results.extractedText || '').length}
-          </div>
+          <div className="stat-value">{getCharactersCount()}</div>
           <div className="stat-label">Characters</div>
         </div>
         <div className="stat">
-          <div className="stat-value">
-            {(results.text || results.extractedText || '').split('\n').filter(line => line.trim().length > 0).length}
-          </div>
+          <div className="stat-value">{getLinesCount()}</div>
           <div className="stat-label">Lines</div>
         </div>
-        {results.confidence && (
-          <div className="stat">
-            <div className="stat-value">{Math.round(results.confidence * 100)}%</div>
-            <div className="stat-label">Confidence</div>
-          </div>
-        )}
+        <div className="stat">
+          <div className="stat-value">{results.processing_time_ms}ms</div>
+          <div className="stat-label">Processing Time</div>
+        </div>
       </motion.div>
 
       {/* Action Buttons */}
@@ -162,30 +166,10 @@ const ResultsDisplay = ({ results, fileName, selectedModel, onReset }) => {
           transition={{ delay: 1 }}
         >
           <pre className="extracted-text">
-            {results.text || results.extractedText || 'No text found in the image.'}
+            {results.text || 'No text found in the document.'}
           </pre>
         </motion.div>
       </motion.div>
-
-      {/* Additional Results */}
-      {results.metadata && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 1 }}
-          className="metadata-section"
-        >
-          <h4>Processing Details</h4>
-          <div className="metadata-grid">
-            {Object.entries(results.metadata).map(([key, value]) => (
-              <div key={key} className="metadata-item">
-                <span className="metadata-key">{key.replace(/_/g, ' ')}:</span>
-                <span className="metadata-value">{String(value)}</span>
-              </div>
-            ))}
-          </div>
-        </motion.div>
-      )}
     </motion.div>
   )
 }

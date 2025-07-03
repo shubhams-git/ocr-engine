@@ -6,7 +6,26 @@ import { Upload, Image, FileText, AlertCircle } from 'lucide-react'
 const FileUpload = ({ onFileUpload }) => {
   const onDrop = useCallback((acceptedFiles, rejectedFiles) => {
     if (rejectedFiles.length > 0) {
-      alert('Please upload only image files (PNG, JPG, JPEG, GIF, BMP, TIFF, WEBP) or PDF files.')
+      const rejectedFile = rejectedFiles[0]
+      let errorMessage = 'File upload failed: '
+      
+      if (rejectedFile.errors) {
+        const errors = rejectedFile.errors.map(error => {
+          switch (error.code) {
+            case 'file-too-large':
+              return 'File size too large. Maximum size is 50MB for PDFs, 10MB for images.'
+            case 'file-invalid-type':
+              return 'Unsupported file type. Please upload an image or PDF file.'
+            default:
+              return error.message
+          }
+        }).join(' ')
+        errorMessage += errors
+      } else {
+        errorMessage += 'Please upload only image files or PDF files.'
+      }
+      
+      alert(errorMessage)
       return
     }
     
@@ -28,7 +47,7 @@ const FileUpload = ({ onFileUpload }) => {
       'application/pdf': ['.pdf']
     },
     multiple: false,
-    maxSize: 10 * 1024 * 1024 // 10MB
+    maxSize: 50 * 1024 * 1024, // 50MB max
   })
 
   const getDropzoneClass = () => {
@@ -100,11 +119,11 @@ const FileUpload = ({ onFileUpload }) => {
           >
             <div className="format-group">
               <Image size={16} />
-              <span>Images: PNG, JPG, JPEG, GIF, BMP, TIFF, WEBP</span>
+              <span>Images: PNG, JPG, JPEG, GIF, BMP, TIFF, WEBP (max 10MB)</span>
             </div>
             <div className="format-group">
               <FileText size={16} />
-              <span>Documents: PDF</span>
+              <span>Documents: PDF (max 50MB)</span>
             </div>
           </motion.div>
           
@@ -114,7 +133,7 @@ const FileUpload = ({ onFileUpload }) => {
             transition={{ delay: 0.6 }}
             className="file-limits"
           >
-            <span>Maximum file size: 10MB</span>
+            <span>Powered by Google Gemini AI</span>
           </motion.div>
         </motion.div>
       </motion.div>
