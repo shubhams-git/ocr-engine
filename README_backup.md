@@ -19,6 +19,7 @@
 - [🌐 API Documentation](#-api-documentation)
 - [⚙️ Configuration](#️-configuration)
 - [🧪 Testing](#-testing)
+- [🚀 Deployment](#-deployment)
 - [🤝 Contributing](#-contributing)
 - [📋 Troubleshooting](#-troubleshooting)
 
@@ -42,6 +43,7 @@
 - **Drag & Drop**: Intuitive file upload with visual feedback
 - **Real-time Updates**: Live processing status and progress indicators
 - **Responsive Design**: Mobile-friendly interface that works on all devices
+- **Dark/Light Theme**: Automatic theme adaptation
 - **Copy & Download**: Easy result export options
 
 ### 🔒 Enterprise Features
@@ -380,6 +382,25 @@ GEMINI_API_KEY_3=your_third_key_here
 # ... up to GEMINI_API_KEY_10
 ```
 
+### 🎛️ Advanced Configuration
+
+```python
+# config.py - Advanced settings
+class Settings:
+    # Model preferences
+    DEFAULT_MODEL = "gemini-2.5-flash"
+    FALLBACK_MODEL = "gemini-1.5-flash"
+    
+    # Processing options
+    AUTO_LANGUAGE_DETECTION = True
+    CONFIDENCE_THRESHOLD = 0.8
+    
+    # Performance tuning
+    MAX_CONCURRENT_REQUESTS = 10
+    REQUEST_TIMEOUT = 30
+    RETRY_ATTEMPTS = 3
+```
+
 ---
 
 ## 🧪 Testing
@@ -409,6 +430,97 @@ curl http://localhost:8000/api/health
 curl -X POST http://localhost:8000/api/ocr/process \
   -F "file=@test.png" \
   -F "model=gemini-2.5-flash"
+```
+
+### 📊 Performance Testing
+
+```python
+# Load testing example
+import asyncio
+import aiohttp
+
+async def test_concurrent_requests():
+    async with aiohttp.ClientSession() as session:
+        tasks = []
+        for i in range(10):
+            task = session.post(
+                'http://localhost:8000/api/ocr/process',
+                data={'file': open('test.png', 'rb')}
+            )
+            tasks.append(task)
+        
+        responses = await asyncio.gather(*tasks)
+        print(f"Processed {len(responses)} requests concurrently")
+```
+
+---
+
+## 🚀 Deployment
+
+### 🐳 Docker Deployment
+
+```dockerfile
+# Dockerfile
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install backend dependencies
+COPY backend/requirements.txt .
+RUN pip install -r requirements.txt
+
+# Copy application
+COPY backend/ .
+
+# Install Node.js for frontend build
+RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
+RUN apt-get install -y nodejs
+
+# Build frontend
+COPY frontend/ ./frontend/
+WORKDIR /app/frontend
+RUN npm install && npm run build
+
+# Back to app directory
+WORKDIR /app
+
+# Expose port
+EXPOSE 8000
+
+# Start application
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+```
+
+### ☁️ Cloud Deployment
+
+#### Heroku
+```bash
+# Install Heroku CLI and login
+heroku create ocr-engine-app
+heroku config:set GEMINI_API_KEY_1=your_key_here
+git push heroku main
+```
+
+#### AWS/DigitalOcean
+```bash
+# Build and deploy
+npm run build
+docker build -t ocr-engine .
+docker run -p 8000:8000 ocr-engine
+```
+
+### 🔧 Production Configuration
+
+```bash
+# Production .env
+DEBUG=False
+HOST=0.0.0.0
+PORT=8000
+FRONTEND_URL=https://yourdomain.com
+
+# Use environment variables for API keys
+GEMINI_API_KEY_1=${GEMINI_KEY_1}
+GEMINI_API_KEY_2=${GEMINI_KEY_2}
 ```
 
 ---
@@ -543,6 +655,22 @@ grep -r "FRONTEND_URL" backend/
 
 This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
 
+```
+MIT License
+
+Copyright (c) 2024 OCR Engine Contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+```
+
 ---
 
 ## 🙏 Acknowledgments
@@ -557,9 +685,10 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 ## 📞 Support & Contact
 
+- **📧 Email**: your-email@domain.com
+- **💬 Discord**: [Join our server](https://discord.gg/yourserver)
 - **🐛 Issues**: [GitHub Issues](https://github.com/yourusername/ocr-engine/issues)
-- **📖 Docs**: http://localhost:8000/docs
-- **📋 Project Status**: [INTEGRATION_STATUS.md](INTEGRATION_STATUS.md)
+- **📖 Docs**: [Full Documentation](https://yourname.github.io/ocr-engine/)
 
 ---
 
@@ -569,6 +698,6 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 [Report Bug](https://github.com/yourusername/ocr-engine/issues) • [Request Feature](https://github.com/yourusername/ocr-engine/issues) • [Documentation](https://github.com/yourusername/ocr-engine/wiki)
 
-Made with ❤️ for OCR enthusiasts
+Made with ❤️ by [Your Name](https://github.com/yourusername)
 
 </div>
