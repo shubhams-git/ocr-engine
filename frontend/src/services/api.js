@@ -39,23 +39,9 @@ export const processOCR = async (file, options = {}) => {
     throw new Error('No file provided')
   }
 
-  // Check file size
-  const isPDF = file.type === 'application/pdf'
-  const maxSize = isPDF ? 50 * 1024 * 1024 : 10 * 1024 * 1024
-  const sizeLimit = isPDF ? '50MB' : '10MB'
-  
-  if (file.size > maxSize) {
-    throw new Error(`File size too large. Maximum size is ${sizeLimit}.`)
-  }
-
-  // Check file type
-  const allowedTypes = [
-    'image/png', 'image/jpeg', 'image/jpg', 'image/gif', 
-    'image/bmp', 'image/tiff', 'image/webp', 'application/pdf'
-  ]
-  
-  if (!allowedTypes.includes(file.type)) {
-    throw new Error('Unsupported file type. Please upload an image or PDF file.')
+  // Check file size (50MB limit)
+  if (file.size > 50 * 1024 * 1024) {
+    throw new Error('File size too large. Maximum size is 50MB.')
   }
 
   // Create FormData
@@ -78,15 +64,6 @@ export const processOCR = async (file, options = {}) => {
 }
 
 /**
- * Get available models
- * @returns {Promise<Object>} - Available models information
- */
-export const getAvailableModels = async () => {
-  const response = await apiClient.get('/models')
-  return response.data
-}
-
-/**
  * Get API health status
  * @returns {Promise<Object>} - Health status
  */
@@ -96,38 +73,17 @@ export const getHealthStatus = async () => {
 }
 
 /**
- * Get supported file formats
- * @returns {Promise<Object>} - Supported formats
+ * Get available models
+ * @returns {Promise<Object>} - Available models information
  */
-export const getSupportedFormats = async () => {
-  const response = await apiClient.get('/formats')
+export const getAvailableModels = async () => {
+  const response = await apiClient.get('/models')
   return response.data
 }
 
-/**
- * Get current OCR prompt
- * @returns {Promise<Object>} - Current prompt information
- */
-export const getCurrentPrompt = async () => {
-  const response = await apiClient.get('/prompt')
-  return response.data
-}
-
-/**
- * Get API statistics
- * @returns {Promise<Object>} - API usage statistics
- */
-export const getApiStats = async () => {
-  const response = await apiClient.get('/stats')
-  return response.data
-}
-
-// Export all functions
+// Export functions
 export default {
   processOCR,
-  getAvailableModels,
   getHealthStatus,
-  getSupportedFormats,
-  getCurrentPrompt,
-  getApiStats
+  getAvailableModels
 } 

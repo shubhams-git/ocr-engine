@@ -4,7 +4,7 @@ import FileUpload from './components/FileUpload'
 import ResultsDisplay from './components/ResultsDisplay'
 import Header from './components/Header'
 import LoadingSpinner from './components/LoadingSpinner'
-import { processOCR, getAvailableModels, getHealthStatus } from './services/api'
+import { processOCR, getHealthStatus, getAvailableModels } from './services/api'
 import './App.css'
 
 function App() {
@@ -12,9 +12,18 @@ function App() {
   const [ocrResults, setOcrResults] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
-  const [availableModels, setAvailableModels] = useState([])
-  const [selectedModel, setSelectedModel] = useState('gemini-1.5-flash')
   const [backendStatus, setBackendStatus] = useState('unknown')
+  const [selectedModel, setSelectedModel] = useState('gemini-2.5-flash')
+  const [availableModels, setAvailableModels] = useState([])
+
+  // Fallback models if backend is not available
+  const fallbackModels = [
+    { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', description: 'Most capable model for complex tasks' },
+    { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', description: 'Fast and efficient (Recommended)' },
+    { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', description: 'Latest experimental model' },
+    { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', description: 'Fast and reliable' },
+    { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', description: 'Advanced reasoning capabilities' }
+  ]
 
   // Check backend status and load models on component mount
   useEffect(() => {
@@ -24,23 +33,23 @@ function App() {
         await getHealthStatus()
         setBackendStatus('connected')
         
-        // Load available models
+        // Load available models from backend
         const modelsData = await getAvailableModels()
         if (modelsData.models) {
           setAvailableModels(modelsData.models)
+        } else {
+          setAvailableModels(fallbackModels)
         }
+        
+        // Set default model if provided
         if (modelsData.default) {
           setSelectedModel(modelsData.default)
         }
       } catch (err) {
         console.warn('Backend not available:', err.message)
         setBackendStatus('disconnected')
-        // Set fallback models if backend is not available
-        setAvailableModels([
-          { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash' },
-          { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro' },
-          { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash (Experimental)' }
-        ])
+        // Use fallback models if backend is not available
+        setAvailableModels(fallbackModels)
       }
     }
 
@@ -104,10 +113,11 @@ function App() {
                     <div className="model-info">
                       <span className="model-name">
                         {model.name}
-                        {model.id === 'gemini-1.5-flash' && (
+                        {model.id === 'gemini-2.5-flash' && (
                           <span className="recommended-badge">Recommended</span>
                         )}
                       </span>
+                      <span className="model-description">{model.description}</span>
                     </div>
                   </label>
                 ))}

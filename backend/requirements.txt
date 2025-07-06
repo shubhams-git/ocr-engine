@@ -1,33 +1,13 @@
 # FastAPI and server
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
-python-multipart==0.0.6
+fastapi>=0.104.1
+uvicorn[standard]>=0.24.0
+python-multipart>=0.0.6
 
-# Google Gemini AI
-google-generativeai==0.8.3
+# Google GenAI (new SDK)
+google-genai>=1.24.0
 
 # Environment variables (optional)
-python-dotenv==1.0.0
+python-dotenv>=1.0.0
 
-# Pydantic for data validation
-pydantic==2.5.0
-
-# Image processing
-Pillow==10.1.0
-
-# PDF processing
-PyMuPDF==1.23.8
-
-# File type detection
-python-magic==0.4.27
-
-# Async support
-aiofiles==23.2.1
-
-# HTTP client (if needed for testing)
-httpx==0.25.2
-aiohttp==3.9.1
-
-# Development dependencies (optional)
-pytest==7.4.3
-pytest-asyncio==0.21.1 
+# HTTP client
+httpx>=0.28.0 

@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Copy, Download, RefreshCw, CheckCircle, FileText, Clock, Zap, Cpu } from 'lucide-react'
+import { Copy, Download, RefreshCw, CheckCircle, FileText, Cpu } from 'lucide-react'
 
-const ResultsDisplay = ({ results, fileName, onReset }) => {
+const ResultsDisplay = ({ results, fileName, selectedModel, onReset }) => {
   const [copied, setCopied] = useState(false)
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(results.text || '')
+      await navigator.clipboard.writeText(results.data || '')
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch (err) {
@@ -17,7 +17,7 @@ const ResultsDisplay = ({ results, fileName, onReset }) => {
 
   const handleDownload = () => {
     const element = document.createElement('a')
-    const file = new Blob([results.text || ''], { type: 'text/plain' })
+    const file = new Blob([results.data || ''], { type: 'text/plain' })
     element.href = URL.createObjectURL(file)
     element.download = `${fileName?.split('.')[0] || 'ocr'}_extracted.txt`
     document.body.appendChild(element)
@@ -25,23 +25,27 @@ const ResultsDisplay = ({ results, fileName, onReset }) => {
     document.body.removeChild(element)
   }
 
-  const formatFileSize = (bytes) => {
-    if (!bytes) return 'Unknown'
-    const sizes = ['Bytes', 'KB', 'MB', 'GB']
-    const i = Math.floor(Math.log(bytes) / Math.log(1024))
-    return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i]
-  }
-
   const getWordsCount = () => {
-    return (results.text || '').split(/\s+/).filter(word => word.length > 0).length
+    return (results.data || '').split(/\s+/).filter(word => word.length > 0).length
   }
 
   const getCharactersCount = () => {
-    return (results.text || '').length
+    return (results.data || '').length
   }
 
   const getLinesCount = () => {
-    return (results.text || '').split('\n').filter(line => line.trim().length > 0).length
+    return (results.data || '').split('\n').filter(line => line.trim().length > 0).length
+  }
+
+  const getModelDisplayName = (modelId) => {
+    const modelNames = {
+      'gemini-2.5-pro': 'Gemini 2.5 Pro',
+      'gemini-2.5-flash': 'Gemini 2.5 Flash',
+      'gemini-2.0-flash': 'Gemini 2.0 Flash',
+      'gemini-1.5-flash': 'Gemini 1.5 Flash',
+      'gemini-1.5-pro': 'Gemini 1.5 Pro'
+    }
+    return modelNames[modelId] || modelId
   }
 
   return (
@@ -60,28 +64,18 @@ const ResultsDisplay = ({ results, fileName, onReset }) => {
       >
         <div className="success-badge">
           <CheckCircle className="success-icon" />
-          <span>Text Extracted Successfully!</span>
+          <span>Data Extracted Successfully!</span>
         </div>
         
         <div className="file-info">
           <FileText className="file-icon" />
           <div className="file-details">
-            <h3>{results.file_name || fileName || 'Uploaded File'}</h3>
+            <h3>{fileName || 'Uploaded File'}</h3>
             <div className="file-meta">
               <span className="meta-item">
-                <Clock size={14} />
-                {results.processing_time_ms}ms
-              </span>
-              <span className="meta-item">
                 <Cpu size={14} />
-                {results.model_used}
+                {getModelDisplayName(selectedModel)}
               </span>
-              {results.file_size && (
-                <span className="meta-item">
-                  <Zap size={14} />
-                  {formatFileSize(results.file_size)}
-                </span>
-              )}
             </div>
           </div>
         </div>
@@ -106,10 +100,6 @@ const ResultsDisplay = ({ results, fileName, onReset }) => {
           <div className="stat-value">{getLinesCount()}</div>
           <div className="stat-label">Lines</div>
         </div>
-        <div className="stat">
-          <div className="stat-value">{results.processing_time_ms}ms</div>
-          <div className="stat-label">Processing Time</div>
-        </div>
       </motion.div>
 
       {/* Action Buttons */}
@@ -127,7 +117,7 @@ const ResultsDisplay = ({ results, fileName, onReset }) => {
           disabled={copied}
         >
           {copied ? <CheckCircle size={18} /> : <Copy size={18} />}
-          {copied ? 'Copied!' : 'Copy Text'}
+          {copied ? 'Copied!' : 'Copy Data'}
         </motion.button>
         
         <motion.button
@@ -151,14 +141,14 @@ const ResultsDisplay = ({ results, fileName, onReset }) => {
         </motion.button>
       </motion.div>
 
-      {/* Extracted Text Display */}
+      {/* Extracted Data Display */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.8 }}
         className="extracted-text-container"
       >
-        <h3>Extracted Text</h3>
+        <h3>Extracted Data</h3>
         <motion.div
           className="text-content"
           initial={{ opacity: 0 }}
@@ -166,7 +156,7 @@ const ResultsDisplay = ({ results, fileName, onReset }) => {
           transition={{ delay: 1 }}
         >
           <pre className="extracted-text">
-            {results.text || 'No text found in the document.'}
+            {results.data || 'No data found in the document.'}
           </pre>
         </motion.div>
       </motion.div>

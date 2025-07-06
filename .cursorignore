@@ -4,3 +4,4 @@ dist/
 
 # Don't ignore the .env file
 !.env
+!.env.template

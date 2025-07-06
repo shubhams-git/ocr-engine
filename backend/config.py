@@ -1,22 +1,43 @@
 """
-Simple configuration for OCR API
+Simple configuration for OCR API with basic API key rotation
 """
 import os
-import random
-from typing import List
 
-# Load API keys from environment variables
-API_KEYS = []
-for i in range(1, 11):  # Support up to 10 API keys
-    key = os.getenv(f"GEMINI_API_KEY_{i}")
-    if key:
-        API_KEYS.append(key.strip())
+def get_api_keys():
+    """Get all available API keys from environment variables"""
+    keys = []
+    
+    # Get the main API key
+    main_key = os.getenv("GEMINI_API_KEY")
+    if main_key:
+        keys.append(main_key)
+    
+    # Get additional keys (up to 10)
+    for i in range(1, 11):
+        key = os.getenv(f"GEMINI_API_KEY_{i}")
+        if key:
+            keys.append(key)
+    
+    if not keys:
+        raise ValueError("No API keys found. Set GEMINI_API_KEY or GEMINI_API_KEY_1, etc.")
+    
+    print(f"Loaded {len(keys)} API keys")
+    return keys
 
-# If no keys found, check for single key
-if not API_KEYS:
-    single_key = os.getenv("GEMINI_API_KEY")
-    if single_key:
-        API_KEYS.append(single_key.strip())
+# Load all available API keys
+API_KEYS = get_api_keys()
+current_key_index = 0
+
+def get_next_key():
+    """Get the next API key in rotation"""
+    global current_key_index
+    key = API_KEYS[current_key_index]
+    current_key_index = (current_key_index + 1) % len(API_KEYS)
+    return key
+
+def get_current_key():
+    """Get the current API key without rotating"""
+    return API_KEYS[current_key_index]
 
 # CORS settings
 ALLOWED_ORIGINS = [
@@ -24,30 +45,4 @@ ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:3000",
     "http://127.0.0.1:5173",
-]
-
-# Simple API key rotation
-current_key_index = 0
-
-def get_api_key() -> str:
-    """Get next API key in rotation"""
-    global current_key_index
-    
-    if not API_KEYS:
-        raise ValueError("No Gemini API keys found. Please set GEMINI_API_KEY_1, GEMINI_API_KEY_2, etc.")
-    
-    key = API_KEYS[current_key_index]
-    current_key_index = (current_key_index + 1) % len(API_KEYS)
-    
-    return key
-
-def get_random_api_key() -> str:
-    """Get random API key"""
-    if not API_KEYS:
-        raise ValueError("No Gemini API keys found")
-    
-    return random.choice(API_KEYS)
-
-def get_api_key_count() -> int:
-    """Get number of available API keys"""
-    return len(API_KEYS) 
+] 
