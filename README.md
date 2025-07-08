@@ -1,52 +1,118 @@
-# OCR Engine
+# OCR Engine 🔍
 
-A high-performance Optical Character Recognition (OCR) service built with FastAPI and Google Gemini AI. This service provides accurate text extraction from images and PDF documents through a simple REST API.
+A comprehensive document analysis platform built with **FastAPI** and **React** that leverages **Google Gemini AI** for intelligent text extraction and financial data analysis. The platform offers both single document OCR and advanced multi-PDF financial analysis with projections.
 
-## 🚀 Features
+![OCR Engine](https://img.shields.io/badge/OCR-Engine-blue) ![FastAPI](https://img.shields.io/badge/FastAPI-005571?logo=fastapi) ![React](https://img.shields.io/badge/React-61DAFB?logo=react&logoColor=black) ![Google AI](https://img.shields.io/badge/Google%20AI-4285F4?logo=google&logoColor=white)
 
-- **Multi-format Support**: Processes images (PNG, JPG, JPEG, GIF, BMP, TIFF, WebP) and PDF documents
-- **Multiple AI Models**: Supports various Gemini models including GPT-1.5-Pro, GPT-1.5-Flash, and GPT-2.0-Flash (Experimental)
-- **API Key Rotation**: Automatic rotation across multiple API keys for improved reliability and rate limiting
+## 🌟 Features
+
+### 📄 Single Document OCR
+- **Multi-format Support**: Process images (PNG, JPG, JPEG, GIF, BMP, TIFF, WebP) and PDF documents
 - **High Accuracy**: Preserves original document formatting, structure, and layout
-- **Performance Monitoring**: Built-in statistics and health monitoring
-- **CORS Support**: Ready for frontend integration
-- **Scalable Architecture**: Designed for production deployment
+- **Real-time Processing**: Fast text extraction with visual feedback
+- **Export Options**: Copy to clipboard or download as text file
+
+### 📊 Multi-PDF Financial Analysis (Advanced)
+- **Data Extraction**: Automatically extract financial data from multiple PDF documents
+- **Data Normalization**: Standardize and combine data across different document formats
+- **Financial Projections**: Generate 2-3 year forecasts with confidence levels
+- **Risk Assessment**: Identify potential risks and scenario analysis
+- **Trend Analysis**: Calculate growth rates, ratios, and seasonal patterns
+- **Interactive Results**: Expandable sections with detailed JSON data and visualizations
+
+### 🚀 Technical Features
+- **Multiple AI Models**: Support for Gemini 2.5 Pro, 2.5 Flash, 2.0 Flash, and 1.5 models
+- **API Key Rotation**: Automatic rotation across multiple API keys for reliability
+- **Modern UI**: Responsive design with smooth animations and intuitive interactions
+- **Real-time Monitoring**: Health checks, performance metrics, and error handling
+- **Scalable Architecture**: Microservices design ready for production deployment
 
 ## 🏗️ Architecture
 
 ```
 ocr-engine/
-├── backend/
-│   ├── main.py          # FastAPI application and OCR endpoints
-│   ├── config.py        # Configuration and API key management
-│   ├── prompt.py        # OCR prompt templates
-│   └── requirements.txt # Python dependencies
-├── .env                 # Environment variables (API keys)
-└── README.md
+├── backend/                    # FastAPI Backend
+│   ├── main.py                # Application entry point & routing
+│   ├── config.py              # Configuration & API key management
+│   ├── middleware.py          # Error handling middleware
+│   ├── models.py              # Pydantic data models
+│   ├── requirements.txt       # Python dependencies
+│   ├── routers/               # API route handlers
+│   │   ├── admin.py          # API key management
+│   │   ├── health.py         # Health & system info
+│   │   ├── multi_pdf.py      # Multi-PDF analysis
+│   │   └── ocr.py           # Single document OCR
+│   └── services/             # Business logic
+│       ├── ocr_service.py   # OCR processing
+│       └── multi_pdf_service.py # Financial analysis
+├── frontend/                  # React Frontend
+│   ├── src/
+│   │   ├── components/       # React components
+│   │   │   ├── FileUpload.jsx       # Single file upload
+│   │   │   ├── MultiPDFUpload.jsx   # Multi-file upload
+│   │   │   ├── ResultsDisplay.jsx   # OCR results
+│   │   │   ├── MultiPDFResults.jsx  # Analysis results
+│   │   │   ├── Header.jsx           # App header
+│   │   │   └── LoadingSpinner.jsx   # Loading states
+│   │   ├── services/
+│   │   │   └── api.js        # API client
+│   │   ├── App.jsx           # Main application
+│   │   └── main.jsx          # Entry point
+│   ├── package.json          # Node.js dependencies
+│   └── vite.config.js        # Vite configuration
+├── create_sample_pdfs.py      # Generate test PDFs
+├── test_multi_pdf_analysis.py # Test script
+└── README.md                  # This file
 ```
+
+## 🛠️ Tech Stack
+
+### Backend
+- **FastAPI** - Modern Python web framework with automatic API documentation
+- **Google Gemini AI** - Advanced multimodal AI for document processing
+- **Pydantic** - Data validation and serialization
+- **Uvicorn** - ASGI server for production deployment
+
+### Frontend  
+- **React 18** - Modern UI library with hooks and concurrent features
+- **Vite** - Next-generation build tool for fast development
+- **Framer Motion** - Production-ready motion library for animations
+- **Axios** - Promise-based HTTP client
+- **React Dropzone** - File upload with drag & drop support
+- **Lucide React** - Beautiful, customizable icons
+
+### AI & Processing
+- **Google Gemini 2.5 Flash** - Fast, efficient processing (recommended)
+- **Google Gemini 2.5 Pro** - Advanced reasoning for complex documents
+- **Google Gemini 2.0 Flash** - Latest experimental features
 
 ## 📋 Prerequisites
 
-- Python 3.8+
-- Google Gemini API key(s)
-- 2GB+ RAM (recommended)
-- Network access for API calls
+- **Python 3.8+** (Backend)
+- **Node.js 16+** (Frontend)  
+- **Google Gemini API Key(s)** ([Get here](https://ai.google.dev/))
+- **2GB+ RAM** (recommended for document processing)
 
 ## ⚡ Quick Start
 
-### 1. Clone and Setup
-
+### 1. Clone Repository
 ```bash
 git clone <repository-url>
 cd ocr-engine
 ```
 
-### 2. Environment Configuration
+### 2. Backend Setup
 
+#### Install Dependencies
+```bash
+cd backend
+pip install -r requirements.txt
+```
+
+#### Environment Configuration
 Create a `.env` file in the project root:
-
 ```env
-# Primary API key
+# Primary API key (required)
 GEMINI_API_KEY=your_gemini_api_key_here
 
 # Optional: Multiple keys for rotation (recommended for production)
@@ -56,257 +122,321 @@ GEMINI_API_KEY_3=your_third_api_key
 # ... up to GEMINI_API_KEY_10
 ```
 
-### 3. Install Dependencies
-
+#### Start Backend Server
 ```bash
-cd backend
-pip install -r requirements.txt
-```
-
-### 4. Run the Service
-
-```bash
-# Development mode
+# Development mode with auto-reload
 python main.py
 
-# Production mode
-uvicorn main:app --host 0.0.0.0 --port 8000
+# Or using uvicorn directly
+uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-The API will be available at `http://localhost:8000`
+Backend will be available at `http://localhost:8000`
 
-## 📖 API Documentation
+### 3. Frontend Setup
+
+#### Install Dependencies
+```bash
+cd frontend
+npm install
+```
+
+#### Start Development Server
+```bash
+npm run dev
+```
+
+Frontend will be available at `http://localhost:5173`
+
+### 4. Verify Installation
+
+- Visit `http://localhost:5173` for the web interface
+- Visit `http://localhost:8000/docs` for API documentation
+- Check `http://localhost:8000/health` for backend status
+
+## 🎯 Usage Guide
+
+### Single Document OCR
+
+1. **Select Model**: Choose your preferred Gemini AI model
+2. **Upload File**: Drag & drop or browse for an image/PDF (max 50MB)
+3. **Processing**: AI extracts text while showing progress
+4. **Results**: View extracted text with statistics (words, characters, lines)
+5. **Export**: Copy to clipboard or download as text file
+
+**Supported Formats:**
+- **Images**: PNG, JPG, JPEG, GIF, BMP, TIFF, WebP (max 10MB)
+- **Documents**: PDF (max 50MB)
+
+### Multi-PDF Financial Analysis
+
+1. **Upload Documents**: Add 2-10 PDF files containing financial data
+2. **AI Analysis**: System extracts, normalizes, and analyzes data
+3. **View Results**: Explore four main sections:
+   - **Methodology & Summary**: Analysis approach and executive summary
+   - **Projections & Insights**: 2-3 year forecasts with confidence levels
+   - **Normalized Data**: Standardized financial metrics and ratios
+   - **Extracted Data**: Raw data from each document
+
+**Key Capabilities:**
+- **Trend Analysis**: Calculate growth rates and identify patterns
+- **Financial Projections**: Generate yearly forecasts with confidence levels
+- **Risk Assessment**: Identify potential risks and scenario analysis
+- **Data Quality Scoring**: Assess completeness and reliability
+- **Scenario Planning**: Optimistic and conservative projections
+
+## 📚 API Documentation
 
 ### Core Endpoints
 
-#### POST `/ocr`
-Extract text from uploaded file
+#### Single Document OCR
+```http
+POST /ocr
+Content-Type: multipart/form-data
 
-**Parameters:**
-- `file` (multipart/form-data): Image or PDF file
-- `model` (optional): Gemini model to use (default: "gemini-1.5-flash")
+# Parameters:
+- file: Image or PDF file
+- model: Gemini model (optional, default: gemini-2.5-flash)
+```
 
 **Example Request:**
 ```bash
 curl -X POST "http://localhost:8000/ocr" \
-  -H "Content-Type: multipart/form-data" \
   -F "file=@document.pdf" \
-  -F "model=gemini-1.5-pro"
+  -F "model=gemini-2.5-pro"
 ```
 
 **Example Response:**
 ```json
 {
   "success": true,
-  "text": "Extracted text content...",
-  "confidence": 0.95,
-  "metadata": {
-    "model_used": "gemini-1.5-pro",
-    "file_name": "document.pdf",
-    "file_size": 245760,
-    "content_type": "application/pdf",
-    "processing_time_ms": 1250,
-    "text_length": 1024,
-    "timestamp": 1704240000.0
-  },
-  "processing_time_ms": 1250
+  "data": "Extracted text content...",
+  "error": null
 }
 ```
 
-### Information Endpoints
+#### Multi-PDF Analysis
+```http
+POST /multi-pdf/analyze  
+Content-Type: multipart/form-data
 
-#### GET `/health`
-Service health check and status
+# Parameters:
+- files: Array of PDF files (2-10 files)
+- model: Gemini model (optional, default: gemini-2.5-flash)
+```
 
-#### GET `/models`
-List available Gemini models
+**Example Request:**
+```bash
+curl -X POST "http://localhost:8000/multi-pdf/analyze" \
+  -F "files=@report1.pdf" \
+  -F "files=@report2.pdf" \
+  -F "model=gemini-2.5-flash"
+```
 
-#### GET `/formats`
-Supported file formats and size limits
+**Example Response:**
+```json
+{
+  "success": true,
+  "extracted_data": [...],
+  "normalized_data": {...},
+  "projections": {...},
+  "explanation": "Analysis summary...",
+  "data_quality_score": 0.95,
+  "confidence_levels": {...},
+  "risk_factors": [...],
+  "assumptions": [...]
+}
+```
 
-#### GET `/stats`
-API usage statistics and performance metrics
+### System Endpoints
 
-#### GET `/prompt`
-Current OCR prompt configuration
+- `GET /health` - Service health check
+- `GET /models` - Available AI models  
+- `GET /api-keys/status` - API key rotation status
+- `POST /api-keys/rotate` - Manually rotate API key
 
 ### Interactive Documentation
 
-Visit `http://localhost:8000/docs` for Swagger UI documentation with interactive testing capabilities.
+Visit `http://localhost:8000/docs` for Swagger UI with interactive API testing.
 
-## 🔧 Configuration
+## 🧪 Testing
 
-### API Key Management
+### Generate Sample PDFs
+```bash
+# Install reportlab if needed
+pip install reportlab
 
-The service supports multiple API keys for improved reliability:
-
-```python
-# Single key
-GEMINI_API_KEY=your_api_key
-
-# Multiple keys (automatic rotation)
-GEMINI_API_KEY_1=key_1
-GEMINI_API_KEY_2=key_2
-GEMINI_API_KEY_3=key_3
+# Generate test PDFs
+python create_sample_pdfs.py
 ```
 
-### Model Selection
+### Test Multi-PDF Analysis
+```bash
+# Run comprehensive test suite
+python test_multi_pdf_analysis.py
+```
 
-Available models with their characteristics:
+### Frontend Testing
+```bash
+cd frontend
+npm run lint        # Check code style
+npm run build       # Test production build
+npm run preview     # Preview production build
+```
 
-| Model | Speed | Accuracy | Use Case |
-|-------|-------|----------|----------|
-| `gemini-1.5-flash` | Fast | Good | Quick processing, bulk operations |
-| `gemini-1.5-pro` | Medium | Excellent | Complex documents, high accuracy needs |
-| `gemini-2.0-flash-exp` | Fast | Good | Latest features (experimental) |
+## 🔧 Development
 
-### File Size Limits
+### Adding New AI Models
 
-- **Images**: 10MB maximum
-- **PDFs**: 50MB maximum
-
-### CORS Configuration
-
-Update `ALLOWED_ORIGINS` in `config.py` for your frontend domains:
-
+1. **Update Backend** (`backend/routers/health.py`):
 ```python
-ALLOWED_ORIGINS = [
-    "http://localhost:3000",    # React dev server
-    "http://localhost:5173",    # Vite dev server
-    "https://your-app.com",     # Production domain
+models = [
+    {
+        "id": "new-model-id",
+        "name": "New Model Name", 
+        "description": "Model description"
+    }
 ]
 ```
 
-## 🎯 Usage Examples
-
-### Python Client
-
-```python
-import requests
-
-def extract_text(file_path, model="gemini-1.5-flash"):
-    with open(file_path, 'rb') as f:
-        files = {'file': f}
-        data = {'model': model}
-        response = requests.post(
-            'http://localhost:8000/ocr',
-            files=files,
-            data=data
-        )
-    return response.json()
-
-# Extract from image
-result = extract_text('invoice.png', 'gemini-1.5-pro')
-print(result['text'])
+2. **Update Frontend** (`frontend/src/App.jsx`):
+```javascript
+const fallbackModels = [
+    { id: 'new-model-id', name: 'New Model Name', description: 'Description' }
+]
 ```
 
-### JavaScript/Node.js Client
+### Customizing Analysis Prompts
 
-```javascript
-const FormData = require('form-data');
-const fs = require('fs');
-const axios = require('axios');
+Modify the analysis prompt in `backend/services/multi_pdf_service.py`:
+```python
+prompt = """
+Your custom analysis instructions here.
+Specify data extraction requirements, formatting, etc.
+"""
+```
 
-async function extractText(filePath, model = 'gemini-1.5-flash') {
-    const form = new FormData();
-    form.append('file', fs.createReadStream(filePath));
-    form.append('model', model);
-    
-    const response = await axios.post('http://localhost:8000/ocr', form, {
-        headers: form.getHeaders()
-    });
-    
-    return response.data;
+### Adding New API Endpoints
+
+1. **Create Router** (`backend/routers/new_feature.py`):
+```python
+from fastapi import APIRouter
+router = APIRouter(prefix="/new-feature", tags=["new-feature"])
+
+@router.post("/endpoint")
+async def new_endpoint():
+    return {"message": "success"}
+```
+
+2. **Register Router** (`backend/main.py`):
+```python
+from routers import new_feature
+app.include_router(new_feature.router)
+```
+
+### Frontend Component Development
+
+Components follow this structure:
+```jsx
+import { motion } from 'framer-motion'
+
+const NewComponent = ({ prop1, prop2 }) => {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="component-class"
+    >
+      Component content
+    </motion.div>
+  )
 }
 
-// Usage
-extractText('./document.pdf')
-    .then(result => console.log(result.text))
-    .catch(console.error);
+export default NewComponent
 ```
 
-### cURL Examples
+## 🚀 Production Deployment
 
-```bash
-# Basic OCR
-curl -X POST "http://localhost:8000/ocr" \
-  -F "file=@image.jpg"
+### Environment Variables
+```env
+# Production API keys
+GEMINI_API_KEY_1=prod_key_1
+GEMINI_API_KEY_2=prod_key_2
+GEMINI_API_KEY_3=prod_key_3
 
-# With specific model
-curl -X POST "http://localhost:8000/ocr" \
-  -F "file=@document.pdf" \
-  -F "model=gemini-1.5-pro"
-
-# Check service health
-curl "http://localhost:8000/health"
-
-# Get usage statistics
-curl "http://localhost:8000/stats"
+# CORS origins (update for your domain)
+ALLOWED_ORIGINS=https://your-app.com,https://api.your-app.com
 ```
-
-## 🚀 Deployment
 
 ### Docker Deployment
 
+**Backend Dockerfile:**
 ```dockerfile
 FROM python:3.9-slim
-
 WORKDIR /app
 COPY backend/requirements.txt .
 RUN pip install -r requirements.txt
-
 COPY backend/ .
-COPY .env .
-
 EXPOSE 8000
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 
-### Production Considerations
+**Frontend Dockerfile:**
+```dockerfile
+FROM node:18-alpine
+WORKDIR /app
+COPY frontend/package*.json ./
+RUN npm ci --only=production
+COPY frontend/ .
+RUN npm run build
+FROM nginx:alpine
+COPY --from=0 /app/dist /usr/share/nginx/html
+```
 
-1. **Environment Variables**: Use secure secret management
-2. **Load Balancing**: Deploy multiple instances behind a load balancer
-3. **Rate Limiting**: Implement rate limiting for API protection
-4. **Monitoring**: Set up logging and monitoring for production use
-5. **SSL/TLS**: Use HTTPS in production environments
+### Production Checklist
 
-### Health Monitoring
-
-The service provides several monitoring endpoints:
-
-- `/health` - Basic health check
-- `/stats` - Performance metrics
-- Success/failure rates and processing times
+- [ ] **Security**: Use HTTPS, secure API keys, validate inputs
+- [ ] **Performance**: Enable compression, CDN, caching
+- [ ] **Monitoring**: Set up logging, health checks, alerts  
+- [ ] **Scaling**: Load balancing, multiple instances
+- [ ] **Backup**: Regular data backups, disaster recovery plan
 
 ## 🔍 Troubleshooting
 
 ### Common Issues
 
-**API Key Errors**
+**API Key Errors:**
 ```
-ValueError: No Gemini API keys found
+ValueError: No API keys found
 ```
-- Ensure `.env` file exists with valid API keys
+- Ensure `.env` file exists with valid `GEMINI_API_KEY`
 - Check API key format and permissions
 
-**File Size Errors**
+**File Size Errors:**
 ```
-413 Request Entity Too Large
+413 Request Entity Too Large  
 ```
 - Reduce file size or compress images
-- Check file size limits in `/formats` endpoint
+- Check limits: Images (10MB), PDFs (50MB)
 
-**Model Not Found**
+**Backend Connection Errors:**
 ```
-404 Model not found
+No response from server
 ```
-- Use `/models` endpoint to check available models
-- Verify model name spelling
+- Verify backend is running on port 8000
+- Check firewall and network settings
+- Ensure `.env` file is in project root
+
+**Frontend Build Errors:**
+```
+Module not found
+```
+- Run `npm install` in frontend directory
+- Check Node.js version (16+ required)
 
 ### Debug Mode
 
-Enable debug logging:
-
+Enable detailed logging:
 ```python
 import logging
 logging.basicConfig(level=logging.DEBUG)
@@ -315,63 +445,45 @@ logging.basicConfig(level=logging.DEBUG)
 ## 📊 Performance
 
 ### Typical Processing Times
-
-| File Type | Size | Processing Time |
-|-----------|------|----------------|
-| Image (PNG) | 1MB | 800-1200ms |
-| PDF | 5MB | 1500-2500ms |
-| Complex Document | 10MB | 3000-5000ms |
+| Document Type | Size | Processing Time |
+|---------------|------|----------------|
+| Image (PNG) | 1MB | 800-1500ms |
+| PDF Document | 5MB | 1500-3000ms |
+| Multi-PDF (3 files) | 15MB | 5000-8000ms |
+| Complex Financial Analysis | 10 PDFs | 10000-15000ms |
 
 ### Optimization Tips
+- **Use Gemini 2.5 Flash** for speed, Pro models for accuracy
+- **Implement caching** for repeated document analysis  
+- **API key rotation** prevents rate limiting
+- **Batch processing** for multiple files
 
-1. **Use appropriate model**: Flash models for speed, Pro models for accuracy
-2. **Implement caching**: Cache results for repeated requests
-3. **Batch processing**: Process multiple files in parallel
-4. **API key rotation**: Use multiple keys to avoid rate limits
+## 🤝 Contributing
 
-## 🔧 Development
+1. **Fork the repository**
+2. **Create feature branch**: `git checkout -b feature/amazing-feature`
+3. **Commit changes**: `git commit -m 'Add amazing feature'`
+4. **Push to branch**: `git push origin feature/amazing-feature`
+5. **Open Pull Request**
 
-### Running Tests
+### Development Guidelines
+- Follow existing code style and patterns
+- Add tests for new features
+- Update documentation for API changes
+- Use TypeScript for complex frontend components
 
-```bash
-# Install test dependencies
-pip install pytest pytest-asyncio
+## 📝 License
 
-# Run tests
-pytest
-```
-
-### Customizing OCR Prompts
-
-Modify the prompt in `backend/prompt.py`:
-
-```python
-OCR_PROMPT = """
-Your custom OCR instructions here.
-Specify formatting requirements, special handling, etc.
-"""
-```
-
-### Adding New Endpoints
-
-Extend the FastAPI application in `main.py`:
-
-```python
-@app.post("/custom-endpoint")
-async def custom_function():
-    # Your custom logic
-    return {"result": "success"}
-```
+This project is licensed under the MIT License - see the LICENSE file for details.
 
 ## 🆘 Support
 
-For technical support or questions:
-
-1. Check the interactive API documentation at `/docs`
-2. Review the troubleshooting section above
-3. Contact the development team
+- **Documentation**: Check `/docs` endpoint for API reference
+- **Issues**: Report bugs via GitHub Issues
+- **Discussions**: Join GitHub Discussions for questions
 
 ---
 
-**Last Updated**: January 2025  
-**Version**: 1.0.0
+**Built with ❤️ using FastAPI, React, and Google Gemini AI**
+
+*Last Updated: January 2025 | Version: 2.0.0*
