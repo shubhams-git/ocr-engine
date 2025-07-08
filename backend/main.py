@@ -14,7 +14,7 @@ except ImportError:
     pass
 
 from config import ALLOWED_ORIGINS
-from routers import health, admin, ocr
+from routers import health, admin, ocr, multi_pdf
 from middleware import error_handler
 
 # Set up logging
@@ -40,6 +40,7 @@ app.middleware("http")(error_handler)
 app.include_router(health.router)
 app.include_router(admin.router)
 app.include_router(ocr.router)
+app.include_router(multi_pdf.router)
 
 if __name__ == "__main__":
     import uvicorn

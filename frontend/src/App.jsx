@@ -1,15 +1,21 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
+import { FileText, BarChart3 } from 'lucide-react'
 import FileUpload from './components/FileUpload'
+import MultiPDFUpload from './components/MultiPDFUpload'
 import ResultsDisplay from './components/ResultsDisplay'
+import MultiPDFResults from './components/MultiPDFResults'
 import Header from './components/Header'
 import LoadingSpinner from './components/LoadingSpinner'
-import { processOCR, getHealthStatus, getAvailableModels } from './services/api'
+import { processOCR, processMultiPDFAnalysis, getHealthStatus, getAvailableModels } from './services/api'
 import './App.css'
 
 function App() {
+  const [mode, setMode] = useState('single') // 'single' or 'multi'
   const [uploadedFile, setUploadedFile] = useState(null)
+  const [uploadedFiles, setUploadedFiles] = useState([])
   const [ocrResults, setOcrResults] = useState(null)
+  const [multiPdfResults, setMultiPdfResults] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
   const [backendStatus, setBackendStatus] = useState('unknown')
@@ -73,11 +79,35 @@ function App() {
     }
   }
 
+  const handleMultiPDFUpload = async (files) => {
+    setUploadedFiles(files)
+    setIsLoading(true)
+    setError(null)
+    setMultiPdfResults(null)
+
+    try {
+      const results = await processMultiPDFAnalysis(files, { model: selectedModel })
+      setMultiPdfResults(results)
+    } catch (err) {
+      console.error('Multi-PDF analysis error:', err)
+      setError(err.message || 'Failed to process multi-PDF analysis')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const handleReset = () => {
     setUploadedFile(null)
+    setUploadedFiles([])
     setOcrResults(null)
+    setMultiPdfResults(null)
     setError(null)
     setIsLoading(false)
+  }
+
+  const handleModeChange = (newMode) => {
+    setMode(newMode)
+    handleReset()
   }
 
   return (
@@ -91,8 +121,44 @@ function App() {
           transition={{ duration: 0.6 }}
           className="container"
         >
+          {/* Mode Toggle */}
+          {!isLoading && !ocrResults && !multiPdfResults && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="mode-toggle"
+            >
+              <motion.button
+                onClick={() => handleModeChange('single')}
+                className={`mode-button ${mode === 'single' ? 'active' : ''}`}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <FileText size={20} />
+                <div>
+                  <div>Single Document OCR</div>
+                  <div className="mode-description">Extract text from images & PDFs</div>
+                </div>
+              </motion.button>
+              
+              <motion.button
+                onClick={() => handleModeChange('multi')}
+                className={`mode-button ${mode === 'multi' ? 'active' : ''}`}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <BarChart3 size={20} />
+                <div>
+                  <div>Multi-PDF Analysis</div>
+                  <div className="mode-description">Analyze, normalize & project data</div>
+                </div>
+              </motion.button>
+            </motion.div>
+          )}
+
           {/* Model Selection */}
-          {!uploadedFile && !isLoading && !ocrResults && availableModels.length > 0 && (
+          {!uploadedFile && !uploadedFiles.length && !isLoading && !ocrResults && !multiPdfResults && availableModels.length > 0 && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -125,12 +191,20 @@ function App() {
             </motion.div>
           )}
 
-          {!uploadedFile && !isLoading && !ocrResults && (
+          {/* Single Document Upload */}
+          {mode === 'single' && !uploadedFile && !isLoading && !ocrResults && (
             <FileUpload onFileUpload={handleFileUpload} />
           )}
 
+          {/* Multi-PDF Upload */}
+          {mode === 'multi' && !uploadedFiles.length && !isLoading && !multiPdfResults && (
+            <MultiPDFUpload onFilesUpload={handleMultiPDFUpload} />
+          )}
+
+          {/* Loading Spinner */}
           {isLoading && <LoadingSpinner />}
 
+          {/* Error Display */}
           {error && (
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
@@ -138,7 +212,7 @@ function App() {
               className="error-container"
             >
               <div className="error-message">
-                <h3>Error Processing File</h3>
+                <h3>Error Processing {mode === 'multi' ? 'Files' : 'File'}</h3>
                 <p>{error}</p>
                 <div className="error-actions">
                   <button onClick={handleReset} className="retry-button">
@@ -154,10 +228,21 @@ function App() {
             </motion.div>
           )}
 
+          {/* Single OCR Results */}
           {ocrResults && !isLoading && (
             <ResultsDisplay 
               results={ocrResults} 
               fileName={uploadedFile?.name}
+              selectedModel={selectedModel}
+              onReset={handleReset}
+            />
+          )}
+
+          {/* Multi-PDF Results */}
+          {multiPdfResults && !isLoading && (
+            <MultiPDFResults
+              results={multiPdfResults}
+              fileNames={uploadedFiles?.map(file => file.name)}
               selectedModel={selectedModel}
               onReset={handleReset}
             />
