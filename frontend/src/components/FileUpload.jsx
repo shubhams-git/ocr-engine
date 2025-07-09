@@ -1,7 +1,7 @@
 import { useCallback } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { motion } from 'framer-motion'
-import { Upload, Image, FileText, AlertCircle } from 'lucide-react'
+import { Upload, Image, FileText, AlertCircle, Database } from 'lucide-react'
 
 const FileUpload = ({ onFileUpload }) => {
   const onDrop = useCallback((acceptedFiles, rejectedFiles) => {
@@ -13,16 +13,16 @@ const FileUpload = ({ onFileUpload }) => {
         const errors = rejectedFile.errors.map(error => {
           switch (error.code) {
             case 'file-too-large':
-              return 'File size too large. Maximum size is 50MB for PDFs, 10MB for images.'
+              return 'File size too large. Maximum size is 50MB for PDFs, 10MB for images, 25MB for CSV files.'
             case 'file-invalid-type':
-              return 'Unsupported file type. Please upload an image or PDF file.'
+              return 'Unsupported file type. Please upload an image, PDF, or CSV file.'
             default:
               return error.message
           }
         }).join(' ')
         errorMessage += errors
       } else {
-        errorMessage += 'Please upload only image files or PDF files.'
+        errorMessage += 'Please upload only image files, PDF files, or CSV files.'
       }
       
       alert(errorMessage)
@@ -44,7 +44,10 @@ const FileUpload = ({ onFileUpload }) => {
     onDrop,
     accept: {
       'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.webp'],
-      'application/pdf': ['.pdf']
+      'application/pdf': ['.pdf'],
+      'text/csv': ['.csv'],
+      'application/vnd.ms-excel': ['.csv'],
+      'application/csv': ['.csv']
     },
     multiple: false,
     maxSize: 50 * 1024 * 1024, // 50MB max
@@ -100,7 +103,7 @@ const FileUpload = ({ onFileUpload }) => {
               ? isDragReject
                 ? 'File type not supported'
                 : 'Drop your file here'
-              : 'Upload Image or PDF'
+              : 'Upload Image, PDF, or CSV'
             }
           </h3>
           
@@ -124,6 +127,10 @@ const FileUpload = ({ onFileUpload }) => {
             <div className="format-group">
               <FileText size={16} />
               <span>Documents: PDF (max 50MB)</span>
+            </div>
+            <div className="format-group">
+              <Database size={16} />
+              <span>Data: CSV (max 25MB)</span>
             </div>
           </motion.div>
           

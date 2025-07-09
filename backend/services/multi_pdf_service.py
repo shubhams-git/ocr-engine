@@ -1,6 +1,6 @@
 """
 Multi-PDF analysis service using Google Gemini AI
-Handles multiple PDFs, extracts data, normalizes, and makes projections
+Handles multiple PDFs and CSV files, extracts data, normalizes, and makes projections
 
 PROJECTION ACCURACY IMPROVEMENT SUGGESTIONS:
 
@@ -71,24 +71,69 @@ Low: Items 7, 8, 9 (business context and external data integration)
 """
 import logging
 import io
-from typing import List
+from typing import List, Tuple
 from fastapi import HTTPException
 
 from google import genai
 from config import get_next_key, API_KEYS
 from models import MultiPDFAnalysisResponse
+from prompts import MULTI_PDF_PROMPT
 
 logger = logging.getLogger(__name__)
 
 class MultiPDFService:
-    """Service for handling multiple PDF analysis with projections"""
+    """Service for handling multiple PDF and CSV analysis with projections"""
     
     def __init__(self):
-        self.max_file_size = 50 * 1024 * 1024  # 50MB per file
+        # File size limits by type
+        self.max_pdf_size = 50 * 1024 * 1024   # 50MB for PDFs
+        self.max_csv_size = 25 * 1024 * 1024   # 25MB for CSV files
         self.max_files = 10  # Maximum number of files to process
     
+    def get_file_type_and_mime(self, filename: str, content: bytes) -> Tuple[str, str]:
+        """Determine file type and MIME type from filename and content"""
+        if not filename:
+            raise HTTPException(status_code=400, detail="No filename provided")
+        
+        filename_lower = filename.lower()
+        
+        # Check for CSV files
+        if filename_lower.endswith('.csv'):
+            return 'csv', 'text/csv'
+        
+        # Check for PDF files
+        elif filename_lower.endswith('.pdf'):
+            # Validate PDF header
+            if not content.startswith(b'%PDF'):
+                raise HTTPException(status_code=400, detail=f"File {filename} does not appear to be a valid PDF")
+            return 'pdf', 'application/pdf'
+        
+        else:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Unsupported file type for {filename}. Please upload PDF or CSV files only."
+            )
+    
+    def process_csv_content(self, content: bytes, filename: str) -> str:
+        """Convert CSV bytes to text with proper encoding detection"""
+        # Try different encodings
+        encodings = ['utf-8', 'latin-1', 'cp1252', 'iso-8859-1']
+        
+        for encoding in encodings:
+            try:
+                csv_text = content.decode(encoding)
+                logger.info(f"Successfully decoded CSV {filename} with {encoding} encoding")
+                return csv_text
+            except UnicodeDecodeError:
+                continue
+        
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Unable to decode CSV file {filename}. Please ensure it's a valid text file with UTF-8, Latin-1, or Windows-1252 encoding."
+        )
+    
     def validate_files(self, files_data: List[tuple]) -> None:
-        """Validate uploaded files (filename, content pairs)"""
+        """Validate uploaded files (filename, content pairs) for both PDF and CSV"""
         if not files_data:
             raise HTTPException(status_code=400, detail="No files provided")
         
@@ -99,17 +144,16 @@ class MultiPDFService:
             if not filename:
                 raise HTTPException(status_code=400, detail="Missing filename")
             
-            if len(content) > self.max_file_size:
-                raise HTTPException(status_code=413, detail=f"File {filename} too large. Maximum size is 50MB")
-            
-            if not filename.lower().endswith('.pdf'):
-                raise HTTPException(status_code=400, detail=f"File {filename} is not a PDF")
-            
             if len(content) == 0:
                 raise HTTPException(status_code=400, detail=f"File {filename} is empty")
             
-            if not content.startswith(b'%PDF'):
-                raise HTTPException(status_code=400, detail=f"File {filename} is not a valid PDF")
+            # Get file type and validate accordingly
+            file_type, _ = self.get_file_type_and_mime(filename, content)
+            
+            if file_type == 'pdf' and len(content) > self.max_pdf_size:
+                raise HTTPException(status_code=413, detail=f"PDF file {filename} too large. Maximum size is 50MB")
+            elif file_type == 'csv' and len(content) > self.max_csv_size:
+                raise HTTPException(status_code=413, detail=f"CSV file {filename} too large. Maximum size is 25MB")
     
     def extract_response_text(self, response) -> str:
         """Extract text from Gemini response"""
@@ -125,210 +169,17 @@ class MultiPDFService:
         
         raise Exception("No data could be extracted from response")
     
-    async def analyze_multiple_pdfs(self, files_data: List[tuple], model: str = "gemini-2.5-flash") -> MultiPDFAnalysisResponse:
+    async def analyze_multiple_files(self, files_data: List[tuple], model: str = "gemini-2.5-flash") -> MultiPDFAnalysisResponse:
         """
-        Analyze multiple PDFs with data extraction, normalization, and projections
+        Analyze multiple PDF and CSV files with data extraction, normalization, and projections
         files_data: List of (filename, content) tuples
         """
         try:
             # Validate files
             self.validate_files(files_data)
             
-            # Create comprehensive prompt for analysis
-            prompt = """
-            You are a senior financial analyst with expertise in trend analysis and forecasting.
-
-            Your task: Analyze ALL attached financial PDFs and return a comprehensive JSON object with this structure:
-
-            {
-                "extracted_data": [
-                    {
-                        "source_document": "filename.pdf",
-                        "period": "YYYY or YYYY-MM to YYYY-MM",
-                        "financial_statements": {
-                            "income_statement": { ... },
-                            "balance_sheet": { ... },
-                            "cash_flow": { ... }
-                        },
-                        "key_metrics": { ... }
-                    }
-                ],
-                "normalized_data": {
-                    "time_series": {
-                        "revenue": [{"period": "2023", "value": 1000000}, ...],
-                        "expenses": [{"period": "2023", "value": 800000}, ...],
-                        "net_profit": [{"period": "2023", "value": 200000}, ...],
-                        "assets": [{"period": "2023", "value": 2000000}, ...],
-                        "liabilities": [{"period": "2023", "value": 1200000}, ...],
-                        "equity": [{"period": "2023", "value": 800000}, ...]
-                    },
-                    "growth_rates": {
-                        "revenue_cagr": 0.15,
-                        "expense_growth": 0.12,
-                        "profit_growth": 0.25
-                    },
-                    "financial_ratios": {
-                        "profit_margin": [{"period": "2023", "value": 0.20}, ...],
-                        "roa": [{"period": "2023", "value": 0.10}, ...],
-                        "current_ratio": [{"period": "2023", "value": 1.5}, ...]
-                    }
-                },
-                "projections": {
-                    "methodology": "Describe the forecasting approach used",
-                    "base_year": "YYYY",
-                    "forecast_horizon": "2-3 years",
-                    "yearly_projections": {
-                        "2025": {
-                            "revenue": {"value": 1200000, "growth_rate": 0.15, "confidence": "high"},
-                            "expenses": {"value": 950000, "growth_rate": 0.12, "confidence": "medium"},
-                            "net_profit": {"value": 250000, "growth_rate": 0.25, "confidence": "medium"},
-                            "assets": {"value": 2400000, "growth_rate": 0.20, "confidence": "medium"},
-                            "key_ratios": {
-                                "profit_margin": 0.208,
-                                "roa": 0.104,
-                                "debt_to_equity": 0.65
-                            }
-                        },
-                        "2026": { ... },
-                        "2027": { ... }
-                    },
-                    "assumptions": [
-                        "Market growth continues at historical 10-15% annually",
-                        "Operating costs increase with inflation at 8% per year",
-                        "No major capital expenditures beyond normal replacement"
-                    ],
-                    "scenarios": {
-                        "optimistic": {
-                            "description": "Strong market growth, cost efficiencies",
-                            "revenue_multiplier": 1.3,
-                            "key_drivers": ["market expansion", "operational efficiency"]
-                        },
-                        "conservative": {
-                            "description": "Slower growth, higher costs",
-                            "revenue_multiplier": 0.8,
-                            "key_drivers": ["market saturation", "increased competition"]
-                        }
-                    },
-                    "trend_analysis": {
-                        "revenue_trend": "Consistent upward trend with seasonal variations",
-                        "cost_trend": "Rising costs due to inflation and expansion",
-                        "profitability_trend": "Improving margins through efficiency gains",
-                        "seasonality": "Q4 typically strongest, Q1 weakest"
-                    }
-                },
-                "data_quality_assessment": {
-                    "completeness_score": 0.95,
-                    "consistency_issues": [
-                        "Missing cash flow data for 2022",
-                        "Inconsistent expense categorization between periods"
-                    ],
-                    "outliers_detected": [
-                        {"item": "Marketing expenses Q3 2023", "deviation": "300% above average", "impact": "high"}
-                    ],
-                    "data_gaps": [
-                        "Detailed segment breakdown not available for all periods",
-                        "Working capital components missing for 2021"
-                    ],
-                    "reliability_flags": [
-                        {"flag": "unaudited_financials", "periods": ["2023"], "impact": "medium"},
-                        {"flag": "estimation_used", "items": ["depreciation", "provisions"], "impact": "low"}
-                    ]
-                },
-                "accuracy_considerations": {
-                    "forecast_confidence": {
-                        "year_1": "high",
-                        "year_2": "medium", 
-                        "year_3": "low"
-                    },
-                    "risk_factors": [
-                        "Economic downturn could impact revenue by 20-30%",
-                        "Interest rate changes affecting financing costs",
-                        "Supply chain disruptions impacting cost structure"
-                    ],
-                    "improvement_recommendations": [
-                        "Obtain monthly data for better seasonality analysis",
-                        "Include industry benchmarks for validation",
-                        "Incorporate leading economic indicators"
-                    ],
-                    "model_limitations": [
-                        "Limited historical data (only 2-3 years available)",
-                        "No consideration of competitive dynamics",
-                        "Assumes current business model remains unchanged"
-                    ]
-                },
-                "qa_checks": {
-                    "math_consistency": [],
-                    "classification_warnings": [],
-                    "sign_anomalies": [],
-                    "trend_validation": []
-                },
-                "executive_summary": "Brief narrative explaining key findings, trends, and projection rationale"
-            }
-
-            **DETAILED INSTRUCTIONS:**
-
-            **1. Data Extraction & Validation**
-            • Extract every financial figure exactly as shown, maintaining original signs and formatting
-            • Identify the time periods covered by each document
-            • Store GST/VAT gross balances separately (gst_paid_total, gst_collected_total)
-            • Flag and correct classification issues (e.g., debit balances in liability accounts)
-
-            **2. Trend Analysis Requirements**
-            • Calculate year-over-year growth rates for all major financial metrics
-            • Identify seasonal patterns if monthly/quarterly data is available
-            • Detect anomalies and outliers that could skew projections
-            • Analyze ratio trends (margins, liquidity, efficiency, leverage)
-
-            **3. Projection Methodology**
-            • Use trend analysis as primary driver for projections
-            • Apply compound annual growth rates (CAGR) where appropriate
-            • Consider mean reversion for ratios that appear unsustainable
-            • Factor in business lifecycle stage (startup, growth, mature, decline)
-
-            **4. Yearly Projections (MANDATORY)**
-            • Provide specific projections for each of the next 2-3 years
-            • Include confidence levels: high (>80%), medium (60-80%), low (<60%)
-            • Calculate projected financial ratios for each year
-            • Show growth rates year-over-year
-
-            **5. Assumptions Documentation**
-            • List ALL assumptions used in projections
-            • Specify economic assumptions (inflation, interest rates, market growth)
-            • Note operational assumptions (capacity, efficiency, market share)
-            • Include regulatory or industry-specific factors
-
-            **6. Risk Assessment**
-            • Identify key risk factors that could impact projections
-            • Provide optimistic and conservative scenarios (±20-30% variance)
-            • Flag data quality issues that affect forecast reliability
-            • Note model limitations and recommend improvements
-
-            **7. Data Quality Control**
-            • Assign completeness score (0-1) based on available data
-            • Flag inconsistencies between periods or documents
-            • Identify missing data that affects forecast quality
-            • Note any estimates or approximations used
-
-            **8. Mathematical Validation**
-            • Verify: Gross Profit = Revenue - COGS (±$1 tolerance)
-            • Verify: Operating Profit = Gross Profit - Operating Expenses (±$1)
-            • Verify: Assets = Liabilities + Equity (±$1)
-            • Validate that projected ratios remain within reasonable ranges
-
-            **9. Output Quality**
-            • Use 2 decimal places for monetary values
-            • Express growth rates and ratios as decimals (e.g., 0.15 for 15%)
-            • Ensure all projected values are mathematically consistent
-            • Provide clear narrative explanations for major changes or assumptions
-
-            **10. Special Considerations**
-            • For partial-year data, clearly state annualization method
-            • If insufficient historical data, note limitations and reduce confidence
-            • Consider industry benchmarks if apparent from data patterns
-            • Flag any regulatory or compliance issues that might affect projections
-
-            Return ONLY the JSON object. Ensure all financial calculations are accurate and all assumptions are explicitly stated.
-            """
+            # Use prompt from configuration
+            prompt = MULTI_PDF_PROMPT
             
             # Try with each API key until one works
             last_error = None
@@ -339,36 +190,61 @@ class MultiPDFService:
                     api_key = get_next_key()
                     current_client = genai.Client(api_key=api_key)
                     
-                    logger.info(f"Processing multi-PDF analysis with model {model} (attempt {attempt + 1})")
+                    logger.info(f"Processing multi-file analysis with model {model} (attempt {attempt + 1})")
                     
-                    # Upload files using File API
-                    uploaded_files = []
+                    # Separate files by type and process accordingly
                     contents = []
                     
+                    # Build comprehensive prompt with CSV data and PDF file references
+                    comprehensive_prompt = prompt
+                    csv_data_sections = []
+                    
                     for filename, content in files_data:
-                        logger.info(f"Uploading file: {filename}")
+                        file_type, mime_type = self.get_file_type_and_mime(filename, content)
                         
-                        # Upload file using File API with filename for mime type detection
-                        import tempfile
-                        import os
+                        if file_type == 'csv':
+                            logger.info(f"Processing CSV file: {filename}")
+                            # Process CSV as text
+                            csv_text = self.process_csv_content(content, filename)
+                            csv_section = f"""
+CSV FILE: {filename}
+Content:
+{csv_text}
+
+---
+"""
+                            csv_data_sections.append(csv_section)
                         
-                        # Create a temporary file with PDF extension
-                        with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as temp_file:
-                            temp_file.write(content)
-                            temp_file_path = temp_file.name
-                        
-                        try:
-                            uploaded_file = current_client.files.upload(file=temp_file_path)
-                        finally:
-                            # Clean up temporary file
-                            os.unlink(temp_file_path)
-                        uploaded_files.append(uploaded_file)
-                        contents.append(uploaded_file)
+                        elif file_type == 'pdf':
+                            logger.info(f"Uploading PDF file: {filename}")
+                            # Upload PDF using File API
+                            import tempfile
+                            import os
+                            
+                            # Create a temporary file with PDF extension
+                            with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as temp_file:
+                                temp_file.write(content)
+                                temp_file_path = temp_file.name
+                            
+                            try:
+                                uploaded_file = current_client.files.upload(file=temp_file_path)
+                                contents.append(uploaded_file)
+                            finally:
+                                # Clean up temporary file
+                                os.unlink(temp_file_path)
                     
-                    # Add prompt at the end
-                    contents.append(prompt)
+                    # If we have CSV data, prepend it to the prompt
+                    if csv_data_sections:
+                        csv_intro = """
+IMPORTANT: The following CSV files contain financial data that should be analyzed alongside any PDF documents:
+
+"""
+                        comprehensive_prompt = csv_intro + "".join(csv_data_sections) + "\n" + prompt
                     
-                    # Send to Gemini with uploaded files
+                    # Add the comprehensive prompt
+                    contents.append(comprehensive_prompt)
+                    
+                    # Send to Gemini with mixed content (uploaded PDFs + text prompt with CSV data)
                     response = current_client.models.generate_content(
                         model=model,
                         contents=contents
@@ -376,7 +252,7 @@ class MultiPDFService:
                     
                     # Extract response text
                     extracted_text = self.extract_response_text(response)
-                    logger.info("Multi-PDF analysis completed successfully")
+                    logger.info("Multi-file analysis completed successfully")
                     
                     # Try to parse the JSON response
                     try:
@@ -474,6 +350,7 @@ class MultiPDFService:
                             data_quality = result_data.get("data_quality_assessment", {})
                             accuracy_considerations = result_data.get("accuracy_considerations", {})
                             projections_data = result_data.get("projections", {})
+                            data_analysis_summary = result_data.get("data_analysis_summary", {})
                             
                             return MultiPDFAnalysisResponse(
                                 success=True,
@@ -489,7 +366,14 @@ class MultiPDFService:
                                 assumptions=projections_data.get("assumptions", []),
                                 risk_factors=accuracy_considerations.get("risk_factors", []),
                                 methodology=projections_data.get("methodology"),
-                                scenarios=projections_data.get("scenarios", {})
+                                scenarios=projections_data.get("scenarios", {}),
+                                
+                                # New dynamic period detection fields - map correctly
+                                period_granularity=data_analysis_summary.get("period_granularity_detected"),
+                                total_data_points=data_analysis_summary.get("total_data_points"),
+                                time_span=data_analysis_summary.get("time_span"),
+                                seasonality_detected=data_analysis_summary.get("seasonality_detected"),
+                                data_analysis_summary=data_analysis_summary
                             )
                         else:
                             logger.warning("All JSON extraction strategies failed")
@@ -512,7 +396,12 @@ class MultiPDFService:
                             assumptions=None,
                             risk_factors=None,
                             methodology=None,
-                            scenarios=None
+                            scenarios=None,
+                            period_granularity=None,
+                            total_data_points=None,
+                            time_span=None,
+                            seasonality_detected=None,
+                            data_analysis_summary=None
                         )
                     
                 except Exception as e:
@@ -533,13 +422,18 @@ class MultiPDFService:
                 assumptions=None,
                 risk_factors=None,
                 methodology=None,
-                scenarios=None
+                scenarios=None,
+                period_granularity=None,
+                total_data_points=None,
+                time_span=None,
+                seasonality_detected=None,
+                data_analysis_summary=None
             )
                 
         except HTTPException:
             raise
         except Exception as e:
-            logger.error(f"Error processing multi-PDF analysis: {str(e)}")
+            logger.error(f"Error processing multi-file analysis: {str(e)}")
             return MultiPDFAnalysisResponse(
                 success=False,
                 extracted_data=[],
@@ -552,8 +446,19 @@ class MultiPDFService:
                 assumptions=None,
                 risk_factors=None,
                 methodology=None,
-                scenarios=None
+                scenarios=None,
+                period_granularity=None,
+                total_data_points=None,
+                time_span=None,
+                seasonality_detected=None,
+                data_analysis_summary=None
             )
+    
+    async def analyze_multiple_pdfs(self, files_data: List[tuple], model: str = "gemini-2.5-flash") -> MultiPDFAnalysisResponse:
+        """
+        Backward compatibility method - delegates to analyze_multiple_files
+        """
+        return await self.analyze_multiple_files(files_data, model)
 
 # Create a single instance to use across the app
 multi_pdf_service = MultiPDFService() 

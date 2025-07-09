@@ -36,7 +36,7 @@ const Header = ({ backendStatus = 'unknown' }) => {
           transition={{ duration: 0.8, delay: 0.6 }}
           className="header-description"
         >
-          Extract text from images and PDFs using Google Gemini AI
+          Extract and analyze data from images, PDFs, and CSV files using Google Gemini AI
         </motion.p>
         
         <motion.div
@@ -47,7 +47,7 @@ const Header = ({ backendStatus = 'unknown' }) => {
         >
           <div className="badge">
             <FileText size={16} />
-            <span>Images & PDFs</span>
+            <span>Images, PDFs & CSV</span>
           </div>
           <div className="badge">
             <Zap size={16} />

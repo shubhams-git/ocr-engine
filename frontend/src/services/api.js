@@ -6,7 +6,7 @@ const API_BASE_URL = 'http://localhost:8000'
 // Create axios instance with default config
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 60000, // 1 minute timeout
+  timeout: 300000, // 5 minute timeout
 })
 
 // Response interceptor for error handling
@@ -28,6 +28,56 @@ apiClient.interceptors.response.use(
 )
 
 /**
+ * Get file size limit based on file type
+ * @param {File} file - The file to check
+ * @returns {number} - Size limit in bytes
+ */
+const getFileSizeLimit = (file) => {
+  const fileName = file.name.toLowerCase()
+  
+  if (fileName.endsWith('.pdf')) {
+    return 50 * 1024 * 1024 // 50MB for PDFs
+  } else if (fileName.endsWith('.csv')) {
+    return 25 * 1024 * 1024 // 25MB for CSV files
+  } else {
+    return 10 * 1024 * 1024 // 10MB for images
+  }
+}
+
+/**
+ * Validate file type and size
+ * @param {File} file - The file to validate
+ * @throws {Error} - If file is invalid
+ */
+const validateFile = (file) => {
+  if (!file) {
+    throw new Error('No file provided')
+  }
+
+  const fileName = file.name.toLowerCase()
+  const fileType = file.type.toLowerCase()
+  
+  // Check file type
+  const isImage = fileType.startsWith('image/') || 
+    ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.webp'].some(ext => fileName.endsWith(ext))
+  const isPDF = fileType === 'application/pdf' || fileName.endsWith('.pdf')
+  const isCSV = fileType.includes('csv') || fileName.endsWith('.csv') ||
+    fileType === 'text/csv' || fileType === 'application/csv' || fileType === 'application/vnd.ms-excel'
+  
+  if (!isImage && !isPDF && !isCSV) {
+    throw new Error('Unsupported file type. Please upload an image (PNG, JPG, JPEG, GIF, BMP, TIFF, WEBP), PDF, or CSV file.')
+  }
+
+  // Check file size based on type
+  const sizeLimit = getFileSizeLimit(file)
+  if (file.size > sizeLimit) {
+    const sizeLimitMB = Math.round(sizeLimit / (1024 * 1024))
+    const fileType = isPDF ? 'PDF' : isCSV ? 'CSV' : 'image'
+    throw new Error(`File size too large. Maximum size for ${fileType} files is ${sizeLimitMB}MB.`)
+  }
+}
+
+/**
  * Process OCR on uploaded file
  * @param {File} file - The file to process
  * @param {Object} options - Additional options
@@ -35,14 +85,7 @@ apiClient.interceptors.response.use(
  */
 export const processOCR = async (file, options = {}) => {
   // Validate file
-  if (!file) {
-    throw new Error('No file provided')
-  }
-
-  // Check file size (50MB limit)
-  if (file.size > 50 * 1024 * 1024) {
-    throw new Error('File size too large. Maximum size is 50MB.')
-  }
+  validateFile(file)
 
   // Create FormData
   const formData = new FormData()
@@ -99,12 +142,25 @@ export const processMultiPDFAnalysis = async (files, options = {}) => {
 
   // Check each file
   for (const file of files) {
-    if (file.size > 50 * 1024 * 1024) {
-      throw new Error(`File ${file.name} is too large. Maximum size is 50MB.`)
+    const fileName = file.name.toLowerCase()
+    const fileType = file.type.toLowerCase()
+    
+    // Check if file is PDF or CSV
+    const isPDF = fileType === 'application/pdf' || fileName.endsWith('.pdf')
+    const isCSV = fileType.includes('csv') || fileName.endsWith('.csv') ||
+      fileType === 'text/csv' || fileType === 'application/csv' || fileType === 'application/vnd.ms-excel'
+    
+    if (!isPDF && !isCSV) {
+      throw new Error(`File ${file.name} is not a supported file type. Please upload PDF or CSV files only.`)
     }
     
-    if (!file.name.toLowerCase().endsWith('.pdf')) {
-      throw new Error(`File ${file.name} is not a PDF. Only PDF files are supported.`)
+    // Check file size based on type (PDFs: 50MB, CSVs: 25MB)
+    const maxSize = isPDF ? 50 * 1024 * 1024 : 25 * 1024 * 1024
+    const maxSizeMB = isPDF ? 50 : 25
+    
+    if (file.size > maxSize) {
+      const fileTypeStr = isPDF ? 'PDF' : 'CSV'
+      throw new Error(`File ${file.name} is too large. Maximum size for ${fileTypeStr} files is ${maxSizeMB}MB.`)
     }
   }
 
@@ -126,7 +182,7 @@ export const processMultiPDFAnalysis = async (files, options = {}) => {
     headers: {
       'Content-Type': 'multipart/form-data',
     },
-    timeout: 180000, // 3 minutes timeout for multi-PDF processing
+    timeout: 600000, // 10 minutes timeout for multi-PDF processing
   })
 
   return response.data

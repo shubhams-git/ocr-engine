@@ -138,7 +138,7 @@ function App() {
                 <FileText size={20} />
                 <div>
                   <div>Single Document OCR</div>
-                  <div className="mode-description">Extract text from images & PDFs</div>
+                  <div className="mode-description">Extract data from images, PDFs & CSV</div>
                 </div>
               </motion.button>
               
