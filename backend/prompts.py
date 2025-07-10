@@ -28,25 +28,25 @@ TASK
 3. Produce an **auditable forecast JSON** with complete methodology documentation.
 
 CRITICAL CONSTRAINTS
-• ⚠️ **Automatic base-period detection** – never assume today's date.  
+• **Automatic base-period detection** – never assume today's date.  
 • Use Australian FY (July 1 – June 30) when generating FY labels.  
 • Pick forecasting granularity using this hierarchy:
   – ≥12 monthly points → monthly  
   – ≥6 quarterly points → quarterly  
   – else yearly  
 • Document ALL methodology decisions transparently.
-• ⚠️ **METHODOLOGY MUST BE AN OBJECT** – Never return methodology as a string. Always use the structured object format with model_chosen, model_justification, preprocessing_steps, etc.
+• **METHODOLOGY MUST BE AN OBJECT** – Never return methodology as a string. Always use the structured object format with model_chosen, model_justification, preprocessing_steps, etc.
 • Output *only* valid JSON. Do not wrap in markdown.
 
-🚨 MANDATORY FINANCIAL METRICS SCHEMA ENFORCEMENT 🚨
-⚠️ **ALL PROJECTION PERIODS MUST INCLUDE THESE FOUR FINANCIAL METRICS:**
+MANDATORY FINANCIAL METRICS SCHEMA ENFORCEMENT
+**ALL PROJECTION PERIODS MUST INCLUDE THESE FOUR FINANCIAL METRICS:**
 1. **revenue** - MANDATORY in every projection period
 2. **gross_profit** - MANDATORY in every projection period  
 3. **expenses** - MANDATORY in every projection period
 4. **net_profit** - MANDATORY in every projection period
 
-❌ **INCOMPLETE PROJECTIONS ARE INVALID** - Missing any of these four metrics will result in frontend display errors.
-✅ **VALIDATION CHECK** - Before outputting, verify that every projection period (1_year_ahead, 3_years_ahead, 5_years_ahead, 10_years_ahead, 15_years_ahead) contains all four metrics with complete data points.
+**INCOMPLETE PROJECTIONS ARE INVALID** - Missing any of these four metrics will result in frontend display errors.
+**VALIDATION CHECK** - Before outputting, verify that every projection period (1_year_ahead, 3_years_ahead, 5_years_ahead, 10_years_ahead, 15_years_ahead) contains all four metrics with complete data points.
 
 OUTPUT FORMAT
 {{
@@ -165,14 +165,14 @@ OUTPUT FORMAT
     "base_period": "DETECT FROM DATA: Find the latest period in your extracted data and use that as the current period",
     "projection_logic": "If latest data is June 2025 (end of FY2025), then 1 year ahead = FY2026, 3 years = FY2028, etc.",
     
-    "⚠️_SCHEMA_VALIDATION": "BEFORE OUTPUTTING: Verify that EVERY projection period below contains all four metrics: revenue, gross_profit, expenses, net_profit",
+    "_SCHEMA_VALIDATION": "BEFORE OUTPUTTING: Verify that EVERY projection period below contains all four metrics: revenue, gross_profit, expenses, net_profit",
     
     "specific_projections": {{
       "1_year_ahead": {{
         "period": "CALCULATE: Latest data period + 1 Australian FY",
         "granularity": "monthly",
         "data_points": 12,
-        "🚨_REQUIRED_METRICS": "ALL FOUR MUST BE PRESENT: revenue, gross_profit, expenses, net_profit",
+        "_REQUIRED_METRICS": "ALL FOUR MUST BE PRESENT: revenue, gross_profit, expenses, net_profit",
         "revenue": [
           {{"period": "Month 1", "value": 175000, "confidence": "high"}},
           {{"period": "Month 2", "value": 180000, "confidence": "high"}},
@@ -234,7 +234,7 @@ OUTPUT FORMAT
         "period": "CALCULATE: Latest data period + 3 Australian FY",
         "granularity": "quarterly",
         "data_points": 12,
-        "🚨_REQUIRED_METRICS": "ALL FOUR MUST BE PRESENT: revenue, gross_profit, expenses, net_profit",
+        "_REQUIRED_METRICS": "ALL FOUR MUST BE PRESENT: revenue, gross_profit, expenses, net_profit",
         "revenue": [
           {{"period": "Quarter 1", "value": 650000, "confidence": "medium"}},
           {{"period": "Quarter 2", "value": 670000, "confidence": "medium"}},
@@ -295,70 +295,42 @@ OUTPUT FORMAT
       "5_years_ahead": {{
         "period": "CALCULATE: Latest data period + 5 Australian FY",
         "granularity": "yearly",
-        "data_points": 12,
-        "🚨_REQUIRED_METRICS": "ALL FOUR MUST BE PRESENT: revenue, gross_profit, expenses, net_profit",
+        "data_points": 5,
+        "_REQUIRED_METRICS": "ALL FOUR MUST BE PRESENT: revenue, gross_profit, expenses, net_profit",
         "revenue": [
           {{"period": "Year 1", "value": 3500000, "confidence": "medium"}},
           {{"period": "Year 2", "value": 3700000, "confidence": "medium"}},
           {{"period": "Year 3", "value": 3920000, "confidence": "medium"}},
           {{"period": "Year 4", "value": 4150000, "confidence": "medium"}},
-          {{"period": "Year 5", "value": 4400000, "confidence": "medium"}},
-          {{"period": "Year 6", "value": 4660000, "confidence": "low"}},
-          {{"period": "Year 7", "value": 4930000, "confidence": "low"}},
-          {{"period": "Year 8", "value": 5220000, "confidence": "low"}},
-          {{"period": "Year 9", "value": 5520000, "confidence": "low"}},
-          {{"period": "Year 10", "value": 5840000, "confidence": "low"}},
-          {{"period": "Year 11", "value": 6180000, "confidence": "very_low"}},
-          {{"period": "Year 12", "value": 6540000, "confidence": "very_low"}}
+          {{"period": "Year 5", "value": 4400000, "confidence": "medium"}}
         ],
         "gross_profit": [
           {{"period": "Year 1", "value": 1400000, "confidence": "medium"}},
           {{"period": "Year 2", "value": 1480000, "confidence": "medium"}},
           {{"period": "Year 3", "value": 1568000, "confidence": "medium"}},
           {{"period": "Year 4", "value": 1660000, "confidence": "medium"}},
-          {{"period": "Year 5", "value": 1760000, "confidence": "medium"}},
-          {{"period": "Year 6", "value": 1864000, "confidence": "low"}},
-          {{"period": "Year 7", "value": 1972000, "confidence": "low"}},
-          {{"period": "Year 8", "value": 2088000, "confidence": "low"}},
-          {{"period": "Year 9", "value": 2208000, "confidence": "low"}},
-          {{"period": "Year 10", "value": 2336000, "confidence": "low"}},
-          {{"period": "Year 11", "value": 2472000, "confidence": "very_low"}},
-          {{"period": "Year 12", "value": 2616000, "confidence": "very_low"}}
+          {{"period": "Year 5", "value": 1760000, "confidence": "medium"}}
         ],
         "expenses": [
           {{"period": "Year 1", "value": 2650000, "confidence": "medium"}},
           {{"period": "Year 2", "value": 2780000, "confidence": "medium"}},
           {{"period": "Year 3", "value": 2920000, "confidence": "medium"}},
           {{"period": "Year 4", "value": 3070000, "confidence": "medium"}},
-          {{"period": "Year 5", "value": 3230000, "confidence": "medium"}},
-          {{"period": "Year 6", "value": 3400000, "confidence": "low"}},
-          {{"period": "Year 7", "value": 3580000, "confidence": "low"}},
-          {{"period": "Year 8", "value": 3770000, "confidence": "low"}},
-          {{"period": "Year 9", "value": 3970000, "confidence": "low"}},
-          {{"period": "Year 10", "value": 4180000, "confidence": "low"}},
-          {{"period": "Year 11", "value": 4400000, "confidence": "very_low"}},
-          {{"period": "Year 12", "value": 4630000, "confidence": "very_low"}}
+          {{"period": "Year 5", "value": 3230000, "confidence": "medium"}}
         ],
         "net_profit": [
           {{"period": "Year 1", "value": 850000, "confidence": "medium"}},
           {{"period": "Year 2", "value": 920000, "confidence": "medium"}},
           {{"period": "Year 3", "value": 1000000, "confidence": "medium"}},
           {{"period": "Year 4", "value": 1080000, "confidence": "medium"}},
-          {{"period": "Year 5", "value": 1170000, "confidence": "medium"}},
-          {{"period": "Year 6", "value": 1260000, "confidence": "low"}},
-          {{"period": "Year 7", "value": 1350000, "confidence": "low"}},
-          {{"period": "Year 8", "value": 1450000, "confidence": "low"}},
-          {{"period": "Year 9", "value": 1550000, "confidence": "low"}},
-          {{"period": "Year 10", "value": 1660000, "confidence": "low"}},
-          {{"period": "Year 11", "value": 1780000, "confidence": "very_low"}},
-          {{"period": "Year 12", "value": 1910000, "confidence": "very_low"}}
+          {{"period": "Year 5", "value": 1170000, "confidence": "medium"}}
         ]
       }},
       "10_years_ahead": {{
         "period": "CALCULATE: Latest data period + 10 Australian FY",
         "granularity": "yearly",
-        "data_points": 12,
-        "🚨_REQUIRED_METRICS": "ALL FOUR MUST BE PRESENT: revenue, gross_profit, expenses, net_profit",
+        "data_points": 10,
+        "_REQUIRED_METRICS": "ALL FOUR MUST BE PRESENT: revenue, gross_profit, expenses, net_profit",
         "revenue": [
           {{"period": "Year 1", "value": 6000000, "confidence": "low"}},
           {{"period": "Year 2", "value": 6300000, "confidence": "low"}},
@@ -369,9 +341,7 @@ OUTPUT FORMAT
           {{"period": "Year 7", "value": 8050000, "confidence": "very_low"}},
           {{"period": "Year 8", "value": 8450000, "confidence": "very_low"}},
           {{"period": "Year 9", "value": 8870000, "confidence": "very_low"}},
-          {{"period": "Year 10", "value": 9310000, "confidence": "very_low"}},
-          {{"period": "Year 11", "value": 9780000, "confidence": "very_low"}},
-          {{"period": "Year 12", "value": 10270000, "confidence": "very_low"}}
+          {{"period": "Year 10", "value": 9310000, "confidence": "very_low"}}
         ],
         "gross_profit": [
           {{"period": "Year 1", "value": 2400000, "confidence": "low"}},
@@ -383,9 +353,7 @@ OUTPUT FORMAT
           {{"period": "Year 7", "value": 3220000, "confidence": "very_low"}},
           {{"period": "Year 8", "value": 3380000, "confidence": "very_low"}},
           {{"period": "Year 9", "value": 3548000, "confidence": "very_low"}},
-          {{"period": "Year 10", "value": 3724000, "confidence": "very_low"}},
-          {{"period": "Year 11", "value": 3912000, "confidence": "very_low"}},
-          {{"period": "Year 12", "value": 4108000, "confidence": "very_low"}}
+          {{"period": "Year 10", "value": 3724000, "confidence": "very_low"}}
         ],
         "expenses": [
           {{"period": "Year 1", "value": 4200000, "confidence": "low"}},
@@ -397,9 +365,7 @@ OUTPUT FORMAT
           {{"period": "Year 7", "value": 5630000, "confidence": "very_low"}},
           {{"period": "Year 8", "value": 5910000, "confidence": "very_low"}},
           {{"period": "Year 9", "value": 6210000, "confidence": "very_low"}},
-          {{"period": "Year 10", "value": 6520000, "confidence": "very_low"}},
-          {{"period": "Year 11", "value": 6850000, "confidence": "very_low"}},
-          {{"period": "Year 12", "value": 7190000, "confidence": "very_low"}}
+          {{"period": "Year 10", "value": 6520000, "confidence": "very_low"}}
         ],
         "net_profit": [
           {{"period": "Year 1", "value": 1800000, "confidence": "low"}},
@@ -411,16 +377,14 @@ OUTPUT FORMAT
           {{"period": "Year 7", "value": 2420000, "confidence": "very_low"}},
           {{"period": "Year 8", "value": 2540000, "confidence": "very_low"}},
           {{"period": "Year 9", "value": 2660000, "confidence": "very_low"}},
-          {{"period": "Year 10", "value": 2790000, "confidence": "very_low"}},
-          {{"period": "Year 11", "value": 2930000, "confidence": "very_low"}},
-          {{"period": "Year 12", "value": 3080000, "confidence": "very_low"}}
+          {{"period": "Year 10", "value": 2790000, "confidence": "very_low"}}
         ]
       }},
       "15_years_ahead": {{
         "period": "CALCULATE: Latest data period + 15 Australian FY",
         "granularity": "yearly",
-        "data_points": 12,
-        "🚨_REQUIRED_METRICS": "ALL FOUR MUST BE PRESENT: revenue, gross_profit, expenses, net_profit",
+        "data_points": 15,
+        "_REQUIRED_METRICS": "ALL FOUR MUST BE PRESENT: revenue, gross_profit, expenses, net_profit",
         "revenue": [
           {{"period": "Year 1", "value": 9500000, "confidence": "very_low"}},
           {{"period": "Year 2", "value": 9950000, "confidence": "very_low"}},
@@ -433,7 +397,10 @@ OUTPUT FORMAT
           {{"period": "Year 9", "value": 13680000, "confidence": "very_low"}},
           {{"period": "Year 10", "value": 14310000, "confidence": "very_low"}},
           {{"period": "Year 11", "value": 14970000, "confidence": "very_low"}},
-          {{"period": "Year 12", "value": 15660000, "confidence": "very_low"}}
+          {{"period": "Year 12", "value": 15660000, "confidence": "very_low"}},
+          {{"period": "Year 13", "value": 16380000, "confidence": "very_low"}},
+          {{"period": "Year 14", "value": 17130000, "confidence": "very_low"}},
+          {{"period": "Year 15", "value": 17920000, "confidence": "very_low"}}
         ],
         "gross_profit": [
           {{"period": "Year 1", "value": 3800000, "confidence": "very_low"}},
@@ -447,7 +414,10 @@ OUTPUT FORMAT
           {{"period": "Year 9", "value": 5472000, "confidence": "very_low"}},
           {{"period": "Year 10", "value": 5724000, "confidence": "very_low"}},
           {{"period": "Year 11", "value": 5988000, "confidence": "very_low"}},
-          {{"period": "Year 12", "value": 6264000, "confidence": "very_low"}}
+          {{"period": "Year 12", "value": 6264000, "confidence": "very_low"}},
+          {{"period": "Year 13", "value": 6552000, "confidence": "very_low"}},
+          {{"period": "Year 14", "value": 6852000, "confidence": "very_low"}},
+          {{"period": "Year 15", "value": 7168000, "confidence": "very_low"}}
         ],
         "expenses": [
           {{"period": "Year 1", "value": 6650000, "confidence": "very_low"}},
@@ -461,7 +431,10 @@ OUTPUT FORMAT
           {{"period": "Year 9", "value": 9780000, "confidence": "very_low"}},
           {{"period": "Year 10", "value": 10260000, "confidence": "very_low"}},
           {{"period": "Year 11", "value": 10770000, "confidence": "very_low"}},
-          {{"period": "Year 12", "value": 11310000, "confidence": "very_low"}}
+          {{"period": "Year 12", "value": 11310000, "confidence": "very_low"}},
+          {{"period": "Year 13", "value": 11880000, "confidence": "very_low"}},
+          {{"period": "Year 14", "value": 12470000, "confidence": "very_low"}},
+          {{"period": "Year 15", "value": 13090000, "confidence": "very_low"}}
         ],
         "net_profit": [
           {{"period": "Year 1", "value": 2850000, "confidence": "very_low"}},
@@ -475,7 +448,10 @@ OUTPUT FORMAT
           {{"period": "Year 9", "value": 3900000, "confidence": "very_low"}},
           {{"period": "Year 10", "value": 4050000, "confidence": "very_low"}},
           {{"period": "Year 11", "value": 4200000, "confidence": "very_low"}},
-          {{"period": "Year 12", "value": 4350000, "confidence": "very_low"}}
+          {{"period": "Year 12", "value": 4350000, "confidence": "very_low"}},
+          {{"period": "Year 13", "value": 4500000, "confidence": "very_low"}},
+          {{"period": "Year 14", "value": 4650000, "confidence": "very_low"}},
+          {{"period": "Year 15", "value": 4800000, "confidence": "very_low"}}
         ]
       }}
     }},
@@ -598,7 +574,7 @@ OUTPUT FORMAT
     "math_consistency": [],
     "trend_validation": [],
     "outlier_assessment": [],
-    "🚨_SCHEMA_COMPLETENESS_CHECK": "VERIFY: All 5 projection periods contain complete sets of 4 financial metrics (revenue, gross_profit, expenses, net_profit) before outputting this JSON"
+    "_SCHEMA_COMPLETENESS_CHECK": "VERIFY: All 5 projection periods contain complete sets of 4 financial metrics (revenue, gross_profit, expenses, net_profit) before outputting this JSON"
   }},
   "executive_summary": "Comprehensive analysis based on available data points with Australian Financial Year alignment. Specific projections provided for 1, 3, 5, 10, and 15 years ahead, with confidence levels decreasing over longer horizons. Australian seasonal patterns and FY framework considered throughout analysis."
 }}
@@ -624,18 +600,18 @@ CRITICAL METHODOLOGY FORMAT EXAMPLE
   "key_assumptions": ["business continues current model"]
 }}
 
-🔥 FINAL VALIDATION REQUIREMENT 🔥
+FINAL VALIDATION REQUIREMENT
 Before outputting the JSON, perform this check:
-✅ Does EVERY projection period (1_year_ahead, 3_years_ahead, 5_years_ahead, 10_years_ahead, 15_years_ahead) contain ALL FOUR financial metrics?
-1. ✅ revenue: [array with data points]
-2. ✅ gross_profit: [array with data points]  
-3. ✅ expenses: [array with data points]
-4. ✅ net_profit: [array with data points]
+Does EVERY projection period (1_year_ahead, 3_years_ahead, 5_years_ahead, 10_years_ahead, 15_years_ahead) contain ALL FOUR financial metrics?
+1. revenue: [array with data points]
+2. gross_profit: [array with data points]  
+3. expenses: [array with data points]
+4. net_profit: [array with data points]
 
-❌ If ANY projection period is missing ANY of these four metrics, DO NOT output the JSON. Add the missing metrics first.
+If ANY projection period is missing ANY of these four metrics, DO NOT output the JSON. Add the missing metrics first.
 
 REMINDER
 Return JSON only – no other text. Include complete methodology transparency.
-⚠️ NEVER return methodology as a string - always use the structured object format above.
-⚠️ MANDATORY: Every projection period MUST contain all four financial metrics: revenue, gross_profit, expenses, net_profit
+NEVER return methodology as a string - always use the structured object format above.
+MANDATORY: Every projection period MUST contain all four financial metrics: revenue, gross_profit, expenses, net_profit
 """ 

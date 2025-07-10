@@ -42,9 +42,9 @@ ocr-engine/
 The service automatically generates projections for:
 - **1 Year Ahead**: Monthly granularity (12 data points)
 - **3 Years Ahead**: Quarterly granularity (12 data points)  
-- **5 Years Ahead**: Yearly granularity (12 data points)
-- **10 Years Ahead**: Yearly granularity (12 data points)
-- **15 Years Ahead**: Yearly granularity (12 data points)
+- **5 Years Ahead**: Yearly granularity (5 data points)
+- **10 Years Ahead**: Yearly granularity (10 data points)
+- **15 Years Ahead**: Yearly granularity (15 data points)
 
 ### 3. Financial Metrics
 Each projection period contains four mandatory financial metrics:
@@ -134,13 +134,27 @@ The API returns a comprehensive response with projection data:
             "5_years_ahead": {
                 "period": "FY2030", 
                 "granularity": "yearly",
-                "revenue": [...],  # 12 years
+                "revenue": [...],  # 5 years
                 "gross_profit": [...],
                 "expenses": [...],
                 "net_profit": [...]
             },
-            "10_years_ahead": {...},
-            "15_years_ahead": {...}
+            "10_years_ahead": {
+                "period": "FY2035",
+                "granularity": "yearly", 
+                "revenue": [...],  # 10 years
+                "gross_profit": [...],
+                "expenses": [...],
+                "net_profit": [...]
+            },
+            "15_years_ahead": {
+                "period": "FY2040",
+                "granularity": "yearly",
+                "revenue": [...],  # 15 years
+                "gross_profit": [...],
+                "expenses": [...],
+                "net_profit": [...]
+            }
         }
     }
 }
