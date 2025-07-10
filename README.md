@@ -1,469 +1,438 @@
 # OCR Engine API - Financial Projections Service
 
-A FastAPI-based microservice that transforms financial documents (PDFs, CSVs) into structured projection data using Google Gemini AI. Designed for integration with other FastAPI backends that need automated financial forecasting capabilities.
+A FastAPI-based financial analysis service that extracts projection data from financial documents (PDFs, CSVs) and provides structured forecasts for revenue, gross profit, expenses, and net profit across multiple time horizons.
 
-![FastAPI](https://img.shields.io/badge/FastAPI-005571?logo=fastapi) ![Google AI](https://img.shields.io/badge/Google%20AI-4285F4?logo=google&logoColor=white) ![Python](https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=white)
+## Project Overview
 
-## Overview
-
-This service processes financial documents and returns standardized projection data with **4 core financial metrics** across **5 time horizons**:
-
-### Financial Metrics (Always Included)
-- **Revenue**: Income from sales/services
-- **Gross Profit**: Revenue minus cost of goods sold
-- **Expenses**: Operating and administrative costs
-- **Net Profit**: Bottom-line profit after all expenses
-
-### Time Horizons (Fixed Intervals)
-- **1 Year Ahead**: Monthly granularity (12 data points)
-- **3 Years Ahead**: Quarterly granularity (12 data points) 
-- **5 Years Ahead**: Yearly granularity (12 data points)
-- **10 Years Ahead**: Yearly granularity (12 data points)
-- **15 Years Ahead**: Yearly granularity (12 data points)
+This service transforms raw financial documents into actionable projection data that can be used for:
+- Financial dashboards and visualizations
+- Investment analysis and decision making
+- Business planning and forecasting
+- Risk assessment and scenario modeling
 
 ## Codebase Structure
 
 ```
 ocr-engine/
-├── backend/                    # FastAPI service
-│   ├── main.py                # FastAPI app entry point
-│   ├── routers/               # API endpoints
-│   │   ├── multi_pdf.py       # Main projection endpoint
-│   │   └── ocr.py            # Single document OCR
-│   ├── services/              # Business logic
-│   │   ├── multi_pdf_service.py  # Document analysis & projections
-│   │   └── ocr_service.py        # Document text extraction
-│   ├── models.py              # Pydantic response models
-│   ├── prompts.py             # AI prompts for financial analysis
-│   └── config.py              # API key management
-└── frontend/                  # React UI (optional)
+├── backend/                 # FastAPI backend service
+│   ├── main.py             # FastAPI app entry point
+│   ├── config.py           # API key management and CORS settings
+│   ├── models.py           # Pydantic response models
+│   ├── prompts.py          # AI prompts for financial analysis
+│   ├── middleware.py       # Error handling middleware
+│   ├── routers/            # API endpoint definitions
+│   │   ├── multi_pdf.py    # Multi-document analysis endpoint
+│   │   ├── ocr.py          # Single document OCR endpoint
+│   │   ├── health.py       # Health check endpoints
+│   │   └── admin.py        # API key management endpoints
+│   └── services/           # Business logic
+│       ├── multi_pdf_service.py  # Core projection analysis
+│       └── ocr_service.py        # Document processing
+└── frontend/               # React frontend (optional)
 ```
 
-### Key Components for Integration
+## Core Functionality
 
-1. **`/multi-pdf/analyze` endpoint**: Main service for projection data
-2. **`MultiPDFAnalysisResponse` model**: Structured response format
-3. **`multi_pdf_service.py`**: Core projection logic using Gemini AI
-4. **`prompts.py`**: Financial analysis prompts ensuring consistent output
+### 1. Document Processing
+- **Input**: PDF financial statements, CSV data files, or mixed document types
+- **Processing**: Google Gemini AI extracts and normalizes financial data
+- **Output**: Structured JSON with historical data and projections
 
-## Service URL & Authentication
+### 2. Projection Generation
+The service automatically generates projections for:
+- **1 Year Ahead**: Monthly granularity (12 data points)
+- **3 Years Ahead**: Quarterly granularity (12 data points)  
+- **5 Years Ahead**: Yearly granularity (12 data points)
+- **10 Years Ahead**: Yearly granularity (12 data points)
+- **15 Years Ahead**: Yearly granularity (12 data points)
 
-```bash
-# Default service URL
-BASE_URL = "http://localhost:8000"
+### 3. Financial Metrics
+Each projection period contains four mandatory financial metrics:
+- **Revenue**: Total income projections
+- **Gross Profit**: Revenue minus direct costs
+- **Expenses**: Operating and overhead costs
+- **Net Profit**: Final profit after all expenses
 
-# Required environment variable
-GEMINI_API_KEY = "your_google_gemini_api_key"
-```
+## API Usage for FastAPI Clients
 
-## Core Integration Pattern
+### Basic Request Structure
 
-### 1. Basic Request Structure
+```python
+import requests
+from typing import List
 
-```http
-POST /multi-pdf/analyze
-Content-Type: multipart/form-data
-
-files: [financial_documents.pdf/csv]
-model: gemini-2.5-pro (recommended for accuracy)
-```
-
-### 2. Projection Data Response Structure
-
-The service returns projection data in this standardized format:
-
-```json
-{
-  "success": true,
-  "projections": {
-    "specific_projections": {
-      "1_year_ahead": {
-        "period": "FY2026",
-        "granularity": "monthly",
-        "data_points": 12,
-        "revenue": [
-          {"period": "Month 1", "value": 175000, "confidence": "high"},
-          {"period": "Month 2", "value": 180000, "confidence": "high"},
-          // ... 10 more months
-        ],
-        "gross_profit": [
-          {"period": "Month 1", "value": 70000, "confidence": "high"},
-          {"period": "Month 2", "value": 72000, "confidence": "high"},
-          // ... 10 more months
-        ],
-        "expenses": [
-          {"period": "Month 1", "value": 135000, "confidence": "high"},
-          {"period": "Month 2", "value": 138000, "confidence": "high"},
-          // ... 10 more months
-        ],
-        "net_profit": [
-          {"period": "Month 1", "value": 40000, "confidence": "high"},
-          {"period": "Month 2", "value": 42000, "confidence": "high"},
-          // ... 10 more months
-        ]
-      },
-      "3_years_ahead": {
-        "period": "FY2028",
-        "granularity": "quarterly",
-        "data_points": 12,
-        "revenue": [...], // 12 quarterly projections
-        "gross_profit": [...],
-        "expenses": [...],
-        "net_profit": [...]
-      },
-      "5_years_ahead": {
-        "period": "FY2030",
-        "granularity": "yearly", 
-        "data_points": 12,
-        "revenue": [...], // 12 yearly projections
-        "gross_profit": [...],
-        "expenses": [...],
-        "net_profit": [...]
-      },
-      "10_years_ahead": { /* same structure */ },
-      "15_years_ahead": { /* same structure */ }
+def analyze_financial_documents(file_paths: List[str], api_url: str = "http://localhost:8000"):
+    """
+    Send financial documents for analysis and get projection data
+    """
+    # Prepare files for upload
+    files = []
+    for file_path in file_paths:
+        files.append(('files', open(file_path, 'rb')))
+    
+    # API request parameters
+    data = {
+        'model': 'gemini-2.5-pro'  # Recommended for accuracy
     }
-  }
+    
+    # Make API call
+    response = requests.post(
+        f"{api_url}/multi-pdf/analyze",
+        files=files,
+        data=data,
+        timeout=300  # 5 minutes timeout
+    )
+    
+    # Clean up file handles
+    for _, file_handle in files:
+        file_handle.close()
+    
+    return response.json()
+```
+
+### Response Data Structure
+
+The API returns a comprehensive response with projection data:
+
+```python
+{
+    "success": True,
+    "projections": {
+        "specific_projections": {
+            "1_year_ahead": {
+                "period": "FY2026",
+                "granularity": "monthly",
+                "revenue": [
+                    {"period": "Month 1", "value": 175000, "confidence": "high"},
+                    {"period": "Month 2", "value": 180000, "confidence": "high"},
+                    # ... 12 months total
+                ],
+                "gross_profit": [
+                    {"period": "Month 1", "value": 70000, "confidence": "high"},
+                    {"period": "Month 2", "value": 72000, "confidence": "high"},
+                    # ... 12 months total
+                ],
+                "expenses": [
+                    {"period": "Month 1", "value": 135000, "confidence": "high"},
+                    {"period": "Month 2", "value": 138000, "confidence": "high"},
+                    # ... 12 months total
+                ],
+                "net_profit": [
+                    {"period": "Month 1", "value": 40000, "confidence": "high"},
+                    {"period": "Month 2", "value": 42000, "confidence": "high"},
+                    # ... 12 months total
+                ]
+            },
+            "3_years_ahead": {
+                "period": "FY2028",
+                "granularity": "quarterly",
+                "revenue": [...],  # 12 quarters
+                "gross_profit": [...],
+                "expenses": [...],
+                "net_profit": [...]
+            },
+            "5_years_ahead": {
+                "period": "FY2030", 
+                "granularity": "yearly",
+                "revenue": [...],  # 12 years
+                "gross_profit": [...],
+                "expenses": [...],
+                "net_profit": [...]
+            },
+            "10_years_ahead": {...},
+            "15_years_ahead": {...}
+        }
+    }
 }
 ```
 
-## FastAPI Client Integration
+## Data Extraction and Processing
 
-### Complete Client Class
+### 1. Extract Projection Totals
 
 ```python
-import httpx
-import asyncio
-from typing import List, Dict, Optional
-from fastapi import HTTPException
+def extract_projection_totals(api_response):
+    """
+    Extract total values for each time period and metric
+    """
+    if not api_response.get('success'):
+        return None
+    
+    projections = api_response.get('projections', {}).get('specific_projections', {})
+    
+    results = {}
+    for timeframe, data in projections.items():
+        results[timeframe] = {
+            'period': data.get('period'),
+            'granularity': data.get('granularity'),
+            'revenue_total': sum(item['value'] for item in data.get('revenue', [])),
+            'gross_profit_total': sum(item['value'] for item in data.get('gross_profit', [])),
+            'expenses_total': sum(item['value'] for item in data.get('expenses', [])),
+            'net_profit_total': sum(item['value'] for item in data.get('net_profit', [])),
+            'confidence': data.get('revenue', [{}])[0].get('confidence', 'unknown')
+        }
+    
+    return results
 
-class FinancialProjectionsClient:
-    """Client for integrating OCR Engine projections into FastAPI backends"""
-    
-    def __init__(self, base_url: str = "http://localhost:8000"):
-        self.base_url = base_url
-        self.timeout = 300.0  # 5 minutes for document processing
-        
-    async def get_financial_projections(
-        self, 
-        file_paths: List[str], 
-        model: str = "gemini-2.5-pro"
-    ) -> Dict:
-        """
-        Get financial projections from documents
-        
-        Returns structured projection data with 4 metrics across 5 time periods
-        """
-        files = []
-        try:
-            # Prepare files for upload
-            for path in file_paths:
-                with open(path, 'rb') as f:
-                    files.append(('files', (path, f.read(), 'application/pdf')))
-            
-            data = {'model': model}
-            
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.post(
-                    f"{self.base_url}/multi-pdf/analyze",
-                    files=files,
-                    data=data
-                )
-                
-            if response.status_code != 200:
-                raise HTTPException(
-                    status_code=response.status_code,
-                    detail=f"Projection service error: {response.text}"
-                )
-                
-            return response.json()
-            
-        except Exception as e:
-            raise HTTPException(
-                status_code=500,
-                detail=f"Failed to get projections: {str(e)}"
-            )
-    
-    def extract_projection_data(self, response: Dict) -> Dict:
-        """
-        Extract clean projection data for each time period and metric
-        
-        Returns: {
-            "1_year": {"revenue": [...], "gross_profit": [...], "expenses": [...], "net_profit": [...]},
-            "3_year": {"revenue": [...], "gross_profit": [...], "expenses": [...], "net_profit": [...]},
-            "5_year": {"revenue": [...], "gross_profit": [...], "expenses": [...], "net_profit": [...]},
-            "10_year": {"revenue": [...], "gross_profit": [...], "expenses": [...], "net_profit": [...]},
-            "15_year": {"revenue": [...], "gross_profit": [...], "expenses": [...], "net_profit": [...]}
-        }
-        """
-        if not response.get('success'):
-            raise ValueError(f"Analysis failed: {response.get('error', 'Unknown error')}")
-        
-        projections = response.get('projections', {}).get('specific_projections', {})
-        
-        # Map time periods to clean names
-        time_mapping = {
-            "1_year_ahead": "1_year",
-            "3_years_ahead": "3_year", 
-            "5_years_ahead": "5_year",
-            "10_years_ahead": "10_year",
-            "15_years_ahead": "15_year"
-        }
-        
-        extracted_data = {}
-        
-        for period_key, clean_name in time_mapping.items():
-            if period_key in projections:
-                period_data = projections[period_key]
-                
-                extracted_data[clean_name] = {
-                    "period_info": {
-                        "period": period_data.get("period"),
-                        "granularity": period_data.get("granularity"),
-                        "data_points": period_data.get("data_points")
-                    },
-                    "revenue": period_data.get("revenue", []),
-                    "gross_profit": period_data.get("gross_profit", []),
-                    "expenses": period_data.get("expenses", []),
-                    "net_profit": period_data.get("net_profit", [])
-                }
-        
-        return extracted_data
-    
-    def calculate_totals(self, projection_data: Dict) -> Dict:
-        """
-        Calculate total values for each metric across all time periods
-        
-        Returns summary totals for easy comparison
-        """
-        totals = {}
-        
-        for time_period, data in projection_data.items():
-            totals[time_period] = {}
-            
-            for metric in ["revenue", "gross_profit", "expenses", "net_profit"]:
-                metric_data = data.get(metric, [])
-                total_value = sum(item.get("value", 0) for item in metric_data)
-                avg_confidence = self._calculate_avg_confidence(metric_data)
-                
-                totals[time_period][metric] = {
-                    "total": total_value,
-                    "average_confidence": avg_confidence,
-                    "data_points_count": len(metric_data)
-                }
-        
-        return totals
-    
-    def _calculate_avg_confidence(self, metric_data: List[Dict]) -> str:
-        """Helper to calculate average confidence level"""
-        if not metric_data:
-            return "unknown"
-        
-        confidence_scores = {"high": 4, "medium": 3, "low": 2, "very_low": 1}
-        score_to_confidence = {4: "high", 3: "medium", 2: "low", 1: "very_low"}
-        
-        total_score = 0
-        count = 0
-        
-        for item in metric_data:
-            confidence = item.get("confidence", "medium")
-            if confidence in confidence_scores:
-                total_score += confidence_scores[confidence]
-                count += 1
-        
-        if count == 0:
-            return "medium"
-        
-        avg_score = round(total_score / count)
-        return score_to_confidence.get(avg_score, "medium")
+# Usage
+projection_totals = extract_projection_totals(api_response)
+print(f"1 Year Revenue: ${projection_totals['1_year_ahead']['revenue_total']:,}")
+print(f"3 Year Net Profit: ${projection_totals['3_years_ahead']['net_profit_total']:,}")
 ```
 
-### FastAPI Endpoint Integration Example
+### 2. Extract Time Series Data
 
 ```python
-from fastapi import FastAPI, UploadFile, File, HTTPException
-from typing import List
-import tempfile
-import os
-
-app = FastAPI()
-projections_client = FinancialProjectionsClient()
-
-@app.post("/analyze-financials")
-async def analyze_financial_documents(files: List[UploadFile] = File(...)):
+def extract_time_series_data(api_response, metric='revenue'):
     """
-    Endpoint to analyze financial documents and return projection data
+    Extract time series data for a specific metric across all timeframes
     """
-    temp_files = []
+    if not api_response.get('success'):
+        return None
     
-    try:
-        # Save uploaded files temporarily
-        for file in files:
-            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf')
-            content = await file.read()
-            temp_file.write(content)
-            temp_file.close()
-            temp_files.append(temp_file.name)
-        
-        # Get projections from OCR Engine service
-        raw_response = await projections_client.get_financial_projections(temp_files)
-        
-        # Extract clean projection data
-        projection_data = projections_client.extract_projection_data(raw_response)
-        
-        # Calculate totals for summary
-        totals = projections_client.calculate_totals(projection_data)
-        
-        return {
-            "success": True,
-            "projection_data": projection_data,
-            "summary_totals": totals,
-            "methodology": raw_response.get("projections", {}).get("methodology"),
-            "confidence_info": raw_response.get("accuracy_considerations", {}).get("projection_confidence", {})
+    projections = api_response.get('projections', {}).get('specific_projections', {})
+    
+    time_series = {}
+    for timeframe, data in projections.items():
+        time_series[timeframe] = {
+            'periods': [item['period'] for item in data.get(metric, [])],
+            'values': [item['value'] for item in data.get(metric, [])],
+            'confidence': [item['confidence'] for item in data.get(metric, [])]
         }
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-        
-    finally:
-        # Cleanup temporary files
-        for temp_file in temp_files:
-            if os.path.exists(temp_file):
-                os.unlink(temp_file)
+    
+    return time_series
 
-@app.get("/projection-summary/{time_period}")
-async def get_projection_summary(time_period: str):
+# Usage
+revenue_series = extract_time_series_data(api_response, 'revenue')
+expenses_series = extract_time_series_data(api_response, 'expenses')
+```
+
+### 3. Get Confidence Levels
+
+```python
+def get_confidence_summary(api_response):
     """
-    Get summary for a specific time period (1_year, 3_year, 5_year, 10_year, 15_year)
+    Get confidence levels for each projection timeframe
     """
-    # This would typically fetch from your database where you've stored projection results
-    # Example response structure:
+    accuracy = api_response.get('accuracy_considerations', {})
+    confidence_levels = accuracy.get('projection_confidence', {})
+    
     return {
-        "time_period": time_period,
-        "metrics": {
-            "revenue": {"total": 2500000, "confidence": "high"},
-            "gross_profit": {"total": 1000000, "confidence": "high"}, 
-            "expenses": {"total": 1800000, "confidence": "high"},
-            "net_profit": {"total": 700000, "confidence": "high"}
-        },
-        "granularity": "monthly" if time_period == "1_year" else "quarterly" if time_period == "3_year" else "yearly"
+        '1_year': confidence_levels.get('1_year_ahead', 'unknown'),
+        '3_years': confidence_levels.get('3_years_ahead', 'unknown'),
+        '5_years': confidence_levels.get('5_years_ahead', 'unknown'),
+        '10_years': confidence_levels.get('10_years_ahead', 'unknown'),
+        '15_years': confidence_levels.get('15_years_ahead', 'unknown')
     }
 ```
 
-## Usage Examples
+## Visualization and Dashboard Integration
 
-### Simple Projection Retrieval
+### 1. Pie Chart Data Preparation
 
 ```python
-# Initialize client
+def prepare_pie_chart_data(projection_totals, timeframe='1_year_ahead'):
+    """
+    Prepare data for pie chart showing profit breakdown
+    """
+    data = projection_totals[timeframe]
+    
+    pie_data = [
+        {'label': 'Gross Profit', 'value': data['gross_profit_total']},
+        {'label': 'Expenses', 'value': data['expenses_total']},
+        {'label': 'Net Profit', 'value': data['net_profit_total']}
+    ]
+    
+    return pie_data
+```
+
+### 2. Line Chart Data Preparation
+
+```python
+def prepare_line_chart_data(time_series_data, metric='revenue'):
+    """
+    Prepare data for line chart showing trends over time
+    """
+    chart_data = []
+    
+    for timeframe, data in time_series_data.items():
+        for i, (period, value) in enumerate(zip(data['periods'], data['values'])):
+            chart_data.append({
+                'timeframe': timeframe,
+                'period': period,
+                'value': value,
+                'confidence': data['confidence'][i]
+            })
+    
+    return chart_data
+```
+
+### 3. Bar Chart Data Preparation
+
+```python
+def prepare_bar_chart_data(projection_totals):
+    """
+    Prepare data for bar chart comparing metrics across timeframes
+    """
+    timeframes = ['1_year_ahead', '3_years_ahead', '5_years_ahead', '10_years_ahead', '15_years_ahead']
+    metrics = ['revenue_total', 'gross_profit_total', 'expenses_total', 'net_profit_total']
+    
+    bar_data = []
+    for metric in metrics:
+        series = {
+            'metric': metric.replace('_total', '').replace('_', ' ').title(),
+            'data': []
+        }
+        for timeframe in timeframes:
+            series['data'].append({
+                'timeframe': timeframe.replace('_ahead', '').replace('_', ' ').title(),
+                'value': projection_totals[timeframe][metric]
+            })
+        bar_data.append(series)
+    
+    return bar_data
+```
+
+## Complete Integration Example
+
+```python
+import requests
+import json
+from typing import List
+
+class FinancialProjectionsClient:
+    def __init__(self, base_url: str = "http://localhost:8000"):
+        self.base_url = base_url
+    
+    def analyze_documents(self, file_paths: List[str]):
+        """Analyze financial documents and return projections"""
+        files = []
+        for file_path in file_paths:
+            files.append(('files', open(file_path, 'rb')))
+        
+        response = requests.post(
+            f"{self.base_url}/multi-pdf/analyze",
+            files=files,
+            data={'model': 'gemini-2.5-pro'},
+            timeout=300
+        )
+        
+        # Clean up
+        for _, file_handle in files:
+            file_handle.close()
+        
+        return response.json()
+    
+    def get_dashboard_data(self, api_response):
+        """Extract all data needed for dashboard visualizations"""
+        if not api_response.get('success'):
+            return None
+        
+        # Extract projection totals
+        projection_totals = extract_projection_totals(api_response)
+        
+        # Extract time series data
+        revenue_series = extract_time_series_data(api_response, 'revenue')
+        expenses_series = extract_time_series_data(api_response, 'expenses')
+        
+        # Get confidence levels
+        confidence_levels = get_confidence_summary(api_response)
+        
+        # Prepare visualization data
+        pie_data = prepare_pie_chart_data(projection_totals, '1_year_ahead')
+        line_data = prepare_line_chart_data(revenue_series, 'revenue')
+        bar_data = prepare_bar_chart_data(projection_totals)
+        
+        return {
+            'projection_totals': projection_totals,
+            'time_series': {
+                'revenue': revenue_series,
+                'expenses': expenses_series
+            },
+            'confidence_levels': confidence_levels,
+            'visualization_data': {
+                'pie_chart': pie_data,
+                'line_chart': line_data,
+                'bar_chart': bar_data
+            }
+        }
+
+# Usage Example
 client = FinancialProjectionsClient()
 
-# Get projections
-response = await client.get_financial_projections([
-    "financial_report_2024.pdf",
-    "balance_sheet.csv"
+# Analyze documents
+result = client.analyze_documents([
+    'financial_report_2023.pdf',
+    'quarterly_data.csv'
 ])
 
-# Extract structured data
-projection_data = client.extract_projection_data(response)
+# Get dashboard data
+dashboard_data = client.get_dashboard_data(result)
 
-# Access specific metrics
-revenue_1_year = projection_data["1_year"]["revenue"]
-profit_5_year = projection_data["5_year"]["net_profit"]
-
-# Get totals
-totals = client.calculate_totals(projection_data)
-total_5_year_revenue = totals["5_year"]["revenue"]["total"]
+# Use data for visualizations
+print(f"1 Year Revenue: ${dashboard_data['projection_totals']['1_year_ahead']['revenue_total']:,}")
+print(f"Confidence Level: {dashboard_data['confidence_levels']['1_year']}")
 ```
 
-### Confidence-Based Decision Making
+## Key Data Points for Visualization
 
-```python
-def evaluate_projection_reliability(projection_data):
-    """Evaluate which projections are most reliable"""
-    reliable_projections = {}
-    
-    for time_period, data in projection_data.items():
-        period_reliability = {}
-        
-        for metric in ["revenue", "gross_profit", "expenses", "net_profit"]:
-            metric_data = data[metric]
-            high_confidence_count = sum(
-                1 for item in metric_data 
-                if item.get("confidence") in ["high", "medium"]
-            )
-            
-            reliability_score = high_confidence_count / len(metric_data) if metric_data else 0
-            period_reliability[metric] = {
-                "reliability_score": reliability_score,
-                "recommended": reliability_score >= 0.7
-            }
-        
-        reliable_projections[time_period] = period_reliability
-    
-    return reliable_projections
-```
+### 1. Revenue Analysis
+- **Total Revenue**: Sum of all revenue projections for each timeframe
+- **Growth Rate**: Month-over-month or quarter-over-quarter growth
+- **Trend Direction**: Increasing, decreasing, or stable patterns
 
-## Response Data Guarantees
+### 2. Profitability Analysis  
+- **Gross Profit Margin**: Gross profit / Revenue ratio
+- **Net Profit Margin**: Net profit / Revenue ratio
+- **Expense Ratio**: Expenses / Revenue ratio
 
-The service **guarantees** that every successful response contains:
+### 3. Risk Assessment
+- **Confidence Levels**: High, medium, low, very_low for each timeframe
+- **Volatility**: Standard deviation of projections
+- **Scenario Analysis**: Optimistic vs conservative projections
 
-1. **All 4 Financial Metrics**: revenue, gross_profit, expenses, net_profit
-2. **All 5 Time Periods**: 1, 3, 5, 10, 15 years ahead
-3. **Consistent Data Structure**: Each metric has array of {"period", "value", "confidence"}
-4. **Australian FY Alignment**: Periods automatically aligned to July-June financial years
-5. **Confidence Scoring**: Every data point includes confidence level
+## Setup Instructions
 
-## Error Handling
-
-```python
-try:
-    response = await client.get_financial_projections(file_paths)
-    projection_data = client.extract_projection_data(response)
-except HTTPException as e:
-    # Handle API errors (network, service down, etc.)
-    logger.error(f"Service error: {e.detail}")
-except ValueError as e:
-    # Handle analysis errors (invalid documents, processing failed)
-    logger.error(f"Analysis error: {e}")
-except Exception as e:
-    # Handle unexpected errors
-    logger.error(f"Unexpected error: {e}")
-```
-
-## Service Setup
-
-### Requirements
-- Python 3.8+
-- Google Gemini API key
-- FastAPI backend (your main service)
-
-### Quick Start
+### 1. Environment Setup
 ```bash
-# Start OCR Engine service
+# Install dependencies
+pip install fastapi uvicorn google-genai python-multipart requests
+
+# Set API key
+export GEMINI_API_KEY=your_gemini_api_key_here
+```
+
+### 2. Start Service
+```bash
 cd backend
-pip install -r requirements.txt
-export GEMINI_API_KEY=your_api_key
-python main.py  # Runs on http://localhost:8000
+python main.py
 ```
 
-### Health Check
+Service runs on `http://localhost:8000`
+
+### 3. Test Connection
 ```python
-# Verify service is running
-async with httpx.AsyncClient() as client:
-    health = await client.get("http://localhost:8000/health")
-    print(health.json())  # {"status": "healthy", "service": "OCR API"}
+import requests
+
+# Health check
+response = requests.get("http://localhost:8000/health")
+print(response.json())  # Should return {"status": "healthy"}
 ```
 
-## Performance & Limits
+## API Endpoints Summary
 
-- **Processing Time**: 15-60 seconds for multi-document analysis
-- **File Limits**: Up to 10 files, 50MB each (PDFs), 25MB each (CSVs)
-- **Rate Limits**: 10 requests/minute for projection analysis
-- **Timeout**: 5-minute timeout for complex document processing
+| Endpoint | Method | Purpose | Response Time |
+|----------|--------|---------|---------------|
+| `/multi-pdf/analyze` | POST | Main projection analysis | 15-60 seconds |
+| `/ocr` | POST | Single document extraction | 1-3 seconds |
+| `/health` | GET | Service status | <100ms |
+| `/models` | GET | Available AI models | <100ms |
 
----
+## File Requirements
 
-**Designed for FastAPI developers who need structured financial projection data from documents.**
+- **PDFs**: Financial statements, reports (max 50MB each)
+- **CSV**: Financial data in tabular format (max 25MB each)
+- **Multiple Files**: Up to 10 files per request
+- **Supported Formats**: PDF, CSV, PNG, JPG, JPEG, GIF, BMP, TIFF, WEBP
 
-*Service Version: 2.1.0 | Compatible with FastAPI 0.68+*
+This service provides the foundation for building comprehensive financial analysis dashboards and visualization tools by delivering structured projection data across multiple time horizons and financial metrics.
