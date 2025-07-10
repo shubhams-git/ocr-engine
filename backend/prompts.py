@@ -4,16 +4,36 @@ This file centralizes all prompts for easy modification and maintenance
 """
 
 # Enhanced OCR prompt for extracting data from images, PDFs, and CSV files
-OCR_PROMPT = """Extract and structure the data from this document in a clear, accurate JSON format. 
+OCR_PROMPT = """Extract and structure the financial data from this business document in a clear, accurate JSON format.
 
-For CSV files: Preserve the tabular structure and relationships between columns and rows.
-For PDFs/Images: Extract all visible text, numbers, tables, and structured content.
+DOCUMENT CONTEXT:
+This document contains business financial data and may be one of the following:
+• Profit and Loss Statement (Income Statement)
+• Balance Sheet
+• Cash Flow Statement  
+• Financial reports, statements, or data tables
+• CSV files with financial/business data in tabular format
+
+PURPOSE:
+The extracted data will be used for further analysis to create Three-Way Forecast models. Extract all financial figures, dates, periods, account names, and structured data that would be relevant for financial forecasting and analysis.
+
+EXTRACTION REQUIREMENTS:
+For CSV files: Preserve the exact tabular structure, column headers, and all row data relationships.
+For PDFs/Images: Extract all visible financial data including:
+• Account names and categories
+• Financial figures and amounts
+• Time periods, dates, and reporting periods
+• Table structures and hierarchies
+• Headers, subtotals, and totals
+• Any notes or metadata relevant to the financial data
 
 CRITICAL OUTPUT REQUIREMENTS:
 • Return ONLY the JSON object - no additional text, explanations, or comments
-• Do NOT wrap the JSON in markdown code blocks or backticks
+• Do NOT wrap the JSON in markdown code blocks or backticks  
 • Do NOT include any introductory or concluding text
-• Ensure the JSON output is well-formatted and contains all the relevant data found in the document
+• Do NOT perform any analysis, calculations, or forecasting
+• Simply extract and structure the raw data as found in the document
+• Ensure the JSON output is well-formatted and contains all the relevant financial data found in the document
 
 Output only valid JSON that can be parsed directly."""
 
