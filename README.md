@@ -1,10 +1,10 @@
-# OCR Engine API - Financial Projections Service 📊
+# OCR Engine API - Financial Projections Service
 
 A powerful financial analysis API built with **FastAPI** and **Google Gemini AI** that transforms financial documents into comprehensive projections and insights. Perfect for fintech applications, accounting software, and business intelligence platforms.
 
 ![FastAPI](https://img.shields.io/badge/FastAPI-005571?logo=fastapi) ![Google AI](https://img.shields.io/badge/Google%20AI-4285F4?logo=google&logoColor=white) ![Python](https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=white)
 
-## 🚀 Quick Start for Developers
+## Quick Start for Developers
 
 ### Base URL
 ```
@@ -21,7 +21,7 @@ GEMINI_API_KEY=your_api_key_here
 - **Interactive Docs**: `http://localhost:8000/docs`
 - **OpenAPI Schema**: `http://localhost:8000/openapi.json`
 
-## 📊 Core API Endpoints
+## Core API Endpoints
 
 ### 1. Multi-Document Financial Analysis
 **Endpoint:** `POST /multi-pdf/analyze`
@@ -35,6 +35,8 @@ Content-Type: multipart/form-data
 files: [PDF/CSV files]
 model: gemini-2.5-flash (optional)
 ```
+
+**Note:** For the most accurate financial projections, it is recommended to set the model to `gemini-2.5-pro`.
 
 #### Example Request
 ```bash
@@ -170,6 +172,8 @@ file: [PDF/Image/CSV file]
 model: gemini-2.5-flash (optional)
 ```
 
+**Note:** For the most accurate financial projections, it is recommended to set the model to `gemini-2.5-pro`.
+
 #### Example Response
 ```json
 {
@@ -213,7 +217,7 @@ Get available AI models and capabilities.
 }
 ```
 
-## 🏗️ Integration Examples
+## Integration Examples
 
 ### Python Client
 ```python
@@ -224,7 +228,7 @@ class OCRProjectionsClient:
     def __init__(self, base_url="http://localhost:8000"):
         self.base_url = base_url
     
-    def analyze_financial_documents(self, file_paths, model="gemini-2.5-flash"):
+    def analyze_financial_documents(self, file_paths, model="gemini-2.5-pro"):
         """Analyze multiple financial documents and get projections"""
         files = []
         for path in file_paths:
@@ -281,79 +285,9 @@ summary = client.get_projections_summary(result)
 print(f"5-year revenue forecast: ${summary['yearly_forecasts']['5_years_ahead']['revenue_total']:,}")
 ```
 
-### JavaScript/Node.js Client
-```javascript
-const axios = require('axios');
-const FormData = require('form-data');
-const fs = require('fs');
 
-class OCRProjectionsClient {
-    constructor(baseUrl = 'http://localhost:8000') {
-        this.baseUrl = baseUrl;
-    }
 
-    async analyzeFinancialDocuments(filePaths, model = 'gemini-2.5-flash') {
-        const formData = new FormData();
-        
-        // Add files
-        filePaths.forEach(filePath => {
-            formData.append('files', fs.createReadStream(filePath));
-        });
-        
-        // Add model
-        formData.append('model', model);
-
-        try {
-            const response = await axios.post(
-                `${this.baseUrl}/multi-pdf/analyze`,
-                formData,
-                {
-                    headers: formData.getHeaders(),
-                    timeout: 300000 // 5 minutes
-                }
-            );
-            return response.data;
-        } catch (error) {
-            throw new Error(`Analysis failed: ${error.message}`);
-        }
-    }
-
-    extractProjectionMetrics(analysisResult) {
-        if (!analysisResult.success) return null;
-
-        const projections = analysisResult.projections?.specific_projections || {};
-        
-        return Object.entries(projections).map(([timeframe, data]) => ({
-            timeframe,
-            period: data.period,
-            granularity: data.granularity,
-            total_revenue: data.revenue?.reduce((sum, item) => sum + item.value, 0),
-            total_profit: data.net_profit?.reduce((sum, item) => sum + item.value, 0),
-            confidence: data.revenue?.[0]?.confidence || 'unknown'
-        }));
-    }
-}
-
-// Usage
-(async () => {
-    const client = new OCRProjectionsClient();
-    
-    try {
-        const result = await client.analyzeFinancialDocuments([
-            './financial_report.pdf',
-            './quarterly_data.csv'
-        ]);
-        
-        const metrics = client.extractProjectionMetrics(result);
-        console.log('Projection Metrics:', metrics);
-        
-    } catch (error) {
-        console.error('Error:', error.message);
-    }
-})();
-```
-
-## 📋 Response Schema Reference
+## Response Schema Reference
 
 ### Projection Data Structure
 Each projection period contains arrays of data points with this structure:
@@ -387,7 +321,7 @@ interface ProjectionPeriod {
 - **Automatic Detection**: System detects document periods and aligns projections
 - **Seasonal Analysis**: Accounts for Australian business cycles and patterns
 
-## 🔧 Setup & Development
+## Setup & Development
 
 ### Requirements
 - Python 3.8+
@@ -419,7 +353,7 @@ docker build -t ocr-engine .
 docker run -p 8000:8000 -e GEMINI_API_KEY=your_key ocr-engine
 ```
 
-## 📊 Use Cases
+## Use Cases
 
 ### Fintech Applications
 - **Portfolio Analysis**: Analyze startup financial documents for investment decisions
@@ -436,7 +370,7 @@ docker run -p 8000:8000 -e GEMINI_API_KEY=your_key ocr-engine
 - **Audit Support**: Extract and validate financial data from various sources
 - **Compliance Reporting**: Standardize financial data across different formats
 
-## 🚦 Rate Limits & Performance
+## Rate Limits & Performance
 
 | Operation | Rate Limit | Typical Response Time |
 |-----------|------------|----------------------|
@@ -449,7 +383,7 @@ docker run -p 8000:8000 -e GEMINI_API_KEY=your_key ocr-engine
 - **CSV**: Max 25MB each, up to 10 files per request  
 - **Images**: Max 10MB each (single OCR only)
 
-## 🔐 Security & Best Practices
+## Security & Best Practices
 
 ### API Key Management
 - Store API keys securely in environment variables
@@ -466,7 +400,7 @@ docker run -p 8000:8000 -e GEMINI_API_KEY=your_key ocr-engine
 - No persistent storage of uploaded files
 - All processing happens server-side with Google AI
 
-## 📞 Support & Contributing
+## Support & Contributing
 
 - **API Issues**: Check `/health` endpoint for service status
 - **Documentation**: Interactive docs at `/docs`
