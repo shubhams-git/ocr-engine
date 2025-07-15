@@ -49,7 +49,8 @@ const MultiPDFResults = ({ results, fileNames, selectedModel, onReset }) => {
     projections: true,
     accuracy: true,
     qa_checks: false,
-    explanation: true
+    explanation: true,
+    architecture_overview: false // Added for new section
   })
   const [showConfidenceTooltip, setShowConfidenceTooltip] = useState(false)
 
@@ -1363,6 +1364,123 @@ const MultiPDFResults = ({ results, fileNames, selectedModel, onReset }) => {
     )
   }
 
+  // Add a new section to showcase the 3-stage architecture
+  const renderArchitectureOverview = () => {
+    const architectureData = results.data_analysis_summary
+    if (!architectureData || !architectureData.architecture_type) return null
+
+    const isExpanded = expandedSections.architecture_overview || false
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="results-section"
+      >
+        <motion.div
+          className="section-header"
+          onClick={() => toggleSection('architecture_overview')}
+          whileHover={{ backgroundColor: 'var(--surface-2)' }}
+          transition={{ duration: 0.2 }}
+        >
+          <div className="section-title">
+            <Zap size={20} className="section-icon" />
+            <h3>Enhanced 3-Stage Architecture</h3>
+            {architectureData.api_calls_utilized && (
+              <span className="section-count">({architectureData.api_calls_utilized} API calls)</span>
+            )}
+          </div>
+          <motion.div
+            animate={{ rotate: isExpanded ? 90 : 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <ChevronRight size={20} />
+          </motion.div>
+        </motion.div>
+        
+        <motion.div
+          initial={false}
+          animate={{ height: isExpanded ? 'auto' : 0, opacity: isExpanded ? 1 : 0 }}
+          transition={{ duration: 0.3 }}
+          className="section-content"
+        >
+          <div className="processing-details-section">
+            <h4>
+              <Activity size={16} />
+              Processing Performance
+            </h4>
+            <div className="processing-details-grid">
+              <div className="detail-item">
+                <span className="detail-key">Architecture Type</span>
+                <span className="detail-value">{architectureData.architecture_type}</span>
+              </div>
+              <div className="detail-item">
+                <span className="detail-key">Stages Completed</span>
+                <span className="detail-value">{architectureData.processing_stages_completed || 3}/3</span>
+              </div>
+              <div className="detail-item">
+                <span className="detail-key">Total Processing Time</span>
+                <span className="detail-value">{architectureData.total_processing_time?.toFixed(2)}s</span>
+              </div>
+              <div className="detail-item">
+                <span className="detail-key">API Calls Used</span>
+                <span className="detail-value">{architectureData.api_calls_utilized}</span>
+              </div>
+              <div className="detail-item">
+                <span className="detail-key">Success Rate</span>
+                <span className="detail-value">{(architectureData.extraction_success_rate * 100).toFixed(1)}%</span>
+              </div>
+            </div>
+
+            {architectureData.stage_timings && (
+              <>
+                <h4 style={{ marginTop: 'var(--space-lg)' }}>
+                  <Clock size={16} />
+                  Stage Performance Breakdown
+                </h4>
+                <div className="processing-details-grid">
+                  <div className="detail-item">
+                    <span className="detail-key">Stage 1: Extraction</span>
+                    <span className="detail-value">{architectureData.stage_timings.extraction_normalization?.toFixed(2)}s</span>
+                  </div>
+                  <div className="detail-item">
+                    <span className="detail-key">Stage 2: Analysis</span>
+                    <span className="detail-value">{architectureData.stage_timings.business_analysis?.toFixed(2)}s</span>
+                  </div>
+                  <div className="detail-item">
+                    <span className="detail-key">Stage 3: Projections</span>
+                    <span className="detail-value">{architectureData.stage_timings.projection_engine?.toFixed(2)}s</span>
+                  </div>
+                  <div className="detail-item">
+                    <span className="detail-key">Local Validation</span>
+                    <span className="detail-value">{architectureData.stage_timings.local_validation?.toFixed(2)}s</span>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {architectureData.enhancement_features && (
+              <>
+                <h4 style={{ marginTop: 'var(--space-lg)' }}>
+                  <Award size={16} />
+                  Enhanced Features Applied
+                </h4>
+                <div className="enhancement-features">
+                  {architectureData.enhancement_features.map((feature, index) => (
+                    <span key={index} className="feature-badge">
+                      ✨ {feature.replace(/_/g, ' ').toUpperCase()}
+                    </span>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        </motion.div>
+      </motion.div>
+    )
+  }
+
   const renderFormattedExplanation = (explanation) => {
     if (!explanation) return <p>No explanation provided</p>
 
@@ -1693,6 +1811,9 @@ const MultiPDFResults = ({ results, fileNames, selectedModel, onReset }) => {
             </motion.div>
           </motion.div>
         )}
+
+        {/* Enhanced 3-Stage Architecture Overview */}
+        {results.data_analysis_summary && renderArchitectureOverview()}
 
         {/* Show a message if no major sections are available */}
         {!results.summary && !results.explanation && !results.executive_summary && !results.projections && !results.normalized_data && (

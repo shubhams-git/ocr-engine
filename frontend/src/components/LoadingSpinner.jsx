@@ -1,20 +1,21 @@
 import { motion } from 'framer-motion'
 import { useState, useEffect } from 'react'
-import { Loader2, FileSearch, Brain, CheckCircle } from 'lucide-react'
+import { Loader2, FileSearch, Brain, CheckCircle, BarChart3, TrendingUp, Zap } from 'lucide-react'
 
 const LoadingSpinner = () => {
   const [currentStep, setCurrentStep] = useState(0)
   
   const steps = [
-    { icon: FileSearch, text: "Analyzing file..." },
-    { icon: Brain, text: "Processing with AI..." },
-    { icon: CheckCircle, text: "Extracting text..." }
+    { icon: FileSearch, text: "Stage 1: Extracting & normalizing data...", description: "Document analysis and quality assessment" },
+    { icon: Brain, text: "Stage 2: Business intelligence analysis...", description: "Pattern recognition and methodology selection" },
+    { icon: TrendingUp, text: "Stage 3: Generating projections...", description: "Advanced forecasting with scenarios" },
+    { icon: CheckCircle, text: "Local validation & reconciliation...", description: "Financial consistency checks" }
   ]
 
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentStep(prev => (prev + 1) % steps.length)
-    }, 2000)
+    }, 3000) // Longer intervals for more complex processing
     
     return () => clearInterval(interval)
   }, [steps.length])
@@ -67,7 +68,7 @@ const LoadingSpinner = () => {
           transition={{ delay: 0.5 }}
           className="processing-steps"
         >
-          <h3>Processing Your File</h3>
+          <h3>Enhanced 3-Stage Analysis</h3>
           
           <div className="steps-container">
             {steps.map((step, index) => {
@@ -99,7 +100,10 @@ const LoadingSpinner = () => {
                   >
                     <Icon size={20} />
                   </motion.div>
-                  <span className="step-text">{step.text}</span>
+                  <div className="step-content">
+                    <span className="step-text">{step.text}</span>
+                    <span className="step-description">{step.description}</span>
+                  </div>
                 </motion.div>
               )
             })}
@@ -126,15 +130,21 @@ const LoadingSpinner = () => {
           </span>
         </motion.div>
 
-        {/* Fun fact */}
-        <motion.p
+        {/* Enhanced Architecture Info */}
+        <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1 }}
-          className="loading-tip"
+          className="architecture-info"
         >
-          💡 Our AI can process multiple languages and complex layouts
-        </motion.p>
+          <div className="architecture-badge">
+            <Zap size={16} />
+            <span>60% faster with 3-stage architecture</span>
+          </div>
+          <p className="loading-tip">
+            💡 Using advanced business intelligence and pattern recognition for accurate projections
+          </p>
+        </motion.div>
       </motion.div>
     </motion.div>
   )

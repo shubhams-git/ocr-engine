@@ -6,7 +6,7 @@ const API_BASE_URL = 'http://localhost:8000'
 // Create axios instance with default config
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 300000, // 5 minute timeout
+  timeout: import.meta.env.VITE_API_TIMEOUT || 600000, // 10 minute timeout (from env or default)
 })
 
 // Response interceptor for error handling
@@ -188,10 +188,115 @@ export const processMultiPDFAnalysis = async (files, options = {}) => {
   return response.data
 }
 
+/**
+ * Get detailed health status of all services
+ * @returns {Promise<Object>} - Detailed health status
+ */
+export const getDetailedHealth = async () => {
+  const response = await apiClient.get('/admin/health/detailed')
+  return response.data
+}
+
+/**
+ * Test Stage 1 (OCR Service) independently
+ * @param {File} file - File to test
+ * @param {string} model - Model to use
+ * @returns {Promise<Object>} - Test results
+ */
+export const testStage1 = async (file, model = 'gemini-2.5-flash') => {
+  const formData = new FormData()
+  formData.append('file', file)
+  formData.append('model', model)
+  
+  const response = await apiClient.post('/admin/test/stage1', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    }
+  })
+  return response.data
+}
+
+/**
+ * Test Stage 2 (Business Analysis Service) independently
+ * @param {Array} extractedData - Extracted data from Stage 1
+ * @param {string} model - Model to use
+ * @returns {Promise<Object>} - Test results
+ */
+export const testStage2 = async (extractedData, model = 'gemini-2.5-flash') => {
+  const response = await apiClient.post('/admin/test/stage2', {
+    extracted_data: extractedData,
+    model: model
+  })
+  return response.data
+}
+
+/**
+ * Test Stage 3 (Projection Service) independently
+ * @param {Object} businessAnalysis - Business analysis data from Stage 2
+ * @param {string} model - Model to use
+ * @returns {Promise<Object>} - Test results
+ */
+export const testStage3 = async (businessAnalysis, model = 'gemini-2.5-flash') => {
+  const response = await apiClient.post('/admin/test/stage3', {
+    business_analysis: businessAnalysis,
+    model: model
+  })
+  return response.data
+}
+
+/**
+ * Test the complete 3-stage process with detailed timing
+ * @param {File[]} files - Files to test
+ * @param {string} model - Model to use
+ * @returns {Promise<Object>} - Test results
+ */
+export const testFullProcess = async (files, model = 'gemini-2.5-flash') => {
+  const formData = new FormData()
+  
+  files.forEach(file => {
+    formData.append('files', file)
+  })
+  formData.append('model', model)
+  
+  const response = await apiClient.post('/admin/test/full-process', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+    timeout: 600000, // 10 minutes timeout for full process
+  })
+  return response.data
+}
+
+/**
+ * Validate all services are properly configured
+ * @returns {Promise<Object>} - Validation results
+ */
+export const validateServices = async () => {
+  const response = await apiClient.get('/admin/test/validate-services')
+  return response.data
+}
+
+/**
+ * Get performance metrics for the system
+ * @returns {Promise<Object>} - Performance metrics
+ */
+export const getPerformanceMetrics = async () => {
+  const response = await apiClient.get('/admin/performance/metrics')
+  return response.data
+}
+
 // Export functions
 export default {
   processOCR,
   processMultiPDFAnalysis,
   getHealthStatus,
-  getAvailableModels
+  getAvailableModels,
+  // Testing functions
+  getDetailedHealth,
+  testStage1,
+  testStage2,
+  testStage3,
+  testFullProcess,
+  validateServices,
+  getPerformanceMetrics
 } 

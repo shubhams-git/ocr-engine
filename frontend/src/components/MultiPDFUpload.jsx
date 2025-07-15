@@ -110,8 +110,8 @@ const MultiPDFUpload = ({ onFilesUpload }) => {
         <div className="feature-icon">
           <BarChart3 size={32} />
         </div>
-        <h2>Multi-Document Analysis</h2>
-        <p>Upload 1-10 PDF documents and CSV files for comprehensive data analysis, normalization, and projections</p>
+        <h2>Enhanced Financial Analysis</h2>
+        <p>Upload 1-10 financial documents (P&L, Balance Sheet, Cash Flow) for advanced 3-stage analysis with business intelligence and projection engine</p>
       </motion.div>
 
       {/* File Upload Area */}
@@ -271,20 +271,20 @@ const MultiPDFUpload = ({ onFilesUpload }) => {
         className="upload-features"
       >
         <div className="feature">
-          <span className="feature-icon">📊</span>
-          <span>Data Extraction & Normalization</span>
-        </div>
-        <div className="feature">
-          <span className="feature-icon">📈</span>
-          <span>Trend Analysis & Projections</span>
-        </div>
-        <div className="feature">
-          <span className="feature-icon">🔄</span>
-          <span>Cross-Document Comparison</span>
+          <span className="feature-icon">⚡</span>
+          <span>3-Stage Enhanced Architecture</span>
         </div>
         <div className="feature">
           <span className="feature-icon">🧠</span>
-          <span>AI-Powered Insights</span>
+          <span>Business Intelligence Analysis</span>
+        </div>
+        <div className="feature">
+          <span className="feature-icon">📈</span>
+          <span>Advanced Projection Engine</span>
+        </div>
+        <div className="feature">
+          <span className="feature-icon">🔍</span>
+          <span>Financial Reconciliation</span>
         </div>
       </motion.div>
     </motion.div>

@@ -36,7 +36,7 @@ const Header = ({ backendStatus = 'unknown' }) => {
           transition={{ duration: 0.8, delay: 0.6 }}
           className="header-description"
         >
-          Extract and analyze data from images, PDFs, and CSV files using Google Gemini AI
+          Advanced financial document analysis with enhanced 3-stage processing, business intelligence, and projection engine
         </motion.p>
         
         <motion.div
@@ -47,11 +47,11 @@ const Header = ({ backendStatus = 'unknown' }) => {
         >
           <div className="badge">
             <FileText size={16} />
-            <span>Images, PDFs & CSV</span>
+            <span>PDFs & CSV Financial Data</span>
           </div>
           <div className="badge">
             <Zap size={16} />
-            <span>Google Gemini AI</span>
+            <span>3-Stage Enhanced Architecture</span>
           </div>
           <div className={`badge backend-status ${backendStatus}`}>
             <Server size={16} className={`status-icon ${backendStatus}`} />

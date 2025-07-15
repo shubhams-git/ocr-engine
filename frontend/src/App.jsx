@@ -1,17 +1,18 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { FileText, BarChart3 } from 'lucide-react'
+import { FileText, BarChart3, TestTube } from 'lucide-react'
 import FileUpload from './components/FileUpload'
 import MultiPDFUpload from './components/MultiPDFUpload'
 import ResultsDisplay from './components/ResultsDisplay'
 import MultiPDFResults from './components/MultiPDFResults'
+import TestingDashboard from './components/TestingDashboard'
 import Header from './components/Header'
 import LoadingSpinner from './components/LoadingSpinner'
 import { processOCR, processMultiPDFAnalysis, getHealthStatus, getAvailableModels } from './services/api'
 import './App.css'
 
 function App() {
-  const [mode, setMode] = useState('single') // 'single' or 'multi'
+  const [mode, setMode] = useState('single') // 'single', 'multi', or 'testing'
   const [uploadedFile, setUploadedFile] = useState(null)
   const [uploadedFiles, setUploadedFiles] = useState([])
   const [ocrResults, setOcrResults] = useState(null)
@@ -122,7 +123,7 @@ function App() {
           className="container"
         >
           {/* Mode Toggle */}
-          {!isLoading && !ocrResults && !multiPdfResults && (
+          {!isLoading && !ocrResults && !multiPdfResults && mode !== 'testing' && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -150,15 +151,28 @@ function App() {
               >
                 <BarChart3 size={20} />
                 <div>
-                  <div>Multi-PDF Analysis</div>
-                  <div className="mode-description">Analyze, normalize & project data</div>
+                  <div>Enhanced Financial Analysis</div>
+                  <div className="mode-description">3-stage processing with business intelligence</div>
+                </div>
+              </motion.button>
+              
+              <motion.button
+                onClick={() => handleModeChange('testing')}
+                className={`mode-button ${mode === 'testing' ? 'active' : ''}`}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <TestTube size={20} />
+                <div>
+                  <div>Testing Dashboard</div>
+                  <div className="mode-description">Test individual services and monitor system</div>
                 </div>
               </motion.button>
             </motion.div>
           )}
 
           {/* Model Selection */}
-          {!uploadedFile && !uploadedFiles.length && !isLoading && !ocrResults && !multiPdfResults && availableModels.length > 0 && (
+          {!uploadedFile && !uploadedFiles.length && !isLoading && !ocrResults && !multiPdfResults && mode !== 'testing' && availableModels.length > 0 && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -199,6 +213,11 @@ function App() {
           {/* Multi-PDF Upload */}
           {mode === 'multi' && !uploadedFiles.length && !isLoading && !multiPdfResults && (
             <MultiPDFUpload onFilesUpload={handleMultiPDFUpload} />
+          )}
+
+          {/* Testing Dashboard */}
+          {mode === 'testing' && !isLoading && (
+            <TestingDashboard onExitTesting={() => handleModeChange('single')} />
           )}
 
           {/* Loading Spinner */}
