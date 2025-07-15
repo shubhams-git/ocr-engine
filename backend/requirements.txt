@@ -10,4 +10,11 @@ google-genai>=1.24.0
 python-dotenv>=1.0.0
 
 # HTTP client
-httpx>=0.28.0 
+httpx>=0.28.0
+
+# JSON parsing
+json5>=0.9.14
+
+# Testing
+pytest
+pytest-asyncio 

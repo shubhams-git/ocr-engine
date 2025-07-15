@@ -37,7 +37,426 @@ CRITICAL OUTPUT REQUIREMENTS:
 
 Output only valid JSON that can be parsed directly."""
 
-# Comprehensive Multi-PDF analysis prompt with methodology transparency
+# STAGE 1: Enhanced Data Extraction, Normalization, and Quality Assessment
+STAGE1_EXTRACTION_PROMPT = """
+You are a financial data expert specializing in document processing and data quality assessment.
+
+TASK: Process this single financial document for comprehensive analysis preparation.
+
+REQUIREMENTS:
+1. **Document Classification**: Identify document type (Profit & Loss, Balance Sheet, Cash Flow, Other)
+2. **Data Extraction**: Extract ALL key financial metrics with time periods
+3. **Quality Assessment**: Evaluate data completeness, identify gaps and anomalies
+4. **Normalization**: Align to Australian Financial Year (July-June), standardize formats
+5. **Anomaly Detection**: Flag unusual values, inconsistencies, data quality issues
+
+AUSTRALIAN CONTEXT:
+- Financial Year runs July 1 to June 30 (FY2025 = July 1, 2024 to June 30, 2025)
+- Consider Australian business cycles and patterns
+- Detect seasonal patterns typical to Australian markets
+
+OUTPUT REQUIREMENTS:
+Return ONLY valid JSON with this exact structure:
+
+{
+  "document_type": "Profit and Loss|Balance Sheet|Cash Flow|Other",
+  "source_filename": "detected filename or identifier",
+  "data_quality_assessment": {
+    "completeness_score": 0.0-1.0,
+    "total_periods": number,
+    "period_range": "YYYY-MM to YYYY-MM",
+    "data_gaps": ["list of missing periods"],
+    "anomalies_detected": [
+      {"type": "negative_value|outlier|inconsistency", "field": "field_name", "value": value, "description": "explanation"}
+    ],
+    "consistency_issues": ["list of cross-field inconsistencies"],
+    "quality_flags": ["insufficient_data|high_volatility|seasonal_patterns|other"]
+  },
+  "normalized_time_series": {
+    "revenue": [{"period": "YYYY-MM", "value": number, "source": "extracted|interpolated"}],
+    "gross_profit": [{"period": "YYYY-MM", "value": number, "source": "extracted|calculated"}],
+    "expenses": [{"period": "YYYY-MM", "value": number, "source": "extracted|interpolated"}],
+    "net_profit": [{"period": "YYYY-MM", "value": number, "source": "extracted|calculated"}],
+    "assets": [{"period": "YYYY-MM", "value": number, "source": "extracted"}],
+    "liabilities": [{"period": "YYYY-MM", "value": number, "source": "extracted"}],
+    "equity": [{"period": "YYYY-MM", "value": number, "source": "extracted|calculated"}],
+    "cash_flow": [{"period": "YYYY-MM", "value": number, "source": "extracted"}]
+  },
+  "basic_context": {
+    "currency_detected": "AUD|USD|other",
+    "business_indicators": ["industry clues from document"],
+    "reporting_frequency": "monthly|quarterly|yearly",
+    "latest_period": "YYYY-MM"
+  },
+  "processing_notes": "Brief explanation of normalization steps, gap filling, or data adjustments made"
+}
+
+CRITICAL VALIDATION:
+- Ensure all monetary values are numbers (not strings)
+- Fill gaps conservatively using interpolation or trend analysis
+- Flag any concerning anomalies for downstream analysis
+- Maintain data integrity while standardizing formats
+"""
+
+# STAGE 2: Comprehensive Business Analysis and Methodology Selection
+STAGE2_ANALYSIS_PROMPT = """
+You are a senior financial analyst and data scientist with expertise in business intelligence, trend analysis, and forecasting methodology selection.
+
+TASK: Perform comprehensive analysis of aggregated financial data to prepare for accurate projections.
+
+INPUT: $aggregated_stage1_json
+
+ANALYSIS FRAMEWORK:
+Reason step-by-step through these components:
+
+1. **BUSINESS CONTEXT MODULE**
+   - Industry Classification: Analyze metrics, account names, patterns to classify industry
+   - Business Stage Assessment: Determine if startup/growth/mature based on financial patterns
+   - Geographic Market: Confirm Australian market characteristics
+   - Competitive Landscape: Infer market position from financial performance
+
+2. **CONTEXTUAL ANALYSIS LAYER**
+   - Business Maturity: Growth patterns, financial stability indicators
+   - Seasonality Detection: Identify recurring patterns, peak/trough periods
+   - Anomaly Identification: Significant deviations, one-time events, data quality issues
+   - Economic Cycle Position: Where business sits in economic/industry cycles
+
+3. **PATTERN RECOGNITION & TREND ANALYSIS**
+   - Growth Rate Calculations: CAGR, period-over-period, trend analysis
+   - Financial Ratio Analysis: Profit margins, efficiency ratios, leverage ratios
+   - Working Capital Trends: Cash conversion, liquidity patterns
+   - Correlation Analysis: Relationships between key metrics
+   - Volatility Assessment: Stability of key financial metrics
+
+4. **METHODOLOGY EXPERIMENTATION**
+   - Test Multiple Forecasting Methods:
+     * Time Series Analysis (ARIMA, SARIMA, Prophet) - for sufficient data
+     * Industry Benchmark-Based - for limited data
+     * Driver-Based Modeling - for correlated metrics
+     * Exponential Smoothing - for trend-based projections
+   - Model Evaluation: Compare MAPE, RMSE, AIC, cross-validation scores
+   - Method Selection: Choose optimal approach with clear justification
+
+5. **EXTERNAL DATA INTEGRATION ASSESSMENT**
+   - Data Sufficiency: Determine if external benchmarks needed
+   - Industry Benchmarks: Identify relevant comparison metrics
+   - Economic Indicators: Australian GDP growth, inflation, industry trends
+   - Competitive Intelligence: Market growth rates, industry performance
+
+6. **CONFIDENCE FACTORS ANALYSIS**
+   - Data Availability: Volume, completeness, recency of data
+   - Historical Consistency: Stability of patterns and trends
+   - Industry Volatility: Sector-specific risk factors
+   - Projection Horizon: Confidence degradation over time
+
+OUTPUT REQUIREMENTS:
+Return ONLY valid JSON with this structure:
+
+{
+  "business_context": {
+    "industry_classification": "detected industry",
+    "business_stage": "startup|growth|mature|decline",
+    "market_geography": "Australian",
+    "competitive_position": "market_leader|established|emerging|struggling",
+    "business_model_type": "service|product|mixed|other"
+  },
+  "contextual_analysis": {
+    "maturity_assessment": {
+      "revenue_stability": "high|medium|low",
+      "growth_consistency": "stable|volatile|declining",
+      "financial_health": "strong|moderate|weak"
+    },
+    "seasonality_patterns": {
+      "seasonal_detected": true|false,
+      "peak_periods": ["list of peak months/quarters"],
+      "trough_periods": ["list of low months/quarters"],
+      "seasonal_amplitude": 0.0-1.0,
+      "australian_fy_alignment": "strong|moderate|weak"
+    },
+    "anomaly_identification": [
+      {"period": "YYYY-MM", "metric": "field", "anomaly_type": "spike|drop|inconsistency", "impact": "high|medium|low", "explanation": "rationale"}
+    ]
+  },
+  "pattern_analysis": {
+    "growth_rates": {
+      "revenue_cagr": number,
+      "profit_cagr": number,
+      "recent_growth_trend": "accelerating|stable|decelerating|declining"
+    },
+    "financial_ratios": {
+      "profit_margin_trend": "improving|stable|declining",
+      "roa_trend": "improving|stable|declining",
+      "efficiency_indicators": {"trend": "improving|stable|declining", "current_level": "high|medium|low"}
+    },
+    "working_capital": {
+      "trend": "improving|stable|deteriorating",
+      "cash_conversion_cycle": "shortening|stable|lengthening"
+    },
+    "correlation_insights": [
+      {"metrics": ["metric1", "metric2"], "correlation": number, "strength": "strong|moderate|weak", "business_meaning": "explanation"}
+    ],
+    "volatility_assessment": {
+      "revenue_volatility": "low|medium|high",
+      "profit_volatility": "low|medium|high",
+      "overall_stability": "stable|moderate|volatile"
+    }
+  },
+  "methodology_evaluation": {
+    "methods_tested": [
+      {
+        "method": "ARIMA|Prophet|LinearRegression|ExponentialSmoothing|BenchmarkBased",
+        "evaluation_metrics": {"mape": number, "rmse": number, "r_squared": number},
+        "suitability_score": 0.0-1.0,
+        "strengths": ["list of advantages"],
+        "limitations": ["list of constraints"]
+      }
+    ],
+    "selected_method": {
+      "primary_method": "method name",
+      "rationale": "detailed explanation of selection",
+      "confidence_level": "high|medium|low",
+      "fallback_method": "backup approach if primary fails"
+    },
+    "data_requirements": {
+      "minimum_data_points": number,
+      "data_quality_threshold": 0.0-1.0,
+      "external_data_needed": true|false
+    }
+  },
+  "external_integration": {
+    "benchmark_requirements": {
+      "industry_benchmarks_needed": true|false,
+      "economic_indicators_required": ["list of indicators"],
+      "peer_comparison_value": "high|medium|low|none"
+    },
+    "data_sufficiency": {
+      "internal_data_adequate": true|false,
+      "external_supplementation": "critical|helpful|unnecessary",
+      "risk_of_external_bias": "high|medium|low"
+    }
+  },
+  "confidence_assessment": {
+    "overall_confidence": "high|medium|low",
+    "confidence_factors": {
+      "data_volume": "sufficient|limited|insufficient",
+      "data_consistency": "high|medium|low",
+      "pattern_clarity": "clear|moderate|unclear",
+      "industry_stability": "stable|moderate|volatile"
+    },
+    "projection_confidence_by_horizon": {
+      "1_year": "high|medium|low|very_low",
+      "3_years": "high|medium|low|very_low",
+      "5_years": "high|medium|low|very_low",
+      "10_years": "high|medium|low|very_low",
+      "15_years": "high|medium|low|very_low"
+    }
+  },
+  "handover_recommendations": {
+    "primary_recommendations": ["key guidance for projection stage"],
+    "risk_adjustments": ["adjustments needed due to identified risks"],
+    "scenario_considerations": ["factors for optimistic/conservative scenarios"],
+    "validation_priorities": ["key areas requiring validation in projections"],
+    "assumption_constraints": ["limitations to document in assumptions"]
+  },
+  "key_assumptions": [
+    "list of critical assumptions identified in analysis"
+  ]
+}
+
+REASONING REQUIREMENTS:
+- Provide clear chain-of-thought reasoning in all assessment fields
+- Justify methodology selection with quantitative metrics where possible
+- Consider Australian business environment and FY cycles throughout
+- Balance internal data insights with external market realities
+- Prioritize accuracy and transparency in all evaluations
+"""
+
+# STAGE 3: Integrated Projection Engine with Scenario Planning
+STAGE3_PROJECTION_PROMPT = """
+You are a financial forecasting expert specializing in integrated projection modeling and scenario planning.
+
+TASK: Generate comprehensive financial projections incorporating Stage 2 analysis and recommendations.
+
+INPUT: $stage2_analysis_output
+
+PROJECTION ENGINE REQUIREMENTS:
+Integrate all Stage 2 findings and apply the recommended methodology to generate accurate, validated projections.
+
+INTEGRATION FRAMEWORK:
+1. **METHODOLOGY APPLICATION**
+   - Apply the selected forecasting method from Stage 2
+   - Incorporate identified patterns, trends, and seasonal adjustments
+   - Adjust for anomalies and risk factors identified
+   - Use confidence levels to calibrate projection ranges
+
+2. **PROJECTION ENGINE IMPLEMENTATION**
+   - Multiple Forecasting Methods Integration:
+     * Primary method (from Stage 2 selection)
+     * Backup method for validation
+     * Blended approach if beneficial
+   - Scenario Generation: Optimistic, base case, conservative
+   - Confidence Interval Calculation: Based on historical volatility and data quality
+   - Australian FY Alignment: Ensure all projections follow July-June cycles
+
+3. **ASSUMPTION DOCUMENTATION**
+   - Document all key assumptions clearly
+   - Provide rationale for each assumption
+   - Include sensitivity indicators for critical assumptions
+   - Enable assumption override capability in rationale
+
+4. **VALIDATION INTEGRATION**
+   - Cross-check projections for internal consistency
+   - Ensure financial statement relationships are maintained
+   - Validate reasonableness against industry benchmarks
+   - Flag any projections requiring additional scrutiny
+
+MANDATORY PROJECTION SCHEMA:
+Generate projections for ALL required time horizons with ALL four mandatory metrics:
+
+TIME HORIZONS:
+- 1 Year Ahead: Monthly granularity (12 data points)
+- 3 Years Ahead: Quarterly granularity (12 data points)
+- 5 Years Ahead: Yearly granularity (5 data points)
+- 10 Years Ahead: Yearly granularity (10 data points)
+- 15 Years Ahead: Yearly granularity (15 data points)
+
+MANDATORY METRICS (must be present in every projection period):
+1. revenue - REQUIRED
+2. gross_profit - REQUIRED
+3. expenses - REQUIRED
+4. net_profit - REQUIRED
+
+OUTPUT REQUIREMENTS:
+Return ONLY valid JSON with this structure:
+
+{
+  "projection_methodology": {
+    "primary_method_applied": "method name from Stage 2",
+    "method_adjustments": ["adjustments made based on Stage 2 handover"],
+    "integration_approach": "how Stage 2 findings were incorporated",
+    "validation_approach": "cross-validation methods used",
+    "scenario_generation_basis": "foundation for scenario creation"
+  },
+  "base_case_projections": {
+    "1_year_ahead": {
+      "period_label": "FY20XX",
+      "granularity": "monthly",
+      "data_points": 12,
+      "revenue": [{"period": "Month 1", "value": number, "confidence": "high|medium|low"}],
+      "gross_profit": [{"period": "Month 1", "value": number, "confidence": "high|medium|low"}],
+      "expenses": [{"period": "Month 1", "value": number, "confidence": "high|medium|low"}],
+      "net_profit": [{"period": "Month 1", "value": number, "confidence": "high|medium|low"}]
+    },
+    "3_years_ahead": {
+      "period_label": "FY20XX-FY20XX",
+      "granularity": "quarterly",
+      "data_points": 12,
+      "revenue": [{"period": "Quarter 1", "value": number, "confidence": "medium|low"}],
+      "gross_profit": [{"period": "Quarter 1", "value": number, "confidence": "medium|low"}],
+      "expenses": [{"period": "Quarter 1", "value": number, "confidence": "medium|low"}],
+      "net_profit": [{"period": "Quarter 1", "value": number, "confidence": "medium|low"}]
+    },
+    "5_years_ahead": {
+      "period_label": "FY20XX-FY20XX",
+      "granularity": "yearly",
+      "data_points": 5,
+      "revenue": [{"period": "Year 1", "value": number, "confidence": "medium|low"}],
+      "gross_profit": [{"period": "Year 1", "value": number, "confidence": "medium|low"}],
+      "expenses": [{"period": "Year 1", "value": number, "confidence": "medium|low"}],
+      "net_profit": [{"period": "Year 1", "value": number, "confidence": "medium|low"}]
+    },
+    "10_years_ahead": {
+      "period_label": "FY20XX-FY20XX",
+      "granularity": "yearly",
+      "data_points": 10,
+      "revenue": [{"period": "Year 1", "value": number, "confidence": "low|very_low"}],
+      "gross_profit": [{"period": "Year 1", "value": number, "confidence": "low|very_low"}],
+      "expenses": [{"period": "Year 1", "value": number, "confidence": "low|very_low"}],
+      "net_profit": [{"period": "Year 1", "value": number, "confidence": "low|very_low"}]
+    },
+    "15_years_ahead": {
+      "period_label": "FY20XX-FY20XX",
+      "granularity": "yearly",
+      "data_points": 15,
+      "revenue": [{"period": "Year 1", "value": number, "confidence": "very_low"}],
+      "gross_profit": [{"period": "Year 1", "value": number, "confidence": "very_low"}],
+      "expenses": [{"period": "Year 1", "value": number, "confidence": "very_low"}],
+      "net_profit": [{"period": "Year 1", "value": number, "confidence": "very_low"}]
+    }
+  },
+  "scenario_projections": {
+    "optimistic": {
+      "description": "Best-case scenario based on favorable market conditions",
+      "key_drivers": ["list of optimistic assumptions"],
+      "growth_multipliers": {"1_year": number, "3_years": number, "5_years": number, "10_years": number, "15_years": number},
+      "probability_assessment": "estimated likelihood percentage"
+    },
+    "conservative": {
+      "description": "Cautious scenario accounting for potential risks",
+      "key_drivers": ["list of conservative assumptions"],
+      "growth_multipliers": {"1_year": number, "3_years": number, "5_years": number, "10_years": number, "15_years": number},
+      "probability_assessment": "estimated likelihood percentage"
+    }
+  },
+  "assumption_documentation": {
+    "critical_assumptions": [
+      {"assumption": "description", "rationale": "justification", "sensitivity": "high|medium|low", "override_capability": true|false}
+    ],
+    "economic_assumptions": [
+      {"factor": "Australian GDP growth", "assumed_value": "percentage", "source": "internal_analysis|external_benchmark"}
+    ],
+    "business_assumptions": [
+      {"assumption": "description", "impact_on_projections": "explanation"}
+    ],
+    "risk_assumptions": [
+      {"risk_factor": "description", "mitigation_reflected": "how addressed in projections"}
+    ]
+  },
+  "sensitivity_analysis": {
+    "key_sensitivity_factors": [
+      {"factor": "variable name", "impact_range": "±X%", "projection_impact": "description"}
+    ],
+    "scenario_impact_analysis": {
+      "revenue_sensitivity": "±X% change results in ±Y% projection variance",
+      "cost_sensitivity": "±X% change results in ±Y% projection variance",
+      "market_sensitivity": "±X% change results in ±Y% projection variance"
+    }
+  },
+  "confidence_intervals": {
+    "methodology": "statistical approach used",
+    "confidence_levels": {
+      "1_year": {"upper": "95th percentile", "lower": "5th percentile"},
+      "3_years": {"upper": "95th percentile", "lower": "5th percentile"},
+      "5_years": {"upper": "95th percentile", "lower": "5th percentile"},
+      "10_years": {"upper": "95th percentile", "lower": "5th percentile"},
+      "15_years": {"upper": "95th percentile", "lower": "5th percentile"}
+    }
+  },
+  "validation_flags": {
+    "internal_consistency_check": "passed|warning|failed",
+    "benchmark_reasonableness": "passed|warning|failed",
+    "trend_continuation_logic": "passed|warning|failed",
+    "seasonal_pattern_preservation": "passed|warning|failed"
+  },
+  "executive_summary": "Concise overview of projection methodology, key findings, and confidence assessment"
+}
+
+CRITICAL VALIDATION REQUIREMENTS:
+1. VERIFY every projection period contains ALL four mandatory metrics
+2. ENSURE Australian FY alignment throughout all projections
+3. MAINTAIN internal consistency across all financial metrics
+4. DOCUMENT all assumption changes from Stage 2 recommendations
+5. VALIDATE confidence levels align with data quality and horizon
+
+INTEGRATION MANDATE:
+- Explicitly address ALL handover recommendations from Stage 2
+- Adjust projections based on identified risks and opportunities
+- Incorporate business context and industry factors
+- Ensure scenario planning reflects realistic market conditions
+- Provide clear audit trail of all methodology decisions
+"""
+
+# Comprehensive Multi-PDF analysis prompt with methodology transparency (Legacy - kept for compatibility)
 MULTI_PDF_PROMPT = """
 ROLE
 You are a senior financial analyst and data scientist with expertise in trend analysis, forecasting, and model transparency.

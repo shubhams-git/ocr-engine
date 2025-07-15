@@ -17,12 +17,12 @@ async def get_available_models():
         {
             "id": "gemini-2.5-pro",
             "name": "Gemini 2.5 Pro",
-            "description": "Most capable model for complex tasks"
+            "description": "Most capable model for complex tasks (Recommended)"
         },
         {
             "id": "gemini-2.5-flash", 
             "name": "Gemini 2.5 Flash",
-            "description": "Fast and efficient (Recommended)"
+            "description": "Fast and efficient"
         },
         {
             "id": "gemini-2.0-flash",
@@ -42,5 +42,5 @@ async def get_available_models():
     ]
     return {
         "models": models,
-        "default": "gemini-2.5-flash"
+        "default": "gemini-2.5-pro"
     } 
