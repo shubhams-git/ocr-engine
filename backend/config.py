@@ -2,6 +2,10 @@
 Simple configuration for OCR API with basic API key rotation
 """
 import os
+from logging_config import get_logger
+
+# Set up logger for configuration
+logger = get_logger(__name__)
 
 def get_api_keys():
     """Get all available API keys from environment variables"""
@@ -21,7 +25,8 @@ def get_api_keys():
     if not keys:
         raise ValueError("No API keys found. Set GEMINI_API_KEY or GEMINI_API_KEY_1, etc.")
     
-    print(f"Loaded {len(keys)} API keys")
+    # Use DEBUG level for API key count to reduce startup noise
+    logger.debug(f"Loaded {len(keys)} API keys")
     return keys
 
 # Load all available API keys
@@ -46,7 +51,7 @@ def get_api_timeout():
     try:
         return int(timeout)
     except ValueError:
-        print(f"Invalid GEMINI_API_TIMEOUT value: {timeout}, using default 600 seconds")
+        logger.warning(f"Invalid GEMINI_API_TIMEOUT value: {timeout}, using default 600 seconds")
         return 600
 
 def get_overall_process_timeout():
@@ -55,7 +60,7 @@ def get_overall_process_timeout():
     try:
         return int(timeout)
     except ValueError:
-        print(f"Invalid OVERALL_PROCESS_TIMEOUT value: {timeout}, using default 600 seconds")
+        logger.warning(f"Invalid OVERALL_PROCESS_TIMEOUT value: {timeout}, using default 600 seconds")
         return 600
 
 def get_max_retries():
@@ -64,7 +69,7 @@ def get_max_retries():
     try:
         return int(retries)
     except ValueError:
-        print(f"Invalid GEMINI_MAX_RETRIES value: {retries}, using default 2")
+        logger.warning(f"Invalid GEMINI_MAX_RETRIES value: {retries}, using default 2")
         return 2
 
 def get_retry_delay():
@@ -73,7 +78,7 @@ def get_retry_delay():
     try:
         return int(delay)
     except ValueError:
-        print(f"Invalid GEMINI_RETRY_DELAY value: {delay}, using default 5 seconds")
+        logger.warning(f"Invalid GEMINI_RETRY_DELAY value: {delay}, using default 5 seconds")
         return 5
 
 # API Configuration
@@ -82,7 +87,10 @@ OVERALL_PROCESS_TIMEOUT = get_overall_process_timeout()  # 10 minutes for entire
 MAX_RETRIES = get_max_retries()
 RETRY_DELAY = get_retry_delay()
 
-print(f"API Configuration | Individual API Timeout: {API_TIMEOUT}s | Overall Process Timeout: {OVERALL_PROCESS_TIMEOUT}s | Max Retries: {MAX_RETRIES} | Retry Delay: {RETRY_DELAY}s")
+# Log configuration only once at startup and only essential info
+# Only log during main server process, not during uvicorn reloads
+if os.getenv("OCR_SERVER_MAIN") == "true":
+    logger.info(f"API Configuration: {len(API_KEYS)} keys | Timeout: {OVERALL_PROCESS_TIMEOUT}s | Retries: {MAX_RETRIES}")
 
 # CORS settings
 ALLOWED_ORIGINS = [

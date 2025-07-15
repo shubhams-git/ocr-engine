@@ -4,6 +4,8 @@ Orchestrates OCR Service, Business Analysis Service, and Projection Service
 
 Key Features:
 - Modular 3-stage architecture using separate services
+- Tiered model selection: Flash for extraction, Pro for analysis
+- Semaphore-controlled concurrency for Pro model calls
 - Enhanced business context analysis and pattern recognition
 - Advanced projection engine with multiple forecasting methods
 - Comprehensive validation and reconciliation
@@ -44,10 +46,35 @@ class EnhancedMultiPDFService:
         # Timeout configuration
         self.overall_process_timeout = OVERALL_PROCESS_TIMEOUT
         
-        logger.info("Enhanced Multi-PDF Service initialized | Architecture: 3-Stage Modular Services")
-        logger.info(f"Service configuration | Max files: {self.max_files} | PDF limit: {self.max_pdf_size//1024//1024}MB | CSV limit: {self.max_csv_size//1024//1024}MB")
-        logger.info(f"Overall process timeout: {self.overall_process_timeout}s")
-        logger.info("Using separate services: OCR Service (Stage 1), Business Analysis Service (Stage 2), Projection Service (Stage 3)")
+        # TIERED MODEL SELECTION & CONCURRENCY CONTROL
+        # Stage 1: Use Flash for data extraction (higher quotas, simpler task)
+        self.stage1_model = "gemini-2.5-flash"
+        
+        # Stages 2-3: Use Pro for complex analysis (lower quotas, complex reasoning)
+        # Semaphore to limit concurrent Pro model calls to prevent quota exhaustion
+        self.pro_model_semaphore = asyncio.Semaphore(3)  # Max 3 concurrent Pro calls
+        
+        # Only log during main server process, not during uvicorn reloads
+        if os.getenv("OCR_SERVER_MAIN") == "true":
+            logger.info("Enhanced Multi-PDF Service initialized | Architecture: 3-Stage Modular Services")
+            logger.info("🎯 TIERED MODEL SELECTION | Stage 1: Flash (extraction) | Stages 2-3: Pro (analysis)")
+            logger.info(f"⚡ CONCURRENCY CONTROL | Pro model semaphore limit: {self.pro_model_semaphore._value}")
+        
+        logger.debug(f"Service configuration | Max files: {self.max_files} | PDF limit: {self.max_pdf_size//1024//1024}MB | CSV limit: {self.max_csv_size//1024//1024}MB")
+        logger.debug(f"Overall process timeout: {self.overall_process_timeout}s")
+        logger.debug("Using separate services: OCR Service (Stage 1), Business Analysis Service (Stage 2), Projection Service (Stage 3)")
+        logger.debug(f"Model strategy: Stage 1 extraction uses {self.stage1_model}, Stages 2-3 analysis uses gemini-2.5-pro")
+    
+    def get_analysis_model(self, requested_model: str) -> str:
+        """
+        Determine the appropriate Pro model for analysis stages (2-3)
+        Always returns a Pro model regardless of what was requested
+        """
+        if "pro" in requested_model.lower():
+            return requested_model
+        else:
+            # Default to Pro for complex analysis even if Flash was requested
+            return "gemini-2.5-pro"
     
     def get_file_type_and_mime(self, filename: str, content: bytes) -> Tuple[str, str]:
         """Determine file type and MIME type"""
@@ -96,26 +123,33 @@ class EnhancedMultiPDFService:
         
         logger.info("✅ All files validated successfully")
     
-    async def _internal_analyze_multiple_files(self, files_data: List[Tuple[str, bytes]], model: str = "gemini-2.5-pro") -> MultiPDFAnalysisResponse:
+    async def _internal_analyze_multiple_files(self, files_data: List[Tuple[str, bytes]], requested_model: str = "gemini-2.5-pro") -> MultiPDFAnalysisResponse:
         """
-        Internal method for 3-stage multi-file analysis using separate services
+        Internal method for 3-stage multi-file analysis using separate services with tiered model selection
         """
         overall_start_time = time.time()
         
+        # Determine models for each stage
+        extraction_model = self.stage1_model  # Always use Flash for extraction
+        analysis_model = self.get_analysis_model(requested_model)  # Use Pro for analysis
+        
         try:
             log_request_start(logger, "multi-file analysis", 
-                            files=len(files_data), model=model, 
+                            files=len(files_data), model=f"Stage1:{extraction_model}|Stage2-3:{analysis_model}", 
                             api_keys_available=len(API_KEYS), architecture="3-Stage Modular Services")
+            
+            logger.info(f"🎯 TIERED MODEL SELECTION | Stage 1: {extraction_model} | Stages 2-3: {analysis_model}")
             
             # File validation
             self.validate_files(files_data)
             
-            # STAGE 1: Parallel Data Extraction, Normalization & Quality Assessment using OCR Service
-            log_stage_progress(logger, "1", "STARTED", f"OCR Service parallel processing | Tasks: {len(files_data)}")
+            # STAGE 1: Parallel Data Extraction, Normalization & Quality Assessment using Flash Model
+            log_stage_progress(logger, "1", "STARTED", f"OCR Service parallel processing | Model: {extraction_model} | Tasks: {len(files_data)}")
             stage1_start = time.time()
             
+            # Use Flash model for all Stage 1 extractions (higher quotas, simpler task)
             stage1_tasks = [
-                ocr_service.process_ocr(content, filename, model)
+                ocr_service.process_ocr(content, filename, extraction_model)
                 for filename, content in files_data
             ]
             
@@ -153,7 +187,7 @@ class EnhancedMultiPDFService:
                         filename = extraction_result.get('filename', 'Unknown')
                         doc_type = parsed_data.get('document_type', 'Other')
                         doc_types[filename] = doc_type
-                        logger.info(f"Stage 1 SUCCESS | File: {filename} | Type: {doc_type}")
+                        logger.info(f"Stage 1 SUCCESS | File: {filename} | Type: {doc_type} | Model: {extraction_model}")
                     else:
                         error_msg = ocr_response.error or 'Unknown error'
                         failed_extractions.append(error_msg)
@@ -178,38 +212,47 @@ class EnhancedMultiPDFService:
                     detail="No Profit & Loss statement detected. Please upload at least one P&L document for accurate financial projections."
                 )
             
-            log_stage_progress(logger, "1", "COMPLETED", f"Duration: {stage1_time:.2f}s | Success: {len(successful_extractions)}/{len(files_data)}")
+            log_stage_progress(logger, "1", "COMPLETED", f"Duration: {stage1_time:.2f}s | Success: {len(successful_extractions)}/{len(files_data)} | Model: {extraction_model}")
             logger.debug(f"Document types extracted | {doc_types}")
             
-            # STAGE 2: Business Analysis & Methodology Selection using Business Analysis Service
-            log_stage_progress(logger, "2", "STARTED", "Business Analysis Service processing")
+            # STAGE 2: Business Analysis & Methodology Selection using Pro Model with Semaphore
+            log_stage_progress(logger, "2", "STARTED", f"Business Analysis Service | Model: {analysis_model} | Semaphore: {self.pro_model_semaphore._value}")
             stage2_start = time.time()
             
-            stage2_result = await business_analysis_service.analyze_business_context(successful_extractions, model)
+            # Use semaphore to control Pro model concurrency
+            async with self.pro_model_semaphore:
+                logger.debug(f"🔒 Acquired Pro model semaphore for Stage 2 | Available: {self.pro_model_semaphore._value}")
+                stage2_result = await business_analysis_service.analyze_business_context(successful_extractions, analysis_model)
+                logger.debug(f"🔓 Released Pro model semaphore from Stage 2 | Available: {self.pro_model_semaphore._value + 1}")
+            
             stage2_time = time.time() - stage2_start
             
             business_stage = stage2_result.get('business_context', {}).get('business_stage', 'Unknown')
             selected_method = stage2_result.get('methodology_evaluation', {}).get('selected_method', {}).get('primary_method', 'Unknown')
             
-            log_stage_progress(logger, "2", "COMPLETED", f"Duration: {stage2_time:.2f}s | Business Stage: {business_stage} | Method: {selected_method}")
+            log_stage_progress(logger, "2", "COMPLETED", f"Duration: {stage2_time:.2f}s | Business Stage: {business_stage} | Method: {selected_method} | Model: {analysis_model}")
             
-            # STAGE 3: Projection Engine using Projection Service
-            log_stage_progress(logger, "3", "STARTED", "Projection Service processing")
+            # STAGE 3: Projection Engine using Pro Model with Semaphore
+            log_stage_progress(logger, "3", "STARTED", f"Projection Service | Model: {analysis_model} | Semaphore: {self.pro_model_semaphore._value}")
             stage3_start = time.time()
             
-            stage3_result = await projection_service.generate_projections(stage2_result, model)
+            # Use semaphore to control Pro model concurrency
+            async with self.pro_model_semaphore:
+                logger.debug(f"🔒 Acquired Pro model semaphore for Stage 3 | Available: {self.pro_model_semaphore._value}")
+                stage3_result = await projection_service.generate_projections(stage2_result, analysis_model)
+                logger.debug(f"🔓 Released Pro model semaphore from Stage 3 | Available: {self.pro_model_semaphore._value + 1}")
+            
             stage3_time = time.time() - stage3_start
             
             projections_count = len(stage3_result.get('base_case_projections', {}))
             
-            logger.info(f"✅ STAGE 3 COMPLETE ({stage3_time:.2f}s)")
-            logger.info(f"📈 Generated Projections: {projections_count} time horizons")
+            log_stage_progress(logger, "3", "COMPLETED", f"Duration: {stage3_time:.2f}s | Projections: {projections_count} | Model: {analysis_model}")
             
             # LOCAL VALIDATION using Projection Service
             logger.info(f"🔍 LOCAL VALIDATION: Financial Reconciliation")
             validation_start = time.time()
             
-            local_validation_results = projection_service.validate_projections(stage3_result)
+            local_validation_results = await projection_service.validate_projections(stage3_result)
             validation_time = time.time() - validation_start
             
             logger.info(f"✅ Local Validation Complete ({validation_time:.2f}s): Score={local_validation_results.get('overall_score', 0):.2f}")
@@ -232,7 +275,7 @@ class EnhancedMultiPDFService:
                 extracted_data=successful_extractions,
                 normalized_data=stage2_result,
                 projections=stage3_result,
-                explanation=stage3_result.get('executive_summary', 'Enhanced 3-stage financial analysis completed with modular services'),
+                explanation=stage3_result.get('executive_summary', 'Enhanced 3-stage financial analysis completed with tiered model selection'),
                 error=None,
                 
                 # Enhanced fields from business analysis
@@ -255,6 +298,13 @@ class EnhancedMultiPDFService:
                     'local_validation_results': local_validation_results,
                     'processing_stages_completed': 3,
                     'architecture_type': '3-stage_modular_services',
+                    'tiered_model_selection': {
+                        'stage1_extraction_model': extraction_model,
+                        'stage2_analysis_model': analysis_model,
+                        'stage3_projection_model': analysis_model,
+                        'pro_model_semaphore_limit': 3,
+                        'strategy': 'Flash for extraction, Pro for analysis'
+                    },
                     'services_used': {
                         'stage1': 'OCR Service',
                         'stage2': 'Business Analysis Service',
@@ -269,6 +319,9 @@ class EnhancedMultiPDFService:
                         'local_validation': validation_time
                     },
                     'enhancement_features': [
+                        'tiered_model_selection',
+                        'concurrency_control',
+                        'quota_optimization',
                         'modular_service_architecture',
                         'business_context_analysis',
                         'pattern_recognition', 
@@ -279,7 +332,7 @@ class EnhancedMultiPDFService:
                 }
             )
             
-            logger.info("✅ Enhanced 3-stage modular analysis completed successfully")
+            logger.info("✅ Enhanced 3-stage modular analysis completed successfully with tiered model selection")
             return response
                 
         except HTTPException:
@@ -309,17 +362,18 @@ class EnhancedMultiPDFService:
                 data_analysis_summary=None
             )
     
-    async def analyze_multiple_files(self, files_data: List[Tuple[str, bytes]], model: str = "gemini-2.5-pro") -> MultiPDFAnalysisResponse:
+    async def analyze_multiple_files(self, files_data: List[Tuple[str, bytes]], requested_model: str = "gemini-2.5-pro") -> MultiPDFAnalysisResponse:
         """
-        Enhanced 3-stage multi-file analysis using modular services
+        Enhanced 3-stage multi-file analysis using modular services with tiered model selection
         Applies a 10-minute timeout to the entire process
         """
         try:
             logger.info(f"🚀 Starting multi-file analysis with {self.overall_process_timeout}s overall timeout")
+            logger.info(f"🎯 Requested model: {requested_model} | Strategy: Flash for extraction, Pro for analysis")
             
             # Apply overall timeout to the entire analysis process
             result = await asyncio.wait_for(
-                self._internal_analyze_multiple_files(files_data, model),
+                self._internal_analyze_multiple_files(files_data, requested_model),
                 timeout=self.overall_process_timeout
             )
             
@@ -370,9 +424,9 @@ class EnhancedMultiPDFService:
             )
 
     # Backward compatibility
-    async def analyze_multiple_pdfs(self, files_data: List[Tuple[str, bytes]], model: str = "gemini-2.5-pro") -> MultiPDFAnalysisResponse:
+    async def analyze_multiple_pdfs(self, files_data: List[Tuple[str, bytes]], requested_model: str = "gemini-2.5-pro") -> MultiPDFAnalysisResponse:
         """Backward compatibility method"""
-        return await self.analyze_multiple_files(files_data, model)
+        return await self.analyze_multiple_files(files_data, requested_model)
 
     def _transform_assumptions(self, assumptions_data: List) -> List[str]:
         """Transform assumption dictionaries into strings for the response model"""

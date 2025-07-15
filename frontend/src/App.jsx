@@ -9,6 +9,7 @@ import TestingDashboard from './components/TestingDashboard'
 import Header from './components/Header'
 import LoadingSpinner from './components/LoadingSpinner'
 import { processOCR, processMultiPDFAnalysis, getHealthStatus, getAvailableModels } from './services/api'
+import ErrorBoundary from './components/ErrorBoundary'
 import './App.css'
 
 function App() {
@@ -112,16 +113,17 @@ function App() {
   }
 
   return (
-    <div className="app">
-      <Header backendStatus={backendStatus} />
-      
-      <main className="main-content">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="container"
-        >
+    <ErrorBoundary>
+      <div className="app">
+        <Header backendStatus={backendStatus} />
+        
+        <main className="main-content">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="container"
+          >
           {/* Mode Toggle */}
           {!isLoading && !ocrResults && !multiPdfResults && mode !== 'testing' && (
             <motion.div
@@ -269,6 +271,7 @@ function App() {
         </motion.div>
       </main>
     </div>
+    </ErrorBoundary>
   )
 }
 

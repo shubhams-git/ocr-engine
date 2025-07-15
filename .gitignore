@@ -7,6 +7,7 @@
 .env.staging
 .env.development
 *.env
+*.csv
 backend/.env*
 frontend/.env*
 

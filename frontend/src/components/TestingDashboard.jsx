@@ -85,16 +85,96 @@ const TestingDashboard = ({ onExitTesting }) => {
 
   // Extract data from stage results for chaining
   const extractStageData = (result, stage) => {
-    if (!result || !result.success) return null
+    if (!result || !result.success) {
+      console.error(`extractStageData - ${stage}: Result is null or unsuccessful:`, result)
+      return null
+    }
 
     switch (stage) {
       case 'stage1':
-        // Extract the data field from OCR response
-        return result.result?.data ? JSON.parse(result.result.data) : null
+        // Stage 2 expects an array of extraction results with specific structure
+        try {
+          console.log('extractStageData stage1 - Input result:', result)
+          console.log('extractStageData stage1 - result.result:', result.result)
+          console.log('extractStageData stage1 - result.result.data:', result.result?.data)
+          console.log('extractStageData stage1 - file_info:', result.file_info)
+          
+          let parsedData = null
+          
+          // Handle different possible data structures
+          if (result.result?.data) {
+            if (typeof result.result.data === 'string') {
+              try {
+                parsedData = JSON.parse(result.result.data)
+              } catch (parseError) {
+                console.error('Failed to parse result.result.data as JSON:', parseError)
+                console.error('Raw data:', result.result.data)
+                return null
+              }
+            } else if (typeof result.result.data === 'object') {
+              parsedData = result.result.data
+            }
+          } else if (result.data) {
+            // Sometimes data might be directly in result.data
+            parsedData = typeof result.data === 'string' ? JSON.parse(result.data) : result.data
+          } else {
+            console.error('No data found in Stage 1 result')
+            return null
+          }
+          
+          console.log('extractStageData stage1 - Parsed data:', parsedData)
+          
+          if (!parsedData) {
+            console.error('No parsed data available for Stage 2')
+            return null
+          }
+          
+          // Ensure we have the required filename
+          const filename = result.file_info?.filename || 
+                          result.file_info?.name || 
+                          parsedData.source_filename || 
+                          'test-file.pdf'
+          
+          // Format as expected by Stage 2 API (array of extraction results)
+          const formattedData = [{
+            filename: filename,
+            success: true,
+            data: parsedData,
+            raw_response: typeof result.result?.data === 'string' ? result.result.data : JSON.stringify(parsedData)
+          }]
+          
+          console.log('extractStageData stage1 - Formatted data:', formattedData)
+          
+          // Validate the formatted data structure
+          if (!formattedData[0].data || typeof formattedData[0].data !== 'object') {
+            console.error('Invalid data structure for Stage 2:', formattedData[0])
+            return null
+          }
+          
+          return formattedData
+        } catch (error) {
+          console.error('Failed to extract Stage 1 data:', error)
+          console.error('Raw result:', result)
+          return null
+        }
       case 'stage2':
-        // Extract business analysis data
-        return result.result || null
+        // Extract business analysis data - handle different response structures
+        try {
+          let businessData = result.result || result.data || result
+          
+          // If it's a string, try to parse it
+          if (typeof businessData === 'string') {
+            businessData = JSON.parse(businessData)
+          }
+          
+          console.log('extractStageData stage2 - Business data:', businessData)
+          return businessData
+        } catch (error) {
+          console.error('Failed to extract Stage 2 data:', error)
+          return null
+        }
       default:
+        console.warn(`Unknown stage: ${stage}`)
         return null
     }
   }
@@ -134,41 +214,74 @@ const TestingDashboard = ({ onExitTesting }) => {
 
     try {
       let result
+      console.log(`\n=== Running ${testType.toUpperCase()} Test ===`)
+      console.log('Selected model:', selectedModel)
+      console.log('Available stage data:', Object.keys(stageData))
 
       switch (testType) {
         case 'stage1':
           if (selectedFiles.length === 0) {
             throw new Error('Please select a file for Stage 1 testing')
           }
+          console.log('Stage 1 - Selected file:', selectedFiles[0].name, 'Size:', selectedFiles[0].size)
           result = await testStage1(selectedFiles[0], selectedModel)
+          console.log('Stage 1 - Raw result:', result)
           break
 
         case 'stage2':
           // Automatically use stage1 data
           if (!stageData.stage1) {
-            throw new Error('Stage 1 must be completed first')
+            throw new Error('Stage 1 must be completed first. Please run Stage 1 test successfully before Stage 2.')
           }
+          
+          console.log('Stage 2 - Available stage1 data:', stageData.stage1)
+          console.log('Stage 2 - Data type check:', Array.isArray(stageData.stage1))
+          console.log('Stage 2 - Data length:', stageData.stage1?.length)
+          
+          // Additional validation
+          if (!Array.isArray(stageData.stage1) || stageData.stage1.length === 0) {
+            throw new Error('Invalid Stage 1 data: Expected non-empty array')
+          }
+          
+          // Validate the first item structure
+          const firstItem = stageData.stage1[0]
+          console.log('Stage 2 - First item structure:', firstItem)
+          
+          if (!firstItem.filename || !firstItem.data) {
+            throw new Error('Invalid Stage 1 data structure: Missing filename or data')
+          }
+          
+          console.log('Stage 2 - Sending data to backend...')
           result = await testStage2(stageData.stage1, selectedModel)
+          console.log('Stage 2 - Raw result:', result)
           break
 
         case 'stage3':
           // Automatically use stage2 data
           if (!stageData.stage2) {
-            throw new Error('Stage 2 must be completed first')
+            throw new Error('Stage 2 must be completed first. Please run Stage 2 test successfully before Stage 3.')
           }
+          
+          console.log('Stage 3 - Available stage2 data:', stageData.stage2)
+          console.log('Stage 3 - Sending data to backend...')
           result = await testStage3(stageData.stage2, selectedModel)
+          console.log('Stage 3 - Raw result:', result)
           break
 
         case 'full':
           if (selectedFiles.length === 0) {
             throw new Error('Please select files for full process testing')
           }
+          console.log('Full Process - Selected files:', selectedFiles.map(f => f.name))
           result = await testFullProcess(selectedFiles, selectedModel)
+          console.log('Full Process - Raw result:', result)
           break
 
         default:
-          throw new Error('Unknown test type')
+          throw new Error(`Unknown test type: ${testType}`)
       }
+
+      console.log(`${testType.toUpperCase()} - Test completed successfully`)
 
       // Store test result
       setTestResults(prev => ({
@@ -181,28 +294,45 @@ const TestingDashboard = ({ onExitTesting }) => {
 
       // Extract data for next stage if successful
       if (result.success) {
+        console.log(`${testType.toUpperCase()} - Extracting data for next stage...`)
         const extractedData = extractStageData(result, testType)
+        
         if (extractedData) {
+          console.log(`${testType.toUpperCase()} - Successfully extracted data:`, extractedData)
           setStageData(prev => ({
             ...prev,
             [testType]: extractedData
           }))
+        } else {
+          console.warn(`${testType.toUpperCase()} - No data extracted for next stage`)
         }
+      } else {
+        console.error(`${testType.toUpperCase()} - Test failed:`, result.error)
       }
 
     } catch (error) {
-      console.error(`Test ${testType} failed:`, error)
+      console.error(`\n=== ${testType.toUpperCase()} Test Failed ===`)
+      console.error('Error message:', error.message)
+      console.error('Full error:', error)
+      console.error('Current stage data:', stageData)
+      
       setTestResults(prev => ({
         ...prev,
         [testType]: {
           success: false,
           error: error.message,
-          timestamp: Date.now()
+          timestamp: Date.now(),
+          debug_info: {
+            stage_data_available: Object.keys(stageData),
+            selected_model: selectedModel,
+            selected_files: selectedFiles.map(f => ({ name: f.name, size: f.size }))
+          }
         }
       }))
     } finally {
       setIsLoading(false)
       setActiveTest(null)
+      console.log(`=== ${testType.toUpperCase()} Test Finished ===\n`)
     }
   }
 
@@ -542,7 +672,21 @@ const TestingDashboard = ({ onExitTesting }) => {
                       {result.error && (
                         <div className="result-error-detail">
                           <AlertTriangle size={16} />
-                          {result.error}
+                          <div className="error-content">
+                            <strong>Error:</strong> {result.error}
+                            {result.debug_info && (
+                              <details className="error-debug-info">
+                                <summary>Debug Information</summary>
+                                <div className="debug-details">
+                                  <div><strong>Model Used:</strong> {result.debug_info.selected_model}</div>
+                                  <div><strong>Stage Data Available:</strong> {result.debug_info.stage_data_available.join(', ') || 'None'}</div>
+                                  {result.debug_info.selected_files && (
+                                    <div><strong>Selected Files:</strong> {result.debug_info.selected_files.map(f => f.name).join(', ')}</div>
+                                  )}
+                                </div>
+                              </details>
+                            )}
+                          </div>
                         </div>
                       )}
 

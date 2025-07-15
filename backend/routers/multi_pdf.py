@@ -67,7 +67,17 @@ async def analyze_multiple_files(
         
         # Log response details
         files_processed = len(result.extracted_data) if result.extracted_data else 0
-        projections_count = len(result.projections.get('specific_projections', {})) if result.projections else 0
+        
+        # Count projections correctly based on actual structure
+        projections_count = 0
+        if result.projections:
+            # Check for base_case_projections (new structure)
+            base_case = result.projections.get('base_case_projections', {})
+            if base_case:
+                projections_count = len(base_case)
+            else:
+                # Fallback to specific_projections (legacy structure)
+                projections_count = len(result.projections.get('specific_projections', {}))
         
         log_request_end(logger, "multi-pdf analyze", success=result.success, duration=total_request_time,
                        files_processed=f"{files_processed}/{len(files)}",

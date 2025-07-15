@@ -39,13 +39,16 @@ class EnhancedOCRService:
         self.api_key_index = 0
         
         # Debug flag for detailed response logging
-        self.debug_responses = True
+        self.debug_responses = False
         
-        logger.info("Enhanced OCR Service (Stage 1) initialized")
-        logger.info(f"Service configuration | PDF limit: {self.max_pdf_size//1024//1024}MB | CSV limit: {self.max_csv_size//1024//1024}MB | Image limit: {self.max_image_size//1024//1024}MB")
-        logger.info(f"API configuration | Timeout: {self.api_timeout}s | Max retries: {self.max_retries} | Retry delay: {self.retry_delay}s")
-        logger.info(f"API key pool initialized | Count: {len(self.api_key_pool)}")
-        logger.info(f"Debug response logging: {'ENABLED' if self.debug_responses else 'DISABLED'}")
+        # Only log during main server process, not during uvicorn reloads
+        import os
+        if os.getenv("OCR_SERVER_MAIN") == "true":
+            logger.info("Enhanced OCR Service (Stage 1) initialized")
+        logger.debug(f"Service configuration | PDF limit: {self.max_pdf_size//1024//1024}MB | CSV limit: {self.max_csv_size//1024//1024}MB | Image limit: {self.max_image_size//1024//1024}MB")
+        logger.debug(f"API configuration | Timeout: {self.api_timeout}s | Max retries: {self.max_retries} | Retry delay: {self.retry_delay}s")
+        logger.debug(f"API key pool initialized | Count: {len(self.api_key_pool)}")
+        logger.debug(f"Debug response logging: {'ENABLED' if self.debug_responses else 'DISABLED'}")
     
     def get_next_api_key(self) -> str:
         """Get next API key from pool with rotation"""

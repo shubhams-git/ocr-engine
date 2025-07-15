@@ -44,12 +44,17 @@ app.include_router(multi_pdf.router)
 
 if __name__ == "__main__":
     import uvicorn
+    # Set environment variable to indicate we're running as main server
+    # This prevents duplicate initialization logs during uvicorn reloads
+    os.environ["OCR_SERVER_MAIN"] = "true"
+    
     # Configure server with 10-minute timeout
     uvicorn.run(
         "main:app", 
         host="0.0.0.0", 
         port=8000, 
         reload=True,
+        log_level="info",  # Reduce uvicorn startup verbosity
         timeout_keep_alive=600,  # 10 minutes
         timeout_graceful_shutdown=30
     ) 

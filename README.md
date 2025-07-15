@@ -1,83 +1,226 @@
-# OCR Engine API - Financial Projections Service
+# OCR Engine - Financial Document Analysis Service
 
-A FastAPI-based financial analysis service that extracts projection data from financial documents (PDFs, CSVs) and provides structured forecasts for revenue, gross profit, expenses, and net profit across multiple time horizons.
+A FastAPI-based financial analysis service that extracts, analyzes, and generates comprehensive projections from financial documents using AI-powered document processing.
 
-## Project Overview
+## What It Does
 
-This service transforms raw financial documents into actionable projection data that can be used for:
-- Financial dashboards and visualizations
-- Investment analysis and decision making
-- Business planning and forecasting
-- Risk assessment and scenario modeling
+The OCR Engine is a sophisticated financial analysis service that:
 
-## Codebase Structure
+- **Extracts data** from financial documents (PDFs, images, CSV files)
+- **Analyzes business context** using advanced AI to understand industry patterns, seasonality, and financial health
+- **Generates comprehensive projections** with 3-way financial forecasts (P&L, Cash Flow, Balance Sheet)
+- **Provides multiple scenarios** (optimistic, base case, conservative) with confidence levels
+- **Supports Australian Financial Year** calculations and business patterns
+- **Offers both single document OCR** and **multi-document analysis** capabilities
+
+## Architecture
+
+### 3-Stage Enhanced Processing Pipeline
+
+1. **Stage 1: Data Extraction & Normalization**
+   - Document classification and data extraction
+   - Quality assessment and anomaly detection
+   - Australian FY alignment and standardization
+
+2. **Stage 2: Business Intelligence Analysis**
+   - Business context identification (industry, stage, market position)
+   - Pattern recognition and trend analysis
+   - Forecasting methodology selection
+   - Working capital and driver analysis
+
+3. **Stage 3: Projection Engine**
+   - Multi-horizon financial projections (1, 3, 5, 10, 15 years)
+   - 3-way forecast generation (P&L, Cash Flow, Balance Sheet)
+   - Scenario planning and sensitivity analysis
+   - Validation and reconciliation
+
+## Project Structure
 
 ```
 ocr-engine/
-├── backend/                 # FastAPI backend service
-│   ├── main.py             # FastAPI app entry point
-│   ├── config.py           # API key management and CORS settings
-│   ├── models.py           # Pydantic response models
-│   ├── prompts.py          # AI prompts for financial analysis
-│   ├── middleware.py       # Error handling middleware
-│   ├── routers/            # API endpoint definitions
-│   │   ├── multi_pdf.py    # Multi-document analysis endpoint
-│   │   ├── ocr.py          # Single document OCR endpoint
-│   │   ├── health.py       # Health check endpoints
-│   │   └── admin.py        # API key management endpoints
-│   └── services/           # Business logic
-│       ├── multi_pdf_service.py  # Core projection analysis
-│       └── ocr_service.py        # Document processing
-└── frontend/               # React frontend (optional)
+├── backend/                    # FastAPI backend service
+│   ├── main.py                # Application entry point
+│   ├── config.py              # Configuration management
+│   ├── models.py              # Pydantic response models
+│   ├── prompts.py             # AI prompts configuration
+│   ├── routers/               # API endpoints
+│   │   ├── ocr.py            # Single document OCR
+│   │   ├── multi_pdf.py      # Multi-document analysis
+│   │   ├── health.py         # Health checks
+│   │   └── admin.py          # Testing and admin endpoints
+│   └── services/              # Business logic
+│       ├── ocr_service.py           # Document processing
+│       ├── multi_pdf_service.py     # Multi-document analysis
+│       ├── business_analysis_service.py  # Stage 2 analysis
+│       └── projection_service.py    # Stage 3 projections
+├── frontend/                   # React frontend (optional)
+│   ├── src/
+│   │   ├── components/        # React components
+│   │   └── services/          # API client
+│   └── package.json
+├── .env.template              # Environment variables template
+└── requirements.txt           # Python dependencies
 ```
 
-## Core Functionality
+## Quick Start
 
-### 1. Document Processing
-- **Input**: PDF financial statements, CSV data files, or mixed document types
-- **Processing**: Google Gemini AI extracts and normalizes financial data
-- **Output**: Structured JSON with historical data and projections
+### Prerequisites
 
-### 2. Projection Generation
-The service automatically generates projections for:
-- **1 Year Ahead**: Monthly granularity (12 data points)
-- **3 Years Ahead**: Quarterly granularity (12 data points)  
-- **5 Years Ahead**: Yearly granularity (5 data points)
-- **10 Years Ahead**: Yearly granularity (10 data points)
-- **15 Years Ahead**: Yearly granularity (15 data points)
+- Python 3.8+
+- Google Gemini API key
+- Node.js 16+ (for frontend)
 
-### 3. Financial Metrics
-Each projection period contains four mandatory financial metrics:
-- **Revenue**: Total income projections
-- **Gross Profit**: Revenue minus direct costs
-- **Expenses**: Operating and overhead costs
-- **Net Profit**: Final profit after all expenses
+### Environment Setup
 
-## API Usage for FastAPI Clients
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd ocr-engine
+   ```
 
-### Basic Request Structure
+2. **Set up environment variables**
+   ```bash
+   cp .env.template .env
+   # Edit .env with your configuration
+   ```
+
+3. **Configure API Keys**
+   ```bash
+   # In .env file
+   GEMINI_API_KEY=your_gemini_api_key_here
+   # Or for multiple keys (recommended for production)
+   GEMINI_API_KEY_1=key1
+   GEMINI_API_KEY_2=key2
+   GEMINI_API_KEY_3=key3
+   ```
+
+### Backend Setup
+
+```bash
+cd backend
+pip install -r requirements.txt
+python main.py
+```
+
+The API will be available at `http://localhost:8000`
+
+### Frontend Setup (Optional)
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+The frontend will be available at `http://localhost:5173`
+
+## API Endpoints
+
+### Core Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/ocr` | POST | Single document OCR processing |
+| `/multi-pdf/analyze` | POST | Multi-document financial analysis |
+| `/health` | GET | Service health check |
+| `/models` | GET | Available AI models |
+
+### Testing Endpoints (Admin)
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/admin/test/stage1` | POST | Test Stage 1 processing |
+| `/admin/test/stage2` | POST | Test Stage 2 analysis |
+| `/admin/test/stage3` | POST | Test Stage 3 projections |
+| `/admin/test/full-process` | POST | Test complete pipeline |
+
+## Integration with Existing FastAPI Applications
+
+### Option 1: Direct Router Integration
+
+```python
+from fastapi import FastAPI
+from ocr_engine.backend.routers import ocr, multi_pdf, health
+
+app = FastAPI()
+
+# Include OCR Engine routers
+app.include_router(ocr.router, prefix="/api/ocr", tags=["OCR"])
+app.include_router(multi_pdf.router, prefix="/api/analysis", tags=["Analysis"])
+app.include_router(health.router, prefix="/api/health", tags=["Health"])
+```
+
+### Option 2: Service Integration
+
+```python
+from ocr_engine.backend.services.multi_pdf_service import EnhancedMultiPDFService
+
+# Initialize service
+analysis_service = EnhancedMultiPDFService()
+
+# Use in your endpoints
+@app.post("/your-endpoint/analyze")
+async def analyze_documents(files: List[UploadFile]):
+    files_data = [(file.filename, await file.read()) for file in files]
+    result = await analysis_service.analyze_multiple_files(files_data)
+    return result
+```
+
+### Option 3: Microservice Integration
+
+```python
+import httpx
+
+class OCREngineClient:
+    def __init__(self, base_url: str = "http://localhost:8000"):
+        self.base_url = base_url
+        self.client = httpx.AsyncClient()
+    
+    async def analyze_documents(self, files: List[bytes], model: str = "gemini-2.5-flash"):
+        files_data = [("files", file) for file in files]
+        response = await self.client.post(
+            f"{self.base_url}/multi-pdf/analyze",
+            files=files_data,
+            data={"model": model}
+        )
+        return response.json()
+```
+
+## API Usage Examples
+
+### Single Document OCR
 
 ```python
 import requests
-from typing import List
 
-def analyze_financial_documents(file_paths: List[str], api_url: str = "http://localhost:8000"):
-    """
-    Send financial documents for analysis and get projection data
-    """
-    # Prepare files for upload
+def process_single_document(file_path: str):
+    with open(file_path, 'rb') as f:
+        files = {'file': f}
+        data = {'model': 'gemini-2.5-flash'}
+        
+        response = requests.post(
+            'http://localhost:8000/ocr',
+            files=files,
+            data=data
+        )
+        
+        return response.json()
+```
+
+### Multi-Document Analysis
+
+```python
+import requests
+
+def analyze_financial_documents(file_paths: List[str]):
     files = []
     for file_path in file_paths:
         files.append(('files', open(file_path, 'rb')))
     
-    # API request parameters
-    data = {
-        'model': 'gemini-2.5-pro'  # Recommended for accuracy
-    }
+    data = {'model': 'gemini-2.5-pro'}
     
-    # Make API call
     response = requests.post(
-        f"{api_url}/multi-pdf/analyze",
+        'http://localhost:8000/multi-pdf/analyze',
         files=files,
         data=data,
         timeout=300  # 5 minutes timeout
@@ -90,363 +233,212 @@ def analyze_financial_documents(file_paths: List[str], api_url: str = "http://lo
     return response.json()
 ```
 
-### Response Data Structure
+## Response Structure
 
-The API returns a comprehensive response with projection data:
+### Multi-Document Analysis Response
 
-```python
+```json
 {
-    "success": True,
-    "projections": {
-        "specific_projections": {
-            "1_year_ahead": {
-                "period": "FY2026",
-                "granularity": "monthly",
-                "revenue": [
-                    {"period": "Month 1", "value": 175000, "confidence": "high"},
-                    {"period": "Month 2", "value": 180000, "confidence": "high"},
-                    # ... 12 months total
-                ],
-                "gross_profit": [
-                    {"period": "Month 1", "value": 70000, "confidence": "high"},
-                    {"period": "Month 2", "value": 72000, "confidence": "high"},
-                    # ... 12 months total
-                ],
-                "expenses": [
-                    {"period": "Month 1", "value": 135000, "confidence": "high"},
-                    {"period": "Month 2", "value": 138000, "confidence": "high"},
-                    # ... 12 months total
-                ],
-                "net_profit": [
-                    {"period": "Month 1", "value": 40000, "confidence": "high"},
-                    {"period": "Month 2", "value": 42000, "confidence": "high"},
-                    # ... 12 months total
-                ]
-            },
-            "3_years_ahead": {
-                "period": "FY2028",
-                "granularity": "quarterly",
-                "revenue": [...],  # 12 quarters
-                "gross_profit": [...],
-                "expenses": [...],
-                "net_profit": [...]
-            },
-            "5_years_ahead": {
-                "period": "FY2030", 
-                "granularity": "yearly",
-                "revenue": [...],  # 5 years
-                "gross_profit": [...],
-                "expenses": [...],
-                "net_profit": [...]
-            },
-            "10_years_ahead": {
-                "period": "FY2035",
-                "granularity": "yearly", 
-                "revenue": [...],  # 10 years
-                "gross_profit": [...],
-                "expenses": [...],
-                "net_profit": [...]
-            },
-            "15_years_ahead": {
-                "period": "FY2040",
-                "granularity": "yearly",
-                "revenue": [...],  # 15 years
-                "gross_profit": [...],
-                "expenses": [...],
-                "net_profit": [...]
-            }
-        }
+  "success": true,
+  "extracted_data": [...],
+  "normalized_data": {
+    "business_context": {...},
+    "pattern_analysis": {...},
+    "time_series": {...}
+  },
+  "projections": {
+    "base_case_projections": {
+      "1_year_ahead": {
+        "period_label": "FY2025",
+        "granularity": "monthly",
+        "profit_and_loss": [...],
+        "cash_flow_statement": [...],
+        "balance_sheet": [...]
+      }
+    },
+    "scenario_projections": {
+      "optimistic": {...},
+      "conservative": {...}
     }
+  },
+  "data_quality_assessment": {...},
+  "accuracy_considerations": {...},
+  "methodology": "...",
+  "explanation": "..."
 }
 ```
 
-## Data Extraction and Processing
+## Configuration
 
-### 1. Extract Projection Totals
+### Environment Variables
 
-```python
-def extract_projection_totals(api_response):
-    """
-    Extract total values for each time period and metric
-    """
-    if not api_response.get('success'):
-        return None
-    
-    projections = api_response.get('projections', {}).get('specific_projections', {})
-    
-    results = {}
-    for timeframe, data in projections.items():
-        results[timeframe] = {
-            'period': data.get('period'),
-            'granularity': data.get('granularity'),
-            'revenue_total': sum(item['value'] for item in data.get('revenue', [])),
-            'gross_profit_total': sum(item['value'] for item in data.get('gross_profit', [])),
-            'expenses_total': sum(item['value'] for item in data.get('expenses', [])),
-            'net_profit_total': sum(item['value'] for item in data.get('net_profit', [])),
-            'confidence': data.get('revenue', [{}])[0].get('confidence', 'unknown')
-        }
-    
-    return results
-
-# Usage
-projection_totals = extract_projection_totals(api_response)
-print(f"1 Year Revenue: ${projection_totals['1_year_ahead']['revenue_total']:,}")
-print(f"3 Year Net Profit: ${projection_totals['3_years_ahead']['net_profit_total']:,}")
-```
-
-### 2. Extract Time Series Data
-
-```python
-def extract_time_series_data(api_response, metric='revenue'):
-    """
-    Extract time series data for a specific metric across all timeframes
-    """
-    if not api_response.get('success'):
-        return None
-    
-    projections = api_response.get('projections', {}).get('specific_projections', {})
-    
-    time_series = {}
-    for timeframe, data in projections.items():
-        time_series[timeframe] = {
-            'periods': [item['period'] for item in data.get(metric, [])],
-            'values': [item['value'] for item in data.get(metric, [])],
-            'confidence': [item['confidence'] for item in data.get(metric, [])]
-        }
-    
-    return time_series
-
-# Usage
-revenue_series = extract_time_series_data(api_response, 'revenue')
-expenses_series = extract_time_series_data(api_response, 'expenses')
-```
-
-### 3. Get Confidence Levels
-
-```python
-def get_confidence_summary(api_response):
-    """
-    Get confidence levels for each projection timeframe
-    """
-    accuracy = api_response.get('accuracy_considerations', {})
-    confidence_levels = accuracy.get('projection_confidence', {})
-    
-    return {
-        '1_year': confidence_levels.get('1_year_ahead', 'unknown'),
-        '3_years': confidence_levels.get('3_years_ahead', 'unknown'),
-        '5_years': confidence_levels.get('5_years_ahead', 'unknown'),
-        '10_years': confidence_levels.get('10_years_ahead', 'unknown'),
-        '15_years': confidence_levels.get('15_years_ahead', 'unknown')
-    }
-```
-
-## Visualization and Dashboard Integration
-
-### 1. Pie Chart Data Preparation
-
-```python
-def prepare_pie_chart_data(projection_totals, timeframe='1_year_ahead'):
-    """
-    Prepare data for pie chart showing profit breakdown
-    """
-    data = projection_totals[timeframe]
-    
-    pie_data = [
-        {'label': 'Gross Profit', 'value': data['gross_profit_total']},
-        {'label': 'Expenses', 'value': data['expenses_total']},
-        {'label': 'Net Profit', 'value': data['net_profit_total']}
-    ]
-    
-    return pie_data
-```
-
-### 2. Line Chart Data Preparation
-
-```python
-def prepare_line_chart_data(time_series_data, metric='revenue'):
-    """
-    Prepare data for line chart showing trends over time
-    """
-    chart_data = []
-    
-    for timeframe, data in time_series_data.items():
-        for i, (period, value) in enumerate(zip(data['periods'], data['values'])):
-            chart_data.append({
-                'timeframe': timeframe,
-                'period': period,
-                'value': value,
-                'confidence': data['confidence'][i]
-            })
-    
-    return chart_data
-```
-
-### 3. Bar Chart Data Preparation
-
-```python
-def prepare_bar_chart_data(projection_totals):
-    """
-    Prepare data for bar chart comparing metrics across timeframes
-    """
-    timeframes = ['1_year_ahead', '3_years_ahead', '5_years_ahead', '10_years_ahead', '15_years_ahead']
-    metrics = ['revenue_total', 'gross_profit_total', 'expenses_total', 'net_profit_total']
-    
-    bar_data = []
-    for metric in metrics:
-        series = {
-            'metric': metric.replace('_total', '').replace('_', ' ').title(),
-            'data': []
-        }
-        for timeframe in timeframes:
-            series['data'].append({
-                'timeframe': timeframe.replace('_ahead', '').replace('_', ' ').title(),
-                'value': projection_totals[timeframe][metric]
-            })
-        bar_data.append(series)
-    
-    return bar_data
-```
-
-## Complete Integration Example
-
-```python
-import requests
-import json
-from typing import List
-
-class FinancialProjectionsClient:
-    def __init__(self, base_url: str = "http://localhost:8000"):
-        self.base_url = base_url
-    
-    def analyze_documents(self, file_paths: List[str]):
-        """Analyze financial documents and return projections"""
-        files = []
-        for file_path in file_paths:
-            files.append(('files', open(file_path, 'rb')))
-        
-        response = requests.post(
-            f"{self.base_url}/multi-pdf/analyze",
-            files=files,
-            data={'model': 'gemini-2.5-pro'},
-            timeout=300
-        )
-        
-        # Clean up
-        for _, file_handle in files:
-            file_handle.close()
-        
-        return response.json()
-    
-    def get_dashboard_data(self, api_response):
-        """Extract all data needed for dashboard visualizations"""
-        if not api_response.get('success'):
-            return None
-        
-        # Extract projection totals
-        projection_totals = extract_projection_totals(api_response)
-        
-        # Extract time series data
-        revenue_series = extract_time_series_data(api_response, 'revenue')
-        expenses_series = extract_time_series_data(api_response, 'expenses')
-        
-        # Get confidence levels
-        confidence_levels = get_confidence_summary(api_response)
-        
-        # Prepare visualization data
-        pie_data = prepare_pie_chart_data(projection_totals, '1_year_ahead')
-        line_data = prepare_line_chart_data(revenue_series, 'revenue')
-        bar_data = prepare_bar_chart_data(projection_totals)
-        
-        return {
-            'projection_totals': projection_totals,
-            'time_series': {
-                'revenue': revenue_series,
-                'expenses': expenses_series
-            },
-            'confidence_levels': confidence_levels,
-            'visualization_data': {
-                'pie_chart': pie_data,
-                'line_chart': line_data,
-                'bar_chart': bar_data
-            }
-        }
-
-# Usage Example
-client = FinancialProjectionsClient()
-
-# Analyze documents
-result = client.analyze_documents([
-    'financial_report_2023.pdf',
-    'quarterly_data.csv'
-])
-
-# Get dashboard data
-dashboard_data = client.get_dashboard_data(result)
-
-# Use data for visualizations
-print(f"1 Year Revenue: ${dashboard_data['projection_totals']['1_year_ahead']['revenue_total']:,}")
-print(f"Confidence Level: {dashboard_data['confidence_levels']['1_year']}")
-```
-
-## Key Data Points for Visualization
-
-### 1. Revenue Analysis
-- **Total Revenue**: Sum of all revenue projections for each timeframe
-- **Growth Rate**: Month-over-month or quarter-over-quarter growth
-- **Trend Direction**: Increasing, decreasing, or stable patterns
-
-### 2. Profitability Analysis  
-- **Gross Profit Margin**: Gross profit / Revenue ratio
-- **Net Profit Margin**: Net profit / Revenue ratio
-- **Expense Ratio**: Expenses / Revenue ratio
-
-### 3. Risk Assessment
-- **Confidence Levels**: High, medium, low, very_low for each timeframe
-- **Volatility**: Standard deviation of projections
-- **Scenario Analysis**: Optimistic vs conservative projections
-
-## Setup Instructions
-
-### 1. Environment Setup
 ```bash
-# Install dependencies
-pip install fastapi uvicorn google-genai python-multipart requests
+# API Configuration
+GEMINI_API_KEY=your_api_key
+GEMINI_API_KEY_1=key1  # Multiple keys for load balancing
+GEMINI_API_KEY_2=key2
+GEMINI_API_KEY_3=key3
 
-# Set API key
-export GEMINI_API_KEY=your_gemini_api_key_here
+# Timeouts
+API_TIMEOUT=300
+OVERALL_PROCESS_TIMEOUT=600
+MAX_RETRIES=3
+RETRY_DELAY=1
+
+# CORS (for frontend)
+CORS_ORIGINS=["http://localhost:5173", "https://yourdomain.com"]
 ```
 
-### 2. Start Service
+### Model Configuration
+
+Available models:
+- `gemini-2.5-pro` - Most capable for complex analysis
+- `gemini-2.5-flash` - Fast and efficient (recommended)
+- `gemini-2.0-flash` - Latest experimental model
+- `gemini-1.5-flash` - Fast and reliable
+- `gemini-1.5-pro` - Advanced reasoning capabilities
+
+## Testing
+
+### Health Check
+
 ```bash
-cd backend
-python main.py
+curl http://localhost:8000/health
 ```
 
-Service runs on `http://localhost:8000`
+### Test Single Document Processing
 
-### 3. Test Connection
-```python
-import requests
-
-# Health check
-response = requests.get("http://localhost:8000/health")
-print(response.json())  # Should return {"status": "healthy"}
+```bash
+curl -X POST \
+  http://localhost:8000/admin/test/stage1 \
+  -F "file=@test_document.pdf" \
+  -F "model=gemini-2.5-flash"
 ```
 
-## API Endpoints Summary
+### Test Multi-Document Analysis
 
-| Endpoint | Method | Purpose | Response Time |
-|----------|--------|---------|---------------|
-| `/multi-pdf/analyze` | POST | Main projection analysis | 15-60 seconds |
-| `/ocr` | POST | Single document extraction | 1-3 seconds |
-| `/health` | GET | Service status | <100ms |
-| `/models` | GET | Available AI models | <100ms |
+```bash
+curl -X POST \
+  http://localhost:8000/admin/test/full-process \
+  -F "files=@document1.pdf" \
+  -F "files=@document2.pdf" \
+  -F "model=gemini-2.5-pro"
+```
 
-## File Requirements
+## Supported File Types
 
-- **PDFs**: Financial statements, reports (max 50MB each)
-- **CSV**: Financial data in tabular format (max 25MB each)
+- **PDFs**: Financial statements, reports (max 50MB)
+- **Images**: PNG, JPG, JPEG, GIF, BMP, TIFF, WEBP (max 10MB)
+- **CSV**: Structured financial data (max 25MB)
 - **Multiple Files**: Up to 10 files per request
-- **Supported Formats**: PDF, CSV, PNG, JPG, JPEG, GIF, BMP, TIFF, WEBP
 
-This service provides the foundation for building comprehensive financial analysis dashboards and visualization tools by delivering structured projection data across multiple time horizons and financial metrics.
+## Production Deployment
+
+### Docker Deployment
+
+```dockerfile
+FROM python:3.9-slim
+
+WORKDIR /app
+COPY backend/requirements.txt .
+RUN pip install -r requirements.txt
+
+COPY backend/ .
+EXPOSE 8000
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+```
+
+### Environment Variables for Production
+
+```bash
+# Production settings
+ENVIRONMENT=production
+LOG_LEVEL=INFO
+API_TIMEOUT=300
+CORS_ORIGINS=["https://yourdomain.com"]
+
+# Multiple API keys for load balancing
+GEMINI_API_KEY_1=key1
+GEMINI_API_KEY_2=key2
+GEMINI_API_KEY_3=key3
+```
+
+## Monitoring
+
+### Health Endpoints
+
+- `GET /health` - Basic health check
+- `GET /admin/health/detailed` - Detailed system health
+- `GET /admin/performance/metrics` - Performance metrics
+
+### Logging
+
+The service includes comprehensive logging:
+- Request/response logging
+- API call tracking
+- Stage progression monitoring
+- Error tracking and debugging
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Troubleshooting
+
+### Common Issues
+
+1. **API Key Issues**
+   - Ensure GEMINI_API_KEY is set in environment
+   - Check API key has sufficient quota
+   - Verify API key permissions
+
+2. **File Upload Issues**
+   - Check file size limits (50MB PDF, 10MB images, 25MB CSV)
+   - Verify file format is supported
+   - Ensure proper Content-Type headers
+
+3. **Processing Timeouts**
+   - Increase API_TIMEOUT for large files
+   - Use gemini-2.5-flash for faster processing
+   - Consider splitting large document sets
+
+### Support
+
+For issues and questions:
+1. Check the logs for detailed error messages
+2. Use the `/admin/health/detailed` endpoint for system diagnostics
+3. Test individual stages using the admin endpoints
+4. Review the API documentation at `http://localhost:8000/docs`
+
+## Performance Optimization
+
+### Recommended Settings
+
+```python
+# For high-volume usage
+GEMINI_API_KEY_1=key1
+GEMINI_API_KEY_2=key2
+GEMINI_API_KEY_3=key3
+MAX_RETRIES=2
+RETRY_DELAY=0.5
+API_TIMEOUT=180
+
+# Use faster models for production
+DEFAULT_MODEL=gemini-2.5-flash
+```
+
+### Scaling Considerations
+
+- Use multiple API keys for load balancing
+- Implement Redis caching for repeated analyses
+- Consider async processing for large document sets
+- Monitor API usage and implement rate limiting

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { 
   Copy, 
@@ -34,8 +34,15 @@ import {
   AlertOctagon,
   CheckSquare,
   XSquare,
-  MinusSquare
+  MinusSquare,
+  Building,
+  GitBranch,
+  Filter
 } from 'lucide-react'
+import FinancialChart from './FinancialChart'
+import ExportUtils from './ExportUtils'
+import SearchFilter from './SearchFilter'
+import { ErrorDisplay } from './ErrorBoundary'
 
 const MultiPDFResults = ({ results, fileNames, selectedModel, onReset }) => {
   const [copied, setCopied] = useState(false)
@@ -53,6 +60,14 @@ const MultiPDFResults = ({ results, fileNames, selectedModel, onReset }) => {
     architecture_overview: false // Added for new section
   })
   const [showConfidenceTooltip, setShowConfidenceTooltip] = useState(false)
+  const [filteredData, setFilteredData] = useState(results)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [showCharts, setShowCharts] = useState(false)
+  const [error, setError] = useState(null)
+  
+  // Refs for export functionality
+  const contentRef = useRef(null)
+  const chartRefs = useRef([])
 
   const handleCopy = async () => {
     try {
@@ -80,6 +95,151 @@ const MultiPDFResults = ({ results, fileNames, selectedModel, onReset }) => {
     element.click()
     document.body.removeChild(element)
   }
+
+  // Enhanced filter and search handlers
+  const handleFilter = (filters) => {
+    let filtered = results
+    
+    // Apply filters based on confidence level
+    if (filters.confidenceLevel !== 'all') {
+      filtered = { ...filtered }
+      if (filtered.projections?.base_case_projections) {
+        Object.keys(filtered.projections.base_case_projections).forEach(period => {
+          const periodData = filtered.projections.base_case_projections[period]
+          Object.keys(periodData).forEach(metric => {
+            if (Array.isArray(periodData[metric])) {
+              periodData[metric] = periodData[metric].filter(item => 
+                item.confidence === filters.confidenceLevel
+              )
+            }
+          })
+        })
+      }
+    }
+    
+    setFilteredData(filtered)
+  }
+
+  const handleSearch = (term) => {
+    setSearchTerm(term)
+    
+    if (!term) {
+      setFilteredData(results)
+      return
+    }
+    
+    // Search through explanations, summaries, and other text content
+    const searchResults = { ...results }
+    
+    // Filter projections based on search term
+    if (searchResults.projections?.base_case_projections) {
+      Object.keys(searchResults.projections.base_case_projections).forEach(period => {
+        if (period.toLowerCase().includes(term.toLowerCase())) {
+          // Keep this period
+          return
+        }
+        // Filter metrics within the period
+        const periodData = searchResults.projections.base_case_projections[period]
+        Object.keys(periodData).forEach(metric => {
+          if (!metric.toLowerCase().includes(term.toLowerCase())) {
+            delete periodData[metric]
+          }
+        })
+      })
+    }
+    
+    setFilteredData(searchResults)
+  }
+
+  const handleSort = (field, order) => {
+    const sorted = { ...filteredData }
+    
+    // Sort projections by date or value
+    if (sorted.projections?.base_case_projections) {
+      Object.keys(sorted.projections.base_case_projections).forEach(period => {
+        const periodData = sorted.projections.base_case_projections[period]
+        Object.keys(periodData).forEach(metric => {
+          if (Array.isArray(periodData[metric])) {
+            periodData[metric].sort((a, b) => {
+              if (field === 'date') {
+                return order === 'asc' ? 
+                  new Date(a.period) - new Date(b.period) :
+                  new Date(b.period) - new Date(a.period)
+              } else if (field === 'value') {
+                return order === 'asc' ? a.value - b.value : b.value - a.value
+              }
+              return 0
+            })
+          }
+        })
+      })
+    }
+    
+    setFilteredData(sorted)
+  }
+
+  // Generate chart data for multi-PDF analysis
+  const generateChartData = (data) => {
+    const chartData = []
+    
+    // Revenue trend chart
+    if (data.projections?.base_case_projections) {
+      const periods = Object.keys(data.projections.base_case_projections)
+      const revenueData = {
+        labels: periods,
+        datasets: [{
+          label: 'Revenue Projections',
+          data: periods.map(period => {
+            const periodData = data.projections.base_case_projections[period]
+            if (Array.isArray(periodData.revenue) && periodData.revenue.length > 0) {
+              return periodData.revenue[0].value
+            }
+            return periodData.revenue?.value || 0
+          })
+        }]
+      }
+      chartData.push({
+        type: 'line',
+        title: 'Revenue Projections Trend',
+        data: revenueData
+      })
+    }
+    
+    // Confidence distribution chart
+    if (data.projections?.base_case_projections) {
+      const confidenceLevels = { high: 0, medium: 0, low: 0, very_low: 0 }
+      
+      Object.values(data.projections.base_case_projections).forEach(period => {
+        Object.values(period).forEach(metric => {
+          if (Array.isArray(metric)) {
+            metric.forEach(item => {
+              if (item.confidence) {
+                confidenceLevels[item.confidence] = (confidenceLevels[item.confidence] || 0) + 1
+              }
+            })
+          }
+        })
+      })
+      
+      const confidenceData = {
+        labels: Object.keys(confidenceLevels),
+        datasets: [{
+          label: 'Confidence Distribution',
+          data: Object.values(confidenceLevels)
+        }]
+      }
+      
+      chartData.push({
+        type: 'doughnut',
+        title: 'Projection Confidence Distribution',
+        data: confidenceData
+      })
+    }
+    
+    return chartData
+  }
+
+  const chartData = generateChartData(filteredData)
 
   const toggleSection = (section) => {
     setExpandedSections(prev => ({
@@ -381,6 +541,372 @@ const MultiPDFResults = ({ results, fileNames, selectedModel, onReset }) => {
                 </div>
               </div>
             )}
+          </div>
+        </motion.div>
+      </motion.div>
+    )
+  }
+
+  // Business Context Analysis - Stage 2 insights
+  const renderBusinessContextAnalysis = () => {
+    if (!results.normalized_data || !results.normalized_data.business_context) return null
+
+    const businessContext = results.normalized_data.business_context
+    const contextualAnalysis = results.normalized_data.contextual_analysis
+    const patternAnalysis = results.normalized_data.pattern_analysis
+    const isExpanded = expandedSections.business_context
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="results-section"
+      >
+        <motion.div
+          className="section-header"
+          onClick={() => toggleSection('business_context')}
+          whileHover={{ backgroundColor: 'var(--surface-2)' }}
+          transition={{ duration: 0.2 }}
+        >
+          <div className="section-title">
+            <Building size={20} className="section-icon" />
+            <h3>Business Context Analysis</h3>
+            <span className="section-count">Stage 2 Intelligence</span>
+          </div>
+          <motion.div
+            animate={{ rotate: isExpanded ? 90 : 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <ChevronRight size={20} />
+          </motion.div>
+        </motion.div>
+        
+        <motion.div
+          initial={false}
+          animate={{ height: isExpanded ? 'auto' : 0, opacity: isExpanded ? 1 : 0 }}
+          transition={{ duration: 0.3 }}
+          className="section-content"
+        >
+          <div className="business-context-content">
+            {/* Industry & Business Stage */}
+            <div className="context-subsection">
+              <h5>Business Classification</h5>
+              <div className="context-grid">
+                <div className="context-item">
+                  <span className="context-label">Industry:</span>
+                  <span className="context-value">{businessContext.industry_classification || 'Not specified'}</span>
+                </div>
+                <div className="context-item">
+                  <span className="context-label">Business Stage:</span>
+                  <span className={`context-value stage-${businessContext.business_stage}`}>{businessContext.business_stage || 'Unknown'}</span>
+                </div>
+                <div className="context-item">
+                  <span className="context-label">Market Geography:</span>
+                  <span className="context-value">{businessContext.market_geography || 'Not specified'}</span>
+                </div>
+                <div className="context-item">
+                  <span className="context-label">Competitive Position:</span>
+                  <span className={`context-value position-${businessContext.competitive_position}`}>{businessContext.competitive_position || 'Unknown'}</span>
+                </div>
+                {businessContext.business_model_type && (
+                  <div className="context-item">
+                    <span className="context-label">Business Model:</span>
+                    <span className="context-value">{businessContext.business_model_type}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Seasonality Patterns */}
+            {contextualAnalysis && contextualAnalysis.seasonality_patterns && (
+              <div className="context-subsection">
+                <h5>Seasonality Analysis</h5>
+                <div className="seasonality-analysis">
+                  <div className="seasonality-overview">
+                    <span className={`seasonality-status ${contextualAnalysis.seasonality_patterns.seasonal_detected ? 'detected' : 'not-detected'}`}>
+                      {contextualAnalysis.seasonality_patterns.seasonal_detected ? '✅ Seasonal patterns detected' : '❌ No clear seasonal patterns'}
+                    </span>
+                  </div>
+                  {contextualAnalysis.seasonality_patterns.seasonal_detected && (
+                    <>
+                      {contextualAnalysis.seasonality_patterns.peak_periods && (
+                        <div className="seasonal-periods">
+                          <strong>Peak Periods:</strong> {contextualAnalysis.seasonality_patterns.peak_periods.join(', ')}
+                        </div>
+                      )}
+                      {contextualAnalysis.seasonality_patterns.trough_periods && (
+                        <div className="seasonal-periods">
+                          <strong>Low Periods:</strong> {contextualAnalysis.seasonality_patterns.trough_periods.join(', ')}
+                        </div>
+                      )}
+                      {contextualAnalysis.seasonality_patterns.seasonal_amplitude && (
+                        <div className="seasonal-periods">
+                          <strong>Seasonal Amplitude:</strong> {formatPercentage(contextualAnalysis.seasonality_patterns.seasonal_amplitude)}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Financial Health & Growth Patterns */}
+            {patternAnalysis && (
+              <div className="context-subsection">
+                <h5>Financial Pattern Analysis</h5>
+                <div className="pattern-grid">
+                  {patternAnalysis.growth_rates && (
+                    <div className="pattern-card">
+                      <h6>Growth Trends</h6>
+                      {patternAnalysis.growth_rates.revenue_cagr && (
+                        <div className="pattern-metric">
+                          <span>Revenue CAGR:</span>
+                          <span className="metric-value">{formatPercentage(patternAnalysis.growth_rates.revenue_cagr)}</span>
+                        </div>
+                      )}
+                      {patternAnalysis.growth_rates.profit_cagr && (
+                        <div className="pattern-metric">
+                          <span>Profit CAGR:</span>
+                          <span className="metric-value">{formatPercentage(patternAnalysis.growth_rates.profit_cagr)}</span>
+                        </div>
+                      )}
+                      {patternAnalysis.growth_rates.recent_growth_trend && (
+                        <div className="pattern-metric">
+                          <span>Recent Trend:</span>
+                          <span className={`trend-indicator ${patternAnalysis.growth_rates.recent_growth_trend}`}>
+                            {patternAnalysis.growth_rates.recent_growth_trend}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {patternAnalysis.volatility_assessment && (
+                    <div className="pattern-card">
+                      <h6>Volatility Assessment</h6>
+                      <div className="pattern-metric">
+                        <span>Revenue Volatility:</span>
+                        <span className={`volatility-level ${patternAnalysis.volatility_assessment.revenue_volatility}`}>
+                          {patternAnalysis.volatility_assessment.revenue_volatility}
+                        </span>
+                      </div>
+                      <div className="pattern-metric">
+                        <span>Profit Volatility:</span>
+                        <span className={`volatility-level ${patternAnalysis.volatility_assessment.profit_volatility}`}>
+                          {patternAnalysis.volatility_assessment.profit_volatility}
+                        </span>
+                      </div>
+                      <div className="pattern-metric">
+                        <span>Overall Stability:</span>
+                        <span className={`stability-level ${patternAnalysis.volatility_assessment.overall_stability}`}>
+                          {patternAnalysis.volatility_assessment.overall_stability}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </motion.div>
+      </motion.div>
+    )
+  }
+
+  // Methodology Evaluation - Stage 2 method selection
+  const renderMethodologyEvaluation = () => {
+    if (!results.normalized_data || !results.normalized_data.methodology_evaluation) return null
+
+    const methodology = results.normalized_data.methodology_evaluation
+    const isExpanded = expandedSections.methodology_evaluation
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="results-section"
+      >
+        <motion.div
+          className="section-header"
+          onClick={() => toggleSection('methodology_evaluation')}
+          whileHover={{ backgroundColor: 'var(--surface-2)' }}
+          transition={{ duration: 0.2 }}
+        >
+          <div className="section-title">
+            <Target size={20} className="section-icon" />
+            <h3>Forecasting Methodology</h3>
+            <span className="section-count">AI-Selected Method</span>
+          </div>
+          <motion.div
+            animate={{ rotate: isExpanded ? 90 : 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <ChevronRight size={20} />
+          </motion.div>
+        </motion.div>
+        
+        <motion.div
+          initial={false}
+          animate={{ height: isExpanded ? 'auto' : 0, opacity: isExpanded ? 1 : 0 }}
+          transition={{ duration: 0.3 }}
+          className="section-content"
+        >
+          <div className="methodology-content">
+            {/* Selected Method */}
+            {methodology.selected_method && (
+              <div className="methodology-subsection">
+                <h5>Selected Forecasting Method</h5>
+                <div className="method-selection">
+                  <div className="selected-method-card">
+                    <div className="method-header">
+                      <span className="method-badge">{methodology.selected_method.primary_method}</span>
+                      <span className={`confidence-badge ${methodology.selected_method.confidence_level}`}>
+                        {methodology.selected_method.confidence_level} confidence
+                      </span>
+                    </div>
+                    <div className="method-rationale">
+                      <strong>Rationale:</strong> {methodology.selected_method.rationale}
+                    </div>
+                    {methodology.selected_method.fallback_method && (
+                      <div className="fallback-method">
+                        <strong>Fallback Method:</strong> {methodology.selected_method.fallback_method}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Methods Tested */}
+            {methodology.methods_tested && methodology.methods_tested.length > 0 && (
+              <div className="methodology-subsection">
+                <h5>Methods Evaluation</h5>
+                <div className="methods-comparison">
+                  {methodology.methods_tested.map((method, index) => (
+                    <div key={index} className="method-card">
+                      <div className="method-name">
+                        <span className="method-label">{method.method}</span>
+                        <span className="suitability-score">
+                          Score: {method.suitability_score ? (method.suitability_score * 100).toFixed(1) : 'N/A'}%
+                        </span>
+                      </div>
+                      {method.evaluation_metrics && (
+                        <div className="evaluation-metrics">
+                          {method.evaluation_metrics.mape && (
+                            <span className="metric">MAPE: {method.evaluation_metrics.mape.toFixed(2)}%</span>
+                          )}
+                          {method.evaluation_metrics.r_squared && (
+                            <span className="metric">R²: {method.evaluation_metrics.r_squared.toFixed(3)}</span>
+                          )}
+                        </div>
+                      )}
+                      {method.strengths && method.strengths.length > 0 && (
+                        <div className="method-strengths">
+                          <strong>Strengths:</strong> {method.strengths.join(', ')}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </motion.div>
+      </motion.div>
+    )
+  }
+
+  // Scenario Analysis - Optimistic and Conservative scenarios
+  const renderScenarioAnalysis = () => {
+    if (!results.projections || !results.projections.scenario_projections) return null
+
+    const scenarios = results.projections.scenario_projections
+    const isExpanded = expandedSections.scenario_analysis
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="results-section"
+      >
+        <motion.div
+          className="section-header"
+          onClick={() => toggleSection('scenario_analysis')}
+          whileHover={{ backgroundColor: 'var(--surface-2)' }}
+          transition={{ duration: 0.2 }}
+        >
+          <div className="section-title">
+            <GitBranch size={20} className="section-icon" />
+            <h3>Scenario Planning</h3>
+            <span className="section-count">{Object.keys(scenarios).length} scenarios</span>
+          </div>
+          <motion.div
+            animate={{ rotate: isExpanded ? 90 : 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <ChevronRight size={20} />
+          </motion.div>
+        </motion.div>
+        
+        <motion.div
+          initial={false}
+          animate={{ height: isExpanded ? 'auto' : 0, opacity: isExpanded ? 1 : 0 }}
+          transition={{ duration: 0.3 }}
+          className="section-content"
+        >
+          <div className="scenario-analysis-content">
+            <div className="scenarios-grid">
+              {Object.entries(scenarios).map(([scenarioName, scenarioData]) => (
+                <div key={scenarioName} className="scenario-card">
+                  <div className="scenario-header">
+                    <h5 className={`scenario-title ${scenarioName}`}>
+                      {scenarioName.charAt(0).toUpperCase() + scenarioName.slice(1)} Scenario
+                    </h5>
+                    {scenarioData.probability_assessment && (
+                      <span className="probability-badge">
+                        {scenarioData.probability_assessment}
+                      </span>
+                    )}
+                  </div>
+                  
+                  {scenarioData.description && (
+                    <div className="scenario-description">
+                      {scenarioData.description}
+                    </div>
+                  )}
+
+                  {scenarioData.key_drivers && scenarioData.key_drivers.length > 0 && (
+                    <div className="scenario-drivers">
+                      <strong>Key Drivers:</strong>
+                      <ul>
+                        {scenarioData.key_drivers.map((driver, index) => (
+                          <li key={index}>{driver}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {scenarioData.growth_multipliers && (
+                    <div className="growth-multipliers">
+                      <strong>Growth Multipliers:</strong>
+                      <div className="multipliers-grid">
+                        {Object.entries(scenarioData.growth_multipliers).map(([period, multiplier]) => (
+                          <div key={period} className="multiplier-item">
+                            <span className="period-label">{period.replace(/_/g, ' ')}</span>
+                            <span className={`multiplier-value ${multiplier > 1 ? 'positive' : 'negative'}`}>
+                              {multiplier}x
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         </motion.div>
       </motion.div>
@@ -943,6 +1469,98 @@ const MultiPDFResults = ({ results, fileNames, selectedModel, onReset }) => {
               </div>
             )}
 
+            {/* Enhanced Business Intelligence from Stage 2 */}
+            {normalized.business_context && (
+              <div className="normalized-subsection">
+                <h5>Business Intelligence Summary</h5>
+                <div className="business-intelligence-grid">
+                  <div className="intelligence-item">
+                    <span className="intelligence-label">Industry Classification:</span>
+                    <span className="intelligence-value">{normalized.business_context.industry_classification || 'Not detected'}</span>
+                  </div>
+                  <div className="intelligence-item">
+                    <span className="intelligence-label">Business Stage:</span>
+                    <span className={`intelligence-value stage-${normalized.business_context.business_stage}`}>
+                      {normalized.business_context.business_stage || 'Unknown'}
+                    </span>
+                  </div>
+                  <div className="intelligence-item">
+                    <span className="intelligence-label">Market Position:</span>
+                    <span className="intelligence-value">{normalized.business_context.competitive_position || 'Unknown'}</span>
+                  </div>
+                  <div className="intelligence-item">
+                    <span className="intelligence-label">Market Geography:</span>
+                    <span className="intelligence-value">{normalized.business_context.market_geography || 'Not specified'}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Pattern Analysis Results */}
+            {normalized.pattern_analysis && (
+              <div className="normalized-subsection">
+                <h5>Financial Pattern Analysis</h5>
+                {normalized.pattern_analysis.growth_rates && (
+                  <div className="pattern-analysis-summary">
+                    <div className="pattern-summary-item">
+                      <strong>Revenue CAGR:</strong> 
+                      <span className="growth-value">
+                        {normalized.pattern_analysis.growth_rates.revenue_cagr ? 
+                          formatPercentage(normalized.pattern_analysis.growth_rates.revenue_cagr) : 'N/A'}
+                      </span>
+                    </div>
+                    <div className="pattern-summary-item">
+                      <strong>Profit CAGR:</strong> 
+                      <span className="growth-value">
+                        {normalized.pattern_analysis.growth_rates.profit_cagr ? 
+                          formatPercentage(normalized.pattern_analysis.growth_rates.profit_cagr) : 'N/A'}
+                      </span>
+                    </div>
+                    <div className="pattern-summary-item">
+                      <strong>Growth Trend:</strong> 
+                      <span className={`trend-indicator ${normalized.pattern_analysis.growth_rates.recent_growth_trend}`}>
+                        {normalized.pattern_analysis.growth_rates.recent_growth_trend || 'Unknown'}
+                      </span>
+                    </div>
+                  </div>
+                )}
+                
+                {normalized.pattern_analysis.volatility_assessment && (
+                  <div className="volatility-summary">
+                    <h6>Volatility Assessment</h6>
+                    <div className="volatility-grid">
+                      <div className="volatility-item">
+                        <span>Revenue Volatility:</span>
+                        <span className={`volatility-level ${normalized.pattern_analysis.volatility_assessment.revenue_volatility}`}>
+                          {normalized.pattern_analysis.volatility_assessment.revenue_volatility}
+                        </span>
+                      </div>
+                      <div className="volatility-item">
+                        <span>Overall Stability:</span>
+                        <span className={`stability-level ${normalized.pattern_analysis.volatility_assessment.overall_stability}`}>
+                          {normalized.pattern_analysis.volatility_assessment.overall_stability}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Key Assumptions from Analysis */}
+            {normalized.key_assumptions && normalized.key_assumptions.length > 0 && (
+              <div className="normalized-subsection">
+                <h5>Key Analysis Assumptions</h5>
+                <div className="assumptions-list">
+                  {normalized.key_assumptions.map((assumption, index) => (
+                    <div key={index} className="assumption-item">
+                      <div className="assumption-content">{assumption}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Time Series Data Sample */}
             {normalized.time_series && (
               <div className="normalized-subsection">
@@ -1200,13 +1818,13 @@ const MultiPDFResults = ({ results, fileNames, selectedModel, onReset }) => {
               </div>
             )}
 
-            {/* Specific Projections with New Array Format */}
-            {projections.specific_projections && (
+            {/* Enhanced Projections Display - Handle both new and legacy formats */}
+            {(projections.base_case_projections || projections.specific_projections) && (
               <div className="projection-subsection">
                 <div className="subsection-header">
                   <h5 className="subsection-title">
                     <DollarSign size={16} />
-                    Specific Interval Projections
+                    Financial Projections
                   </h5>
                   <div className="confidence-legend">
                     <div 
@@ -1240,9 +1858,12 @@ const MultiPDFResults = ({ results, fileNames, selectedModel, onReset }) => {
                   </div>
                 </div>
                 
-                {Object.entries(projections.specific_projections).map(([interval, data]) => {
+                {Object.entries(projections.base_case_projections || projections.specific_projections || {}).map(([interval, data]) => {
                   // Check if this is the new array format
-                  const isNewFormat = data.granularity && data.data_points && Array.isArray(data.revenue)
+                  const isNewFormat = data.granularity && data.data_points && (
+                    Array.isArray(data.revenue) || Array.isArray(data.gross_profit) || 
+                    Array.isArray(data.expenses) || Array.isArray(data.net_profit)
+                  )
                   
                   return (
                     <div key={interval} className="projection-interval-section">
@@ -1252,8 +1873,8 @@ const MultiPDFResults = ({ results, fileNames, selectedModel, onReset }) => {
                           <span className="granularity-badge">{data.granularity}</span>
                         )}
                       </h6>
-                      {data.period && (
-                        <div className="projection-period">{data.period}</div>
+                      {(data.period_label || data.period) && (
+                        <div className="projection-period">{data.period_label || data.period}</div>
                       )}
 
                       {isNewFormat ? (
@@ -1721,6 +2342,19 @@ const MultiPDFResults = ({ results, fileNames, selectedModel, onReset }) => {
           <Download size={18} />
           Download JSON
         </motion.button>
+
+        {/* Toggle Charts Button */}
+        {chartData.length > 0 && (
+          <motion.button
+            onClick={() => setShowCharts(!showCharts)}
+            className={`action-button chart-button ${showCharts ? 'active' : ''}`}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <BarChart3 size={18} />
+            {showCharts ? 'Hide Charts' : 'Show Charts'}
+          </motion.button>
+        )}
         
         <motion.button
           onClick={onReset}
@@ -1733,18 +2367,107 @@ const MultiPDFResults = ({ results, fileNames, selectedModel, onReset }) => {
         </motion.button>
       </motion.div>
 
+      {/* Enhanced Export Options */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.5 }}
+        className="enhanced-export-section"
+      >
+        <ExportUtils
+          data={filteredData}
+          fileName={`multi-pdf-analysis-${new Date().toISOString().split('T')[0]}`}
+          contentRef={contentRef}
+          chartRefs={chartRefs.current}
+        />
+      </motion.div>
+
+      {/* Search and Filter */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.6 }}
+        className="search-filter-section"
+      >
+        <SearchFilter
+          data={results}
+          onFilter={handleFilter}
+          onSort={handleSort}
+          onSearch={handleSearch}
+        />
+      </motion.div>
+
+      {/* Error Display */}
+      {error && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.7 }}
+          className="error-section"
+        >
+          <ErrorDisplay
+            error={error}
+            onRetry={() => setError(null)}
+            onDismiss={() => setError(null)}
+          />
+        </motion.div>
+      )}
+
+      {/* Charts Section */}
+      {showCharts && chartData.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.8 }}
+          className="charts-section"
+        >
+          <div className="charts-header">
+            <h3>
+              <BarChart3 size={20} />
+              Analysis Visualization
+            </h3>
+            <span className="charts-count">{chartData.length} charts</span>
+          </div>
+          
+          <div className="charts-grid">
+            {chartData.map((chart, index) => (
+              <div
+                key={index}
+                ref={el => chartRefs.current[index] = el}
+                className="chart-wrapper"
+              >
+                <FinancialChart
+                  data={chart.data}
+                  type={chart.type}
+                  title={chart.title}
+                  subtitle={chart.subtitle}
+                  height={350}
+                />
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
+
       {/* Results Sections */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 0.6 }}
+        transition={{ delay: 0.9 }}
         className="analysis-results"
+        ref={contentRef}
       >
         {/* Executive Summary - Show first if available */}
         {results.summary && renderSummarySection()}
 
         {/* Executive Summary / Explanation - Show if available */}
         {(results.explanation || results.executive_summary) && renderExplanationSection()}
+
+        {/* Business Context Analysis - Stage 2 business intelligence */}
+        {results.normalized_data && results.normalized_data.business_context && renderBusinessContextAnalysis()}
+
+        {/* Methodology Evaluation - Stage 2 method selection */}
+        {results.normalized_data && results.normalized_data.methodology_evaluation && renderMethodologyEvaluation()}
 
         {/* Data Analysis Summary - Show period detection and overview */}
         {results.data_analysis_summary && renderDataAnalysisSummary()}
@@ -1754,6 +2477,9 @@ const MultiPDFResults = ({ results, fileNames, selectedModel, onReset }) => {
 
         {/* Projections - Main feature */}
         {results.projections && renderEnhancedProjections()}
+
+        {/* Scenario Analysis - Optimistic and Conservative scenarios */}
+        {results.projections && results.projections.scenario_projections && renderScenarioAnalysis()}
 
         {/* Normalized Data - Processed data insights */}
         {results.normalized_data && renderNormalizedData()}

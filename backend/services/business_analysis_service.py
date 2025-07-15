@@ -15,9 +15,14 @@ from google import genai
 from config import get_next_key, API_KEYS, API_TIMEOUT, MAX_RETRIES, RETRY_DELAY
 from prompts import STAGE2_ANALYSIS_PROMPT
 from logging_config import (get_logger, log_api_call, log_stage_progress)
+import os
 
 # Set up logger
 logger = get_logger(__name__)
+
+# Only log during main server process, not during uvicorn reloads
+if os.getenv("OCR_SERVER_MAIN") == "true":
+    logger.info(f"API Configuration: {len(API_KEYS)} keys | Timeout: {API_TIMEOUT}s | Retries: {MAX_RETRIES}")
 
 class RobustJSONParser:
     """Robust JSON parser that can handle malformed AI responses"""
@@ -257,12 +262,14 @@ class BusinessAnalysisService:
         self.api_key_index = 0
         
         # Debug flag for detailed response logging
-        self.debug_responses = True
+        self.debug_responses = False
         
-        logger.info("Business Analysis Service (Stage 2) initialized")
-        logger.info(f"API configuration | Timeout: {self.api_timeout}s | Max retries: {self.max_retries} | Retry delay: {self.retry_delay}s")
-        logger.info(f"API key pool initialized | Count: {len(self.api_key_pool)}")
-        logger.info(f"Debug response logging: {'ENABLED' if self.debug_responses else 'DISABLED'}")
+        # Only log during main server process, not during uvicorn reloads
+        if os.getenv("OCR_SERVER_MAIN") == "true":
+            logger.info("Business Analysis Service (Stage 2) initialized")
+        logger.debug(f"API configuration | Timeout: {self.api_timeout}s | Max retries: {self.max_retries} | Retry delay: {self.retry_delay}s")
+        logger.debug(f"API key pool initialized | Count: {len(self.api_key_pool)}")
+        logger.debug(f"Debug response logging: {'ENABLED' if self.debug_responses else 'DISABLED'}")
     
     def get_next_api_key(self) -> str:
         """Get next API key from pool with rotation"""

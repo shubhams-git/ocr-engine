@@ -9,13 +9,88 @@ const apiClient = axios.create({
   timeout: import.meta.env.VITE_API_TIMEOUT || 600000, // 10 minute timeout (from env or default)
 })
 
+// Utility function to clean and parse JSON responses
+const cleanAndParseJSON = (responseText) => {
+  try {
+    // If it's already an object, return as is
+    if (typeof responseText === 'object' && responseText !== null) {
+      return responseText
+    }
+    
+    // Convert to string if needed
+    let cleanText = String(responseText)
+    
+    // Remove leading/trailing whitespace
+    cleanText = cleanText.trim()
+    
+    // Remove markdown code blocks
+    cleanText = cleanText.replace(/^```(?:json)?\s*\n?/i, '')
+    cleanText = cleanText.replace(/\n?```\s*$/i, '')
+    
+    // Remove any leading text before JSON (look for first { or [)
+    const jsonStart = Math.min(
+      cleanText.indexOf('{') !== -1 ? cleanText.indexOf('{') : Infinity,
+      cleanText.indexOf('[') !== -1 ? cleanText.indexOf('[') : Infinity
+    )
+    
+    if (jsonStart !== Infinity && jsonStart > 0) {
+      cleanText = cleanText.substring(jsonStart)
+    }
+    
+    // Remove any trailing text after JSON (look for last } or ])
+    let jsonEnd = Math.max(
+      cleanText.lastIndexOf('}'),
+      cleanText.lastIndexOf(']')
+    )
+    
+    if (jsonEnd !== -1 && jsonEnd < cleanText.length - 1) {
+      cleanText = cleanText.substring(0, jsonEnd + 1)
+    }
+    
+    // Parse the cleaned JSON
+    return JSON.parse(cleanText)
+  } catch (parseError) {
+    console.error('JSON parsing failed:', parseError)
+    console.error('Original text:', responseText)
+    throw new Error(`Invalid JSON response: ${parseError.message}`)
+  }
+}
+
 // Response interceptor for error handling
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Clean and parse JSON responses if needed
+    if (response.data && typeof response.data === 'string') {
+      try {
+        response.data = cleanAndParseJSON(response.data)
+      } catch (error) {
+        console.warn('Failed to parse response as JSON:', error.message)
+        // Keep original response if parsing fails
+      }
+    }
+    return response
+  },
   (error) => {
     if (error.response) {
       // Server responded with error status
-      const message = error.response.data?.detail || error.response.data?.error || 'Server error occurred'
+      let message = 'Server error occurred'
+      
+      if (error.response.data) {
+        if (typeof error.response.data === 'string') {
+          message = error.response.data
+        } else if (error.response.data.detail) {
+          message = typeof error.response.data.detail === 'string' 
+            ? error.response.data.detail 
+            : JSON.stringify(error.response.data.detail)
+        } else if (error.response.data.error) {
+          message = typeof error.response.data.error === 'string' 
+            ? error.response.data.error 
+            : JSON.stringify(error.response.data.error)
+        } else {
+          message = JSON.stringify(error.response.data)
+        }
+      }
+      
       throw new Error(`${error.response.status}: ${message}`)
     } else if (error.request) {
       // Request made but no response received
@@ -223,11 +298,67 @@ export const testStage1 = async (file, model = 'gemini-2.5-flash') => {
  * @returns {Promise<Object>} - Test results
  */
 export const testStage2 = async (extractedData, model = 'gemini-2.5-flash') => {
-  const response = await apiClient.post('/admin/test/stage2', {
+  console.log('testStage2 - Input extractedData:', extractedData)
+  console.log('testStage2 - Type check:', Array.isArray(extractedData))
+  console.log('testStage2 - Model:', model)
+  
+  // Validate input data
+  if (!extractedData || !Array.isArray(extractedData)) {
+    throw new Error('Invalid extracted data: Expected an array of extraction results')
+  }
+  
+  if (extractedData.length === 0) {
+    throw new Error('No extracted data provided: Array is empty')
+  }
+  
+  // Validate each extraction result has required structure
+  for (let i = 0; i < extractedData.length; i++) {
+    const item = extractedData[i]
+    if (!item || typeof item !== 'object') {
+      throw new Error(`Invalid extraction result at index ${i}: Expected object`)
+    }
+    if (!item.hasOwnProperty('filename') || !item.hasOwnProperty('success') || !item.hasOwnProperty('data')) {
+      console.warn(`Extraction result at index ${i} missing required fields:`, item)
+      throw new Error(`Invalid extraction result at index ${i}: Missing required fields (filename, success, data)`)
+    }
+  }
+  
+  const requestBody = {
     extracted_data: extractedData,
     model: model
-  })
-  return response.data
+  }
+  
+  console.log('testStage2 - Validated request body:', requestBody)
+  
+  try {
+    const response = await apiClient.post('/admin/test/stage2', requestBody, {
+      timeout: 300000, // 5 minute timeout for Stage 2
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    })
+    
+    console.log('testStage2 - Raw response:', response)
+    console.log('testStage2 - Response data:', response.data)
+    
+    return response.data
+  } catch (error) {
+    console.error('testStage2 - Error details:', {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+      extractedDataSample: extractedData.slice(0, 1) // Log first item for debugging
+    })
+    
+    // Provide more specific error messages
+    if (error.response?.status === 422) {
+      throw new Error(`Validation error: ${error.response.data?.detail || 'Invalid request format'}`)
+    } else if (error.response?.status === 500) {
+      throw new Error(`Server error in Stage 2: ${error.response.data?.detail || error.message}`)
+    }
+    
+    throw error
+  }
 }
 
 /**

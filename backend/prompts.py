@@ -137,13 +137,31 @@ Reason step-by-step through these components:
    - Model Evaluation: Compare MAPE, RMSE, AIC, cross-validation scores
    - Method Selection: Choose optimal approach with clear justification
 
-5. **EXTERNAL DATA INTEGRATION ASSESSMENT**
+5. **DRIVER DEFINITION AND FINANCIAL STRUCTURE ANALYSIS**
+   - Define Specific Revenue Drivers: Identify key factors driving revenue growth
+   - Analyze Cost Structure: Determine fixed vs variable costs and their drivers
+   - Calculate Working Capital Ratios: DSO, DPO, DIO from historical data
+   - Assess Capital Requirements: Maintenance and growth capex needs
+   - Document Relationships: How each driver impacts financial projections
+
+**CRITICAL ASSUMPTION REQUIREMENTS:**
+For each forecast driver, you MUST provide specific, concrete assumptions rather than vague statements:
+- INSTEAD OF: "Requires assumption on market growth"
+- PROVIDE: "Assume 5% annual revenue growth based on Australian professional services sector trends"
+- INSTEAD OF: "Cost escalation needed"
+- PROVIDE: "Assume 3.5% annual cost inflation based on Australian CPI forecasts"
+- INSTEAD OF: "Working capital optimization possible"
+- PROVIDE: "Target DSO reduction from 45 days to 35 days over 3 years through process improvements"
+
+You must justify each assumption with available data, industry benchmarks, or reasonable business logic.
+
+6. **EXTERNAL DATA INTEGRATION ASSESSMENT**
    - Data Sufficiency: Determine if external benchmarks needed
    - Industry Benchmarks: Identify relevant comparison metrics
    - Economic Indicators: Australian GDP growth, inflation, industry trends
    - Competitive Intelligence: Market growth rates, industry performance
 
-6. **CONFIDENCE FACTORS ANALYSIS**
+7. **CONFIDENCE FACTORS ANALYSIS**
    - Data Availability: Volume, completeness, recency of data
    - Historical Consistency: Stability of patterns and trends
    - Industry Volatility: Sector-specific risk factors
@@ -251,6 +269,76 @@ Return ONLY valid JSON with this structure:
       "15_years": "high|medium|low|very_low"
     }
   },
+  "forecast_drivers": {
+    "revenue_drivers": [
+      {
+        "driver_name": "Primary revenue driver (e.g., contract volume, customer growth)",
+        "driver_type": "volume|price|mix|market_share",
+        "baseline_value": "SPECIFIC NUMERIC VALUE with units (e.g., $50,000/month, 120 customers)",
+        "growth_assumptions": "SPECIFIC RATE AND PATTERN (e.g., 5% annual growth, 2% monthly compound)",
+        "seasonality_factors": "SPECIFIC SEASONAL ADJUSTMENTS (e.g., +15% in Q2, -10% in Q4)",
+        "justification": "DATA-BASED RATIONALE for this assumption"
+      }
+    ],
+    "cost_drivers": [
+      {
+        "driver_name": "Cost of goods sold driver",
+        "driver_type": "percentage_of_revenue|fixed_cost|variable_cost",
+        "baseline_value": "SPECIFIC BASELINE (e.g., 65% of revenue, $25,000/month fixed)",
+        "escalation_rate": "SPECIFIC ANNUAL INCREASE (e.g., 3.5% annual inflation)",
+        "relationship_to_revenue": "SPECIFIC SCALING RELATIONSHIP (e.g., 1:1 with revenue, fixed regardless of revenue)",
+        "justification": "DATA-BASED RATIONALE for this assumption"
+      }
+    ],
+    "opex_drivers": [
+      {
+        "driver_name": "Operating expense driver",
+        "driver_type": "fixed|variable|stepped",
+        "baseline_value": "SPECIFIC MONTHLY/ANNUAL BASELINE (e.g., $15,000/month, $180,000/year)",
+        "inflation_rate": "SPECIFIC INFLATION ADJUSTMENT (e.g., 3.2% annual based on Australian CPI)",
+        "scalability": "SPECIFIC SCALING PATTERN (e.g., +$5,000 per additional $100k revenue)",
+        "justification": "DATA-BASED RATIONALE for this assumption"
+      }
+    ]
+  },
+  "working_capital_assumptions": {
+    "accounts_receivable": {
+      "days_sales_outstanding": "SPECIFIC DSO VALUE (e.g., 45 days from historical average)",
+      "collection_pattern": "SPECIFIC TIMING (e.g., 60% within 30 days, 30% within 60 days, 10% within 90 days)",
+      "bad_debt_provision": "SPECIFIC PERCENTAGE (e.g., 2.5% of revenue based on historical losses)",
+      "justification": "DATA-BASED RATIONALE for DSO assumption"
+    },
+    "accounts_payable": {
+      "days_payables_outstanding": "SPECIFIC DPO VALUE (e.g., 30 days from historical average)",
+      "payment_pattern": "SPECIFIC TIMING (e.g., pay within 28 days to capture 2% discount)",
+      "supplier_terms": "SPECIFIC TERMS (e.g., Net 30 with 2/10 discount available)",
+      "justification": "DATA-BASED RATIONALE for DPO assumption"
+    },
+    "inventory": {
+      "days_inventory_outstanding": "SPECIFIC DIO VALUE (e.g., 60 days or N/A for service business)",
+      "inventory_turnover": "SPECIFIC TURNOVER RATE (e.g., 6x annually or N/A for service business)",
+      "seasonal_variations": "SPECIFIC SEASONAL CHANGES (e.g., +20% in Q4, -15% in Q1)",
+      "justification": "DATA-BASED RATIONALE for inventory assumption"
+    },
+    "cash_conversion_cycle": {
+      "current_cycle_days": "SPECIFIC CALCULATION (e.g., DSO 45 + DIO 60 - DPO 30 = 75 days)",
+      "target_optimization": "SPECIFIC IMPROVEMENTS (e.g., reduce to 60 days by Year 3)",
+      "working_capital_intensity": "SPECIFIC PERCENTAGE (e.g., 12% of revenue based on historical analysis)",
+      "justification": "DATA-BASED RATIONALE for working capital assumptions"
+    }
+  },
+  "capital_expenditure_assumptions": {
+    "maintenance_capex": {
+      "annual_rate": "% of revenue or fixed amount",
+      "asset_categories": ["types of assets requiring maintenance"],
+      "depreciation_method": "straight_line|declining_balance"
+    },
+    "growth_capex": {
+      "expansion_requirements": "capex needed for growth initiatives",
+      "timing": "when capex will be required",
+      "financing_approach": "debt|equity|cash_flow"
+    }
+  },
   "handover_recommendations": {
     "primary_recommendations": ["key guidance for projection stage"],
     "risk_adjustments": ["adjustments needed due to identified risks"],
@@ -283,13 +371,20 @@ PROJECTION ENGINE REQUIREMENTS:
 Integrate all Stage 2 findings and apply the recommended methodology to generate accurate, validated projections.
 
 INTEGRATION FRAMEWORK:
-1. **METHODOLOGY APPLICATION**
+1. **METHODOLOGY APPLICATION WITH DRIVER INTEGRATION**
    - Apply the selected forecasting method from Stage 2
+   - Use specific revenue drivers, cost drivers, and OPEX drivers defined in Stage 2
+   - Apply working capital assumptions (DSO, DPO, DIO) from Stage 2 analysis
    - Incorporate identified patterns, trends, and seasonal adjustments
    - Adjust for anomalies and risk factors identified
    - Use confidence levels to calibrate projection ranges
 
-2. **PROJECTION ENGINE IMPLEMENTATION**
+2. **THREE-WAY FORECAST IMPLEMENTATION**
+   - **Step 1: Profit & Loss Statement**: Generate comprehensive P&L using Stage 2 drivers
+   - **Step 2: Cash Flow Statement**: Build cash flow from P&L with working capital changes
+   - **Step 3: Balance Sheet**: Construct balance sheet ensuring it balances (Assets = Liabilities + Equity)
+   - **Step 4: Dividend Policy Implementation**: Model profit distribution policy using 40% dividend payout ratio
+   - **Step 5: Integration Validation**: Ensure all three statements are mathematically connected
    - Multiple Forecasting Methods Integration:
      * Primary method (from Stage 2 selection)
      * Backup method for validation
@@ -310,21 +405,53 @@ INTEGRATION FRAMEWORK:
    - Validate reasonableness against industry benchmarks
    - Flag any projections requiring additional scrutiny
 
-MANDATORY PROJECTION SCHEMA:
-Generate projections for ALL required time horizons with ALL four mandatory metrics:
+MANDATORY PROJECTION SCHEMA WITH CALCULATION CHAINS:
+Generate projections for ALL required time horizons with ALL mandatory metrics and calculation chains.
+
+CALCULATION CHAIN REQUIREMENT:
+For every calculated metric, you MUST include a 'calculation_chain' object that explicitly shows:
+- The formula used
+- The source values 
+- The mathematical operation performed
+This ensures mathematical integrity and prevents reconciliation errors.
+
+PROCESSING APPROACH:
+1. First, generate ALL projections on a monthly basis for the entire forecast horizon
+2. Then, aggregate monthly results to create quarterly and annual summaries by summing/averaging the monthly data
+3. Do NOT recalculate at the aggregate level - only use the monthly calculations
 
 TIME HORIZONS:
 - 1 Year Ahead: Monthly granularity (12 data points)
-- 3 Years Ahead: Quarterly granularity (12 data points)
-- 5 Years Ahead: Yearly granularity (5 data points)
-- 10 Years Ahead: Yearly granularity (10 data points)
-- 15 Years Ahead: Yearly granularity (15 data points)
+- 3 Years Ahead: Quarterly granularity (12 data points - aggregated from monthly)
+- 5 Years Ahead: Yearly granularity (5 data points - aggregated from monthly)
+- 10 Years Ahead: Yearly granularity (10 data points - aggregated from monthly)
+- 15 Years Ahead: Yearly granularity (15 data points - aggregated from monthly)
 
-MANDATORY METRICS (must be present in every projection period):
-1. revenue - REQUIRED
-2. gross_profit - REQUIRED
-3. expenses - REQUIRED
-4. net_profit - REQUIRED
+MANDATORY METRICS WITH CALCULATION CHAINS:
+1. revenue - REQUIRED (with confidence level)
+2. gross_profit - REQUIRED (with calculation_chain showing derivation from revenue)
+3. expenses - REQUIRED (with detailed breakdown)
+4. net_profit - REQUIRED (with calculation_chain: gross_profit - expenses)
+
+DIVIDEND POLICY IMPLEMENTATION REQUIREMENTS:
+After calculating the three-way forecast, implement a realistic profit distribution policy:
+
+1. **Dividend Payout Ratio**: Apply a 40% dividend payout ratio of Net Profit
+2. **Payment Timing**: Distribute dividends quarterly (at the end of each quarter)
+3. **Cash Flow Impact**: Record dividend payments as a use of cash in the "Cash Flow from Financing" section
+4. **Balance Sheet Impact**: Reduce "Retained Earnings" by the dividend amount
+5. **Calculation Chain**: Ensure dividend calculation is: Net Profit * 0.40 = Dividend Payment
+6. **Balance Sheet Validation**: Ensure Balance Sheet remains balanced after dividend distributions
+7. **Quarterly Distribution**: For monthly projections, calculate quarterly dividends and distribute at month 3, 6, 9, 12
+
+DIVIDEND CALCULATION EXAMPLE:
+- If Net Profit = $100,000 for the quarter
+- Dividend Payment = $100,000 * 0.40 = $40,000
+- Cash Flow from Financing = -$40,000 (cash outflow)
+- Retained Earnings reduction = -$40,000
+- Remaining in Retained Earnings = $60,000
+
+This ensures realistic cash management and prevents unrealistic cash accumulation in profitable businesses.
 
 OUTPUT REQUIREMENTS:
 Return ONLY valid JSON with this structure:
@@ -342,46 +469,244 @@ Return ONLY valid JSON with this structure:
       "period_label": "FY20XX",
       "granularity": "monthly",
       "data_points": 12,
-      "revenue": [{"period": "Month 1", "value": number, "confidence": "high|medium|low"}],
-      "gross_profit": [{"period": "Month 1", "value": number, "confidence": "high|medium|low"}],
-      "expenses": [{"period": "Month 1", "value": number, "confidence": "high|medium|low"}],
-      "net_profit": [{"period": "Month 1", "value": number, "confidence": "high|medium|low"}]
+      "profit_and_loss": [
+        {
+          "period": "Month 1",
+          "revenue": {"value": number, "confidence": "high|medium|low", "calculation_chain": "Driver-based projection using [specific method/factors]"},
+          "cost_of_goods_sold": {"value": number, "confidence": "high|medium|low", "calculation_chain": "Revenue (X) * COGS% (Y) = Z"},
+          "gross_profit": {"value": number, "confidence": "high|medium|low", "calculation_chain": "Revenue (X) - COGS (Y) = Z"},
+          "operating_expenses": {
+            "salaries_wages": {"value": number, "calculation_chain": "Monthly baseline + growth adjustments"},
+            "rent_utilities": {"value": number, "calculation_chain": "Fixed monthly costs + inflation"},
+            "marketing": {"value": number, "calculation_chain": "% of revenue or fixed amount"},
+            "other_opex": {"value": number, "calculation_chain": "Detailed breakdown"},
+            "total_opex": {"value": number, "calculation_chain": "Sum of all operating expenses"}
+          },
+          "ebitda": {"value": number, "confidence": "high|medium|low", "calculation_chain": "Gross Profit (X) - Total OpEx (Y) = Z"},
+          "depreciation": {"value": number, "confidence": "high|medium|low", "calculation_chain": "Fixed assets / useful life"},
+          "ebit": {"value": number, "confidence": "high|medium|low", "calculation_chain": "EBITDA (X) - Depreciation (Y) = Z"},
+          "interest_expense": {"value": number, "confidence": "high|medium|low", "calculation_chain": "Debt balance * interest rate"},
+          "net_profit_before_tax": {"value": number, "confidence": "high|medium|low", "calculation_chain": "EBIT (X) - Interest (Y) = Z"},
+          "tax_expense": {"value": number, "confidence": "high|medium|low", "calculation_chain": "PBT (X) * tax rate (Y) = Z"},
+          "net_profit": {"value": number, "confidence": "high|medium|low", "calculation_chain": "PBT (X) - Tax (Y) = Z"}
+        }
+      ],
+      "cash_flow_statement": [
+        {
+          "period": "Month 1",
+          "operating_activities": {
+            "net_income": {"value": number, "calculation_chain": "From P&L net profit"},
+            "depreciation": {"value": number, "calculation_chain": "Non-cash expense add-back"},
+            "working_capital_changes": {
+              "accounts_receivable_change": {"value": number, "calculation_chain": "Revenue * DSO - previous A/R"},
+              "accounts_payable_change": {"value": number, "calculation_chain": "Expenses * DPO - previous A/P"},
+              "inventory_change": {"value": number, "calculation_chain": "COGS * DIO - previous inventory"},
+              "total_wc_change": {"value": number, "calculation_chain": "Sum of working capital changes"}
+            },
+            "net_cash_from_operations": {"value": number, "calculation_chain": "Net Income + Depreciation - WC Change"}
+          },
+          "investing_activities": {
+            "capital_expenditures": {"value": number, "calculation_chain": "Maintenance + growth capex"},
+            "asset_disposals": {"value": number, "calculation_chain": "Any asset sales"},
+            "net_cash_from_investing": {"value": number, "calculation_chain": "Sum of investing activities"}
+          },
+          "financing_activities": {
+            "debt_changes": {"value": number, "calculation_chain": "New borrowings - repayments"},
+            "equity_changes": {"value": number, "calculation_chain": "New equity issuance"},
+            "dividend_payments": {"value": number, "calculation_chain": "Net Profit * 0.40 (quarterly distribution)"},
+            "net_cash_from_financing": {"value": number, "calculation_chain": "Debt Changes + Equity Changes - Dividend Payments"}
+          },
+          "net_change_in_cash": {"value": number, "calculation_chain": "Operating + Investing + Financing cash flows"}
+        }
+      ],
+      "balance_sheet": [
+        {
+          "period": "Month 1",
+          "assets": {
+            "current_assets": {
+              "cash": {"value": number, "calculation_chain": "Beginning cash + net change in cash"},
+              "accounts_receivable": {"value": number, "calculation_chain": "Revenue * DSO days / 365"},
+              "inventory": {"value": number, "calculation_chain": "COGS * DIO days / 365"},
+              "other_current_assets": {"value": number, "calculation_chain": "Estimated based on historical %"},
+              "total_current_assets": {"value": number, "calculation_chain": "Sum of current assets"}
+            },
+            "fixed_assets": {
+              "property_plant_equipment": {"value": number, "calculation_chain": "Previous PPE + Capex - Depreciation"},
+              "accumulated_depreciation": {"value": number, "calculation_chain": "Previous accum deprec + current depreciation"},
+              "net_fixed_assets": {"value": number, "calculation_chain": "PPE - Accumulated Depreciation"},
+              "other_long_term_assets": {"value": number, "calculation_chain": "Estimated based on business model"}
+            },
+            "total_assets": {"value": number, "calculation_chain": "Current Assets + Fixed Assets"}
+          },
+          "liabilities": {
+            "current_liabilities": {
+              "accounts_payable": {"value": number, "calculation_chain": "Expenses * DPO days / 365"},
+              "accrued_expenses": {"value": number, "calculation_chain": "Estimated based on operations"},
+              "current_portion_debt": {"value": number, "calculation_chain": "Debt due within 12 months"},
+              "total_current_liabilities": {"value": number, "calculation_chain": "Sum of current liabilities"}
+            },
+            "long_term_liabilities": {
+              "long_term_debt": {"value": number, "calculation_chain": "Total debt - current portion"},
+              "other_long_term_liabilities": {"value": number, "calculation_chain": "Estimated based on business"}
+            },
+            "total_liabilities": {"value": number, "calculation_chain": "Current + Long-term liabilities"}
+          },
+          "equity": {
+            "retained_earnings": {"value": number, "calculation_chain": "Previous RE + Net Profit - Dividend Payments (40% of Net Profit)"},
+            "share_capital": {"value": number, "calculation_chain": "Issued share capital"},
+            "other_equity": {"value": number, "calculation_chain": "Other equity components"},
+            "total_equity": {"value": number, "calculation_chain": "Sum of equity components"}
+          },
+          "balance_check": {
+            "total_liabilities_equity": {"value": number, "calculation_chain": "Total Liabilities + Total Equity"},
+            "balance_status": "BALANCED|UNBALANCED",
+            "variance": {"value": number, "calculation_chain": "Total Assets - (Liabilities + Equity)"}
+          }
+        }
+      ]
     },
     "3_years_ahead": {
       "period_label": "FY20XX-FY20XX",
       "granularity": "quarterly",
       "data_points": 12,
-      "revenue": [{"period": "Quarter 1", "value": number, "confidence": "medium|low"}],
-      "gross_profit": [{"period": "Quarter 1", "value": number, "confidence": "medium|low"}],
-      "expenses": [{"period": "Quarter 1", "value": number, "confidence": "medium|low"}],
-      "net_profit": [{"period": "Quarter 1", "value": number, "confidence": "medium|low"}]
+      "profit_and_loss": [
+        {
+          "period": "Quarter 1",
+          "revenue": {"value": number, "confidence": "medium|low", "calculation_chain": "Aggregated from monthly projections: [specific calculation]"},
+          "cost_of_goods_sold": {"value": number, "confidence": "medium|low", "calculation_chain": "Revenue * COGS% (aggregated from monthly)"},
+          "gross_profit": {"value": number, "confidence": "medium|low", "calculation_chain": "Revenue - COGS (aggregated from monthly)"},
+          "operating_expenses": {"total_opex": {"value": number, "calculation_chain": "Aggregated from monthly detailed breakdown"}},
+          "ebitda": {"value": number, "confidence": "medium|low", "calculation_chain": "Gross Profit - Total OpEx (aggregated)"},
+          "depreciation": {"value": number, "confidence": "medium|low", "calculation_chain": "Aggregated from monthly calculations"},
+          "ebit": {"value": number, "confidence": "medium|low", "calculation_chain": "EBITDA - Depreciation (aggregated)"},
+          "interest_expense": {"value": number, "confidence": "medium|low", "calculation_chain": "Aggregated from monthly calculations"},
+          "net_profit_before_tax": {"value": number, "confidence": "medium|low", "calculation_chain": "EBIT - Interest (aggregated)"},
+          "tax_expense": {"value": number, "confidence": "medium|low", "calculation_chain": "PBT * tax rate (aggregated)"},
+          "net_profit": {"value": number, "confidence": "medium|low", "calculation_chain": "PBT - Tax (aggregated)"}
+        }
+      ],
+      "cash_flow_statement": [
+        {
+          "period": "Quarter 1",
+          "operating_activities": {
+            "net_income": {"value": number, "calculation_chain": "Aggregated from monthly P&L"},
+            "depreciation": {"value": number, "calculation_chain": "Aggregated non-cash add-back"},
+            "working_capital_changes": {"total_wc_change": {"value": number, "calculation_chain": "Aggregated WC movements"}},
+            "net_cash_from_operations": {"value": number, "calculation_chain": "Aggregated operating cash flow"}
+          },
+          "investing_activities": {"net_cash_from_investing": {"value": number, "calculation_chain": "Aggregated investing activities"}},
+          "financing_activities": {"net_cash_from_financing": {"value": number, "calculation_chain": "Aggregated financing activities"}},
+          "net_change_in_cash": {"value": number, "calculation_chain": "Aggregated total cash flow"}
+        }
+      ],
+      "balance_sheet": [
+        {
+          "period": "Quarter 1",
+          "assets": {"total_assets": {"value": number, "calculation_chain": "End of quarter balance (from monthly build-up)"}},
+          "liabilities": {"total_liabilities": {"value": number, "calculation_chain": "End of quarter balance (from monthly build-up)"}},
+          "equity": {"total_equity": {"value": number, "calculation_chain": "End of quarter balance (from monthly build-up)"}},
+          "balance_check": {"balance_status": "BALANCED|UNBALANCED", "variance": {"value": number, "calculation_chain": "Assets - (Liabilities + Equity)"}}
+        }
+      ]
     },
     "5_years_ahead": {
       "period_label": "FY20XX-FY20XX",
       "granularity": "yearly",
       "data_points": 5,
-      "revenue": [{"period": "Year 1", "value": number, "confidence": "medium|low"}],
-      "gross_profit": [{"period": "Year 1", "value": number, "confidence": "medium|low"}],
-      "expenses": [{"period": "Year 1", "value": number, "confidence": "medium|low"}],
-      "net_profit": [{"period": "Year 1", "value": number, "confidence": "medium|low"}]
+      "profit_and_loss": [
+        {
+          "period": "Year 1",
+          "revenue": {"value": number, "confidence": "medium|low", "calculation_chain": "Annual aggregation from monthly projections"},
+          "gross_profit": {"value": number, "confidence": "medium|low", "calculation_chain": "Revenue - COGS (annual aggregation)"},
+          "operating_expenses": {"total_opex": {"value": number, "calculation_chain": "Annual aggregation"}},
+          "ebitda": {"value": number, "confidence": "medium|low", "calculation_chain": "Gross Profit - OpEx (annual)"},
+          "net_profit": {"value": number, "confidence": "medium|low", "calculation_chain": "Complete P&L flow (annual)"}
+        }
+      ],
+      "cash_flow_statement": [
+        {
+          "period": "Year 1",
+          "net_cash_from_operations": {"value": number, "calculation_chain": "Annual operating cash flow"},
+          "net_cash_from_investing": {"value": number, "calculation_chain": "Annual investing cash flow"},
+          "net_cash_from_financing": {"value": number, "calculation_chain": "Annual financing cash flow"},
+          "net_change_in_cash": {"value": number, "calculation_chain": "Annual total cash flow"}
+        }
+      ],
+      "balance_sheet": [
+        {
+          "period": "Year 1",
+          "total_assets": {"value": number, "calculation_chain": "End of year balance"},
+          "total_liabilities": {"value": number, "calculation_chain": "End of year balance"},
+          "total_equity": {"value": number, "calculation_chain": "End of year balance"},
+          "balance_check": {"balance_status": "BALANCED|UNBALANCED", "variance": {"value": number, "calculation_chain": "Assets - (Liabilities + Equity)"}}
+        }
+      ]
     },
     "10_years_ahead": {
       "period_label": "FY20XX-FY20XX",
       "granularity": "yearly",
       "data_points": 10,
-      "revenue": [{"period": "Year 1", "value": number, "confidence": "low|very_low"}],
-      "gross_profit": [{"period": "Year 1", "value": number, "confidence": "low|very_low"}],
-      "expenses": [{"period": "Year 1", "value": number, "confidence": "low|very_low"}],
-      "net_profit": [{"period": "Year 1", "value": number, "confidence": "low|very_low"}]
+      "profit_and_loss": [
+        {
+          "period": "Year 1",
+          "revenue": {"value": number, "confidence": "low|very_low", "calculation_chain": "Long-term aggregation from monthly projections"},
+          "gross_profit": {"value": number, "confidence": "low|very_low", "calculation_chain": "Revenue - COGS (long-term aggregation)"},
+          "operating_expenses": {"total_opex": {"value": number, "calculation_chain": "Long-term aggregation"}},
+          "ebitda": {"value": number, "confidence": "low|very_low", "calculation_chain": "Gross Profit - OpEx (long-term)"},
+          "net_profit": {"value": number, "confidence": "low|very_low", "calculation_chain": "Complete P&L flow (long-term)"}
+        }
+      ],
+      "cash_flow_statement": [
+        {
+          "period": "Year 1",
+          "net_cash_from_operations": {"value": number, "calculation_chain": "Long-term operating cash flow"},
+          "net_cash_from_investing": {"value": number, "calculation_chain": "Long-term investing cash flow"},
+          "net_cash_from_financing": {"value": number, "calculation_chain": "Long-term financing cash flow"},
+          "net_change_in_cash": {"value": number, "calculation_chain": "Long-term total cash flow"}
+        }
+      ],
+      "balance_sheet": [
+        {
+          "period": "Year 1",
+          "total_assets": {"value": number, "calculation_chain": "End of year balance"},
+          "total_liabilities": {"value": number, "calculation_chain": "End of year balance"},
+          "total_equity": {"value": number, "calculation_chain": "End of year balance"},
+          "balance_check": {"balance_status": "BALANCED|UNBALANCED", "variance": {"value": number, "calculation_chain": "Assets - (Liabilities + Equity)"}}
+        }
+      ]
     },
     "15_years_ahead": {
       "period_label": "FY20XX-FY20XX",
       "granularity": "yearly",
       "data_points": 15,
-      "revenue": [{"period": "Year 1", "value": number, "confidence": "very_low"}],
-      "gross_profit": [{"period": "Year 1", "value": number, "confidence": "very_low"}],
-      "expenses": [{"period": "Year 1", "value": number, "confidence": "very_low"}],
-      "net_profit": [{"period": "Year 1", "value": number, "confidence": "very_low"}]
+      "profit_and_loss": [
+        {
+          "period": "Year 1",
+          "revenue": {"value": number, "confidence": "very_low", "calculation_chain": "Long-term aggregation from monthly projections"},
+          "gross_profit": {"value": number, "confidence": "very_low", "calculation_chain": "Revenue - COGS (long-term aggregation)"},
+          "operating_expenses": {"total_opex": {"value": number, "calculation_chain": "Long-term aggregation"}},
+          "ebitda": {"value": number, "confidence": "very_low", "calculation_chain": "Gross Profit - OpEx (long-term)"},
+          "net_profit": {"value": number, "confidence": "very_low", "calculation_chain": "Complete P&L flow (long-term)"}
+        }
+      ],
+      "cash_flow_statement": [
+        {
+          "period": "Year 1",
+          "net_cash_from_operations": {"value": number, "calculation_chain": "Long-term operating cash flow"},
+          "net_cash_from_investing": {"value": number, "calculation_chain": "Long-term investing cash flow"},
+          "net_cash_from_financing": {"value": number, "calculation_chain": "Long-term financing cash flow"},
+          "net_change_in_cash": {"value": number, "calculation_chain": "Long-term total cash flow"}
+        }
+      ],
+      "balance_sheet": [
+        {
+          "period": "Year 1",
+          "total_assets": {"value": number, "calculation_chain": "End of year balance"},
+          "total_liabilities": {"value": number, "calculation_chain": "End of year balance"},
+          "total_equity": {"value": number, "calculation_chain": "End of year balance"},
+          "balance_check": {"balance_status": "BALANCED|UNBALANCED", "variance": {"value": number, "calculation_chain": "Assets - (Liabilities + Equity)"}}
+        }
+      ]
     }
   },
   "scenario_projections": {
@@ -441,12 +766,20 @@ Return ONLY valid JSON with this structure:
   "executive_summary": "Concise overview of projection methodology, key findings, and confidence assessment"
 }
 
-CRITICAL VALIDATION REQUIREMENTS:
-1. VERIFY every projection period contains ALL four mandatory metrics
-2. ENSURE Australian FY alignment throughout all projections
-3. MAINTAIN internal consistency across all financial metrics
-4. DOCUMENT all assumption changes from Stage 2 recommendations
-5. VALIDATE confidence levels align with data quality and horizon
+CRITICAL VALIDATION REQUIREMENTS FOR THREE-WAY FORECAST:
+1. VERIFY every projection period contains complete P&L, Cash Flow, and Balance Sheet WITH calculation chains
+2. ENSURE calculation chains show explicit mathematical operations (e.g., "Revenue (150000) - COGS (98000) = Gross Profit (52000)")
+3. MAINTAIN internal consistency across all three financial statements through step-by-step calculations
+4. ENSURE Balance Sheet ALWAYS balances (Assets = Liabilities + Equity) - if not, identify and correct the error
+5. VALIDATE Cash Flow Statement connects to Balance Sheet (Net Change in Cash updates Cash balance)
+6. CONFIRM P&L Net Profit flows to Balance Sheet Retained Earnings
+7. IMPLEMENT dividend policy correctly: Dividend = Net Profit * 0.40, paid quarterly
+8. ENSURE dividend payments appear as cash outflow in financing activities
+9. VALIDATE retained earnings calculation: Previous RE + Net Profit - Dividends
+10. ENSURE Australian FY alignment throughout all projections
+11. DOCUMENT all assumption changes from Stage 2 recommendations
+12. VALIDATE confidence levels align with data quality and horizon
+13. AGGREGATE longer-term projections from monthly calculations - do not recalculate
 
 INTEGRATION MANDATE:
 - Explicitly address ALL handover recommendations from Stage 2
@@ -455,602 +788,3 @@ INTEGRATION MANDATE:
 - Ensure scenario planning reflects realistic market conditions
 - Provide clear audit trail of all methodology decisions
 """
-
-# Comprehensive Multi-PDF analysis prompt with methodology transparency (Legacy - kept for compatibility)
-MULTI_PDF_PROMPT = """
-ROLE
-You are a senior financial analyst and data scientist with expertise in trend analysis, forecasting, and model transparency.
-
-TASK
-1. Parse **all attached PDFs** (financial statements).  
-2. Detect the optimal time-period granularity and latest period found.  
-3. Produce an **auditable forecast JSON** with complete methodology documentation.
-
-CRITICAL CONSTRAINTS
-• **Automatic base-period detection** – never assume today's date.  
-• Use Australian FY (July 1 – June 30) when generating FY labels.  
-• Pick forecasting granularity using this hierarchy:
-  – ≥12 monthly points → monthly  
-  – ≥6 quarterly points → quarterly  
-  – else yearly  
-• Document ALL methodology decisions transparently.
-• **METHODOLOGY MUST BE AN OBJECT** – Never return methodology as a string. Always use the structured object format with model_chosen, model_justification, preprocessing_steps, etc.
-• Output *only* valid JSON. Do not wrap in markdown.
-
-MANDATORY FINANCIAL METRICS SCHEMA ENFORCEMENT
-**ALL PROJECTION PERIODS MUST INCLUDE THESE FOUR FINANCIAL METRICS:**
-1. **revenue** - MANDATORY in every projection period
-2. **gross_profit** - MANDATORY in every projection period  
-3. **expenses** - MANDATORY in every projection period
-4. **net_profit** - MANDATORY in every projection period
-
-**INCOMPLETE PROJECTIONS ARE INVALID** - Missing any of these four metrics will result in frontend display errors.
-**VALIDATION CHECK** - Before outputting, verify that every projection period (1_year_ahead, 3_years_ahead, 5_years_ahead, 10_years_ahead, 15_years_ahead) contains all four metrics with complete data points.
-
-OUTPUT FORMAT
-{{
-  "summary": "<150-word plain-English overview of findings, methodology, and key insights>",
-  "data_analysis_summary": {{
-    "period_granularity_detected": "monthly|quarterly|yearly|mixed",
-    "total_data_points": 24,
-    "time_span": "January 2022 to December 2023",
-    "data_completeness": "complete|partial|sparse",
-    "optimal_forecast_horizon": "2-3 years",
-    "seasonality_detected": true,
-    "rationale": "Monthly data provides 24 data points enabling robust seasonality analysis and trend detection"
-  }},
-  "extracted_data": [
-    {{
-      "source_document": "filename.pdf",
-      "period_range": "2023-01 to 2023-12 (monthly) | 2023 (annual) | 2023-Q1 to 2023-Q4 (quarterly)",
-      "granularity": "monthly|quarterly|yearly",
-      "financial_statements": {{
-        "income_statement": {{ 
-          "revenue": [
-            {{"period": "2023-01", "value": 150000}},
-            {{"period": "2023-02", "value": 145000}}
-          ],
-          "expenses": [
-            {{"period": "2023-01", "value": 120000}},
-            {{"period": "2023-02", "value": 118000}}
-          ],
-          "net_income": [
-            {{"period": "2023-01", "value": 30000}},
-            {{"period": "2023-02", "value": 27000}}
-          ]
-        }},
-        "balance_sheet": {{ 
-          "assets": [{{"period": "2023-01", "value": 2000000}}],
-          "liabilities": [{{"period": "2023-01", "value": 1200000}}],
-          "equity": [{{"period": "2023-01", "value": 800000}}]
-        }},
-        "cash_flow": {{}}
-      }},
-      "key_metrics": {{}}
-    }}
-  ],
-  "normalized_data": {{
-    "period_metadata": {{
-      "granularity_used": "monthly",
-      "period_format": "YYYY-MM",
-      "total_periods": 24,
-      "date_range": {{
-        "start": "2022-01",
-        "end": "2023-12"
-      }},
-      "data_gaps": ["2022-06", "2022-07"],
-      "interpolation_used": false
-    }},
-    "time_series": {{
-      "revenue": [
-        {{"period": "2022-01", "value": 140000, "data_source": "extracted"}},
-        {{"period": "2022-02", "value": 135000, "data_source": "extracted"}},
-        {{"period": "2022-06", "value": null, "data_source": "missing"}}
-      ],
-      "expenses": [
-        {{"period": "2022-01", "value": 115000, "data_source": "extracted"}},
-        {{"period": "2022-02", "value": 112000, "data_source": "extracted"}}
-      ],
-      "net_profit": [
-        {{"period": "2022-01", "value": 25000, "data_source": "calculated"}},
-        {{"period": "2022-02", "value": 23000, "data_source": "calculated"}}
-      ],
-      "assets": [
-        {{"period": "2022-01", "value": 1950000, "data_source": "extracted"}},
-        {{"period": "2022-02", "value": 1965000, "data_source": "extracted"}}
-      ],
-      "liabilities": [
-        {{"period": "2022-01", "value": 1180000, "data_source": "extracted"}}
-      ],
-      "equity": [
-        {{"period": "2022-01", "value": 770000, "data_source": "calculated"}}
-      ]
-    }},
-    "seasonality_analysis": {{
-      "seasonal_patterns_detected": true,
-      "peak_months": ["November", "December"],
-      "trough_months": ["January", "February"],
-      "seasonal_amplitude": 0.15,
-      "deseasonalized_trend": "positive_growth"
-    }},
-    "growth_rates": {{
-      "revenue_monthly_avg": 0.025,
-      "revenue_cagr": 0.18,
-      "expense_growth_monthly": 0.020,
-      "profit_growth_monthly": 0.035,
-      "volatility_metrics": {{
-        "revenue_std": 8500,
-        "profit_std": 3200
-      }}
-    }},
-    "financial_ratios": {{
-      "profit_margin": [
-        {{"period": "2022-01", "value": 0.179, "data_source": "calculated"}},
-        {{"period": "2022-02", "value": 0.170, "data_source": "calculated"}}
-      ],
-      "roa": [
-        {{"period": "2022-01", "value": 0.013, "data_source": "calculated"}}
-      ],
-      "current_ratio": [
-        {{"period": "2022-01", "value": 1.48, "data_source": "calculated"}}
-      ]
-    }}
-  }},
-  "projections": {{
-    "methodology": "Time series analysis with seasonal decomposition using available data points",
-    "base_period_detection": "CRITICAL: Automatically detect the latest/most recent period in the actual data",
-    "australian_fy_note": "Australian Financial Year runs from July 1 to June 30. FY2025 = July 1, 2024 to June 30, 2025",
-    "projection_intervals": "Fixed intervals: 1, 3, 5, 10, and 15 years ahead from the DETECTED latest data period",
-    "base_period": "DETECT FROM DATA: Find the latest period in your extracted data and use that as the current period",
-    "projection_logic": "If latest data is June 2025 (end of FY2025), then 1 year ahead = FY2026, 3 years = FY2028, etc.",
-    
-    "_SCHEMA_VALIDATION": "BEFORE OUTPUTTING: Verify that EVERY projection period below contains all four metrics: revenue, gross_profit, expenses, net_profit",
-    
-    "specific_projections": {{
-      "1_year_ahead": {{
-        "period": "CALCULATE: Latest data period + 1 Australian FY",
-        "granularity": "monthly",
-        "data_points": 12,
-        "_REQUIRED_METRICS": "ALL FOUR MUST BE PRESENT: revenue, gross_profit, expenses, net_profit",
-        "revenue": [
-          {{"period": "Month 1", "value": 175000, "confidence": "high"}},
-          {{"period": "Month 2", "value": 180000, "confidence": "high"}},
-          {{"period": "Month 3", "value": 178000, "confidence": "high"}},
-          {{"period": "Month 4", "value": 182000, "confidence": "high"}},
-          {{"period": "Month 5", "value": 185000, "confidence": "high"}},
-          {{"period": "Month 6", "value": 190000, "confidence": "high"}},
-          {{"period": "Month 7", "value": 188000, "confidence": "high"}},
-          {{"period": "Month 8", "value": 192000, "confidence": "high"}},
-          {{"period": "Month 9", "value": 195000, "confidence": "high"}},
-          {{"period": "Month 10", "value": 200000, "confidence": "high"}},
-          {{"period": "Month 11", "value": 198000, "confidence": "high"}},
-          {{"period": "Month 12", "value": 202000, "confidence": "high"}}
-        ],
-        "gross_profit": [
-          {{"period": "Month 1", "value": 70000, "confidence": "high"}},
-          {{"period": "Month 2", "value": 72000, "confidence": "high"}},
-          {{"period": "Month 3", "value": 71200, "confidence": "high"}},
-          {{"period": "Month 4", "value": 72800, "confidence": "high"}},
-          {{"period": "Month 5", "value": 74000, "confidence": "high"}},
-          {{"period": "Month 6", "value": 76000, "confidence": "high"}},
-          {{"period": "Month 7", "value": 75200, "confidence": "high"}},
-          {{"period": "Month 8", "value": 76800, "confidence": "high"}},
-          {{"period": "Month 9", "value": 78000, "confidence": "high"}},
-          {{"period": "Month 10", "value": 80000, "confidence": "high"}},
-          {{"period": "Month 11", "value": 79200, "confidence": "high"}},
-          {{"period": "Month 12", "value": 80800, "confidence": "high"}}
-        ],
-        "expenses": [
-          {{"period": "Month 1", "value": 135000, "confidence": "high"}},
-          {{"period": "Month 2", "value": 138000, "confidence": "high"}},
-          {{"period": "Month 3", "value": 136500, "confidence": "high"}},
-          {{"period": "Month 4", "value": 139500, "confidence": "high"}},
-          {{"period": "Month 5", "value": 142000, "confidence": "high"}},
-          {{"period": "Month 6", "value": 145000, "confidence": "high"}},
-          {{"period": "Month 7", "value": 143500, "confidence": "high"}},
-          {{"period": "Month 8", "value": 146500, "confidence": "high"}},
-          {{"period": "Month 9", "value": 149000, "confidence": "high"}},
-          {{"period": "Month 10", "value": 152000, "confidence": "high"}},
-          {{"period": "Month 11", "value": 150500, "confidence": "high"}},
-          {{"period": "Month 12", "value": 153500, "confidence": "high"}}
-        ],
-        "net_profit": [
-          {{"period": "Month 1", "value": 40000, "confidence": "high"}},
-          {{"period": "Month 2", "value": 42000, "confidence": "high"}},
-          {{"period": "Month 3", "value": 41500, "confidence": "high"}},
-          {{"period": "Month 4", "value": 42500, "confidence": "high"}},
-          {{"period": "Month 5", "value": 43000, "confidence": "high"}},
-          {{"period": "Month 6", "value": 45000, "confidence": "high"}},
-          {{"period": "Month 7", "value": 44500, "confidence": "high"}},
-          {{"period": "Month 8", "value": 45500, "confidence": "high"}},
-          {{"period": "Month 9", "value": 46000, "confidence": "high"}},
-          {{"period": "Month 10", "value": 48000, "confidence": "high"}},
-          {{"period": "Month 11", "value": 47500, "confidence": "high"}},
-          {{"period": "Month 12", "value": 48500, "confidence": "high"}}
-        ]
-      }},
-      "3_years_ahead": {{
-        "period": "CALCULATE: Latest data period + 3 Australian FY",
-        "granularity": "quarterly",
-        "data_points": 12,
-        "_REQUIRED_METRICS": "ALL FOUR MUST BE PRESENT: revenue, gross_profit, expenses, net_profit",
-        "revenue": [
-          {{"period": "Quarter 1", "value": 650000, "confidence": "medium"}},
-          {{"period": "Quarter 2", "value": 670000, "confidence": "medium"}},
-          {{"period": "Quarter 3", "value": 685000, "confidence": "medium"}},
-          {{"period": "Quarter 4", "value": 700000, "confidence": "medium"}},
-          {{"period": "Quarter 5", "value": 720000, "confidence": "medium"}},
-          {{"period": "Quarter 6", "value": 735000, "confidence": "medium"}},
-          {{"period": "Quarter 7", "value": 750000, "confidence": "medium"}},
-          {{"period": "Quarter 8", "value": 770000, "confidence": "medium"}},
-          {{"period": "Quarter 9", "value": 790000, "confidence": "medium"}},
-          {{"period": "Quarter 10", "value": 810000, "confidence": "medium"}},
-          {{"period": "Quarter 11", "value": 830000, "confidence": "medium"}},
-          {{"period": "Quarter 12", "value": 850000, "confidence": "medium"}}
-        ],
-        "gross_profit": [
-          {{"period": "Quarter 1", "value": 260000, "confidence": "medium"}},
-          {{"period": "Quarter 2", "value": 268000, "confidence": "medium"}},
-          {{"period": "Quarter 3", "value": 274000, "confidence": "medium"}},
-          {{"period": "Quarter 4", "value": 280000, "confidence": "medium"}},
-          {{"period": "Quarter 5", "value": 288000, "confidence": "medium"}},
-          {{"period": "Quarter 6", "value": 294000, "confidence": "medium"}},
-          {{"period": "Quarter 7", "value": 300000, "confidence": "medium"}},
-          {{"period": "Quarter 8", "value": 308000, "confidence": "medium"}},
-          {{"period": "Quarter 9", "value": 316000, "confidence": "medium"}},
-          {{"period": "Quarter 10", "value": 324000, "confidence": "medium"}},
-          {{"period": "Quarter 11", "value": 332000, "confidence": "medium"}},
-          {{"period": "Quarter 12", "value": 340000, "confidence": "medium"}}
-        ],
-        "expenses": [
-          {{"period": "Quarter 1", "value": 490000, "confidence": "medium"}},
-          {{"period": "Quarter 2", "value": 502000, "confidence": "medium"}},
-          {{"period": "Quarter 3", "value": 511000, "confidence": "medium"}},
-          {{"period": "Quarter 4", "value": 520000, "confidence": "medium"}},
-          {{"period": "Quarter 5", "value": 532000, "confidence": "medium"}},
-          {{"period": "Quarter 6", "value": 541000, "confidence": "medium"}},
-          {{"period": "Quarter 7", "value": 550000, "confidence": "medium"}},
-          {{"period": "Quarter 8", "value": 562000, "confidence": "medium"}},
-          {{"period": "Quarter 9", "value": 574000, "confidence": "medium"}},
-          {{"period": "Quarter 10", "value": 586000, "confidence": "medium"}},
-          {{"period": "Quarter 11", "value": 598000, "confidence": "medium"}},
-          {{"period": "Quarter 12", "value": 610000, "confidence": "medium"}}
-        ],
-        "net_profit": [
-          {{"period": "Quarter 1", "value": 160000, "confidence": "medium"}},
-          {{"period": "Quarter 2", "value": 168000, "confidence": "medium"}},
-          {{"period": "Quarter 3", "value": 174000, "confidence": "medium"}},
-          {{"period": "Quarter 4", "value": 180000, "confidence": "medium"}},
-          {{"period": "Quarter 5", "value": 188000, "confidence": "medium"}},
-          {{"period": "Quarter 6", "value": 194000, "confidence": "medium"}},
-          {{"period": "Quarter 7", "value": 200000, "confidence": "medium"}},
-          {{"period": "Quarter 8", "value": 208000, "confidence": "medium"}},
-          {{"period": "Quarter 9", "value": 216000, "confidence": "medium"}},
-          {{"period": "Quarter 10", "value": 224000, "confidence": "medium"}},
-          {{"period": "Quarter 11", "value": 232000, "confidence": "medium"}},
-          {{"period": "Quarter 12", "value": 240000, "confidence": "medium"}}
-        ]
-      }},
-      "5_years_ahead": {{
-        "period": "CALCULATE: Latest data period + 5 Australian FY",
-        "granularity": "yearly",
-        "data_points": 5,
-        "_REQUIRED_METRICS": "ALL FOUR MUST BE PRESENT: revenue, gross_profit, expenses, net_profit",
-        "revenue": [
-          {{"period": "Year 1", "value": 3500000, "confidence": "medium"}},
-          {{"period": "Year 2", "value": 3700000, "confidence": "medium"}},
-          {{"period": "Year 3", "value": 3920000, "confidence": "medium"}},
-          {{"period": "Year 4", "value": 4150000, "confidence": "medium"}},
-          {{"period": "Year 5", "value": 4400000, "confidence": "medium"}}
-        ],
-        "gross_profit": [
-          {{"period": "Year 1", "value": 1400000, "confidence": "medium"}},
-          {{"period": "Year 2", "value": 1480000, "confidence": "medium"}},
-          {{"period": "Year 3", "value": 1568000, "confidence": "medium"}},
-          {{"period": "Year 4", "value": 1660000, "confidence": "medium"}},
-          {{"period": "Year 5", "value": 1760000, "confidence": "medium"}}
-        ],
-        "expenses": [
-          {{"period": "Year 1", "value": 2650000, "confidence": "medium"}},
-          {{"period": "Year 2", "value": 2780000, "confidence": "medium"}},
-          {{"period": "Year 3", "value": 2920000, "confidence": "medium"}},
-          {{"period": "Year 4", "value": 3070000, "confidence": "medium"}},
-          {{"period": "Year 5", "value": 3230000, "confidence": "medium"}}
-        ],
-        "net_profit": [
-          {{"period": "Year 1", "value": 850000, "confidence": "medium"}},
-          {{"period": "Year 2", "value": 920000, "confidence": "medium"}},
-          {{"period": "Year 3", "value": 1000000, "confidence": "medium"}},
-          {{"period": "Year 4", "value": 1080000, "confidence": "medium"}},
-          {{"period": "Year 5", "value": 1170000, "confidence": "medium"}}
-        ]
-      }},
-      "10_years_ahead": {{
-        "period": "CALCULATE: Latest data period + 10 Australian FY",
-        "granularity": "yearly",
-        "data_points": 10,
-        "_REQUIRED_METRICS": "ALL FOUR MUST BE PRESENT: revenue, gross_profit, expenses, net_profit",
-        "revenue": [
-          {{"period": "Year 1", "value": 6000000, "confidence": "low"}},
-          {{"period": "Year 2", "value": 6300000, "confidence": "low"}},
-          {{"period": "Year 3", "value": 6620000, "confidence": "low"}},
-          {{"period": "Year 4", "value": 6950000, "confidence": "low"}},
-          {{"period": "Year 5", "value": 7300000, "confidence": "low"}},
-          {{"period": "Year 6", "value": 7670000, "confidence": "very_low"}},
-          {{"period": "Year 7", "value": 8050000, "confidence": "very_low"}},
-          {{"period": "Year 8", "value": 8450000, "confidence": "very_low"}},
-          {{"period": "Year 9", "value": 8870000, "confidence": "very_low"}},
-          {{"period": "Year 10", "value": 9310000, "confidence": "very_low"}}
-        ],
-        "gross_profit": [
-          {{"period": "Year 1", "value": 2400000, "confidence": "low"}},
-          {{"period": "Year 2", "value": 2520000, "confidence": "low"}},
-          {{"period": "Year 3", "value": 2648000, "confidence": "low"}},
-          {{"period": "Year 4", "value": 2780000, "confidence": "low"}},
-          {{"period": "Year 5", "value": 2920000, "confidence": "low"}},
-          {{"period": "Year 6", "value": 3068000, "confidence": "very_low"}},
-          {{"period": "Year 7", "value": 3220000, "confidence": "very_low"}},
-          {{"period": "Year 8", "value": 3380000, "confidence": "very_low"}},
-          {{"period": "Year 9", "value": 3548000, "confidence": "very_low"}},
-          {{"period": "Year 10", "value": 3724000, "confidence": "very_low"}}
-        ],
-        "expenses": [
-          {{"period": "Year 1", "value": 4200000, "confidence": "low"}},
-          {{"period": "Year 2", "value": 4410000, "confidence": "low"}},
-          {{"period": "Year 3", "value": 4630000, "confidence": "low"}},
-          {{"period": "Year 4", "value": 4860000, "confidence": "low"}},
-          {{"period": "Year 5", "value": 5100000, "confidence": "low"}},
-          {{"period": "Year 6", "value": 5360000, "confidence": "very_low"}},
-          {{"period": "Year 7", "value": 5630000, "confidence": "very_low"}},
-          {{"period": "Year 8", "value": 5910000, "confidence": "very_low"}},
-          {{"period": "Year 9", "value": 6210000, "confidence": "very_low"}},
-          {{"period": "Year 10", "value": 6520000, "confidence": "very_low"}}
-        ],
-        "net_profit": [
-          {{"period": "Year 1", "value": 1800000, "confidence": "low"}},
-          {{"period": "Year 2", "value": 1890000, "confidence": "low"}},
-          {{"period": "Year 3", "value": 1990000, "confidence": "low"}},
-          {{"period": "Year 4", "value": 2090000, "confidence": "low"}},
-          {{"period": "Year 5", "value": 2200000, "confidence": "low"}},
-          {{"period": "Year 6", "value": 2310000, "confidence": "very_low"}},
-          {{"period": "Year 7", "value": 2420000, "confidence": "very_low"}},
-          {{"period": "Year 8", "value": 2540000, "confidence": "very_low"}},
-          {{"period": "Year 9", "value": 2660000, "confidence": "very_low"}},
-          {{"period": "Year 10", "value": 2790000, "confidence": "very_low"}}
-        ]
-      }},
-      "15_years_ahead": {{
-        "period": "CALCULATE: Latest data period + 15 Australian FY",
-        "granularity": "yearly",
-        "data_points": 15,
-        "_REQUIRED_METRICS": "ALL FOUR MUST BE PRESENT: revenue, gross_profit, expenses, net_profit",
-        "revenue": [
-          {{"period": "Year 1", "value": 9500000, "confidence": "very_low"}},
-          {{"period": "Year 2", "value": 9950000, "confidence": "very_low"}},
-          {{"period": "Year 3", "value": 10420000, "confidence": "very_low"}},
-          {{"period": "Year 4", "value": 10910000, "confidence": "very_low"}},
-          {{"period": "Year 5", "value": 11420000, "confidence": "very_low"}},
-          {{"period": "Year 6", "value": 11950000, "confidence": "very_low"}},
-          {{"period": "Year 7", "value": 12500000, "confidence": "very_low"}},
-          {{"period": "Year 8", "value": 13080000, "confidence": "very_low"}},
-          {{"period": "Year 9", "value": 13680000, "confidence": "very_low"}},
-          {{"period": "Year 10", "value": 14310000, "confidence": "very_low"}},
-          {{"period": "Year 11", "value": 14970000, "confidence": "very_low"}},
-          {{"period": "Year 12", "value": 15660000, "confidence": "very_low"}},
-          {{"period": "Year 13", "value": 16380000, "confidence": "very_low"}},
-          {{"period": "Year 14", "value": 17130000, "confidence": "very_low"}},
-          {{"period": "Year 15", "value": 17920000, "confidence": "very_low"}}
-        ],
-        "gross_profit": [
-          {{"period": "Year 1", "value": 3800000, "confidence": "very_low"}},
-          {{"period": "Year 2", "value": 3980000, "confidence": "very_low"}},
-          {{"period": "Year 3", "value": 4168000, "confidence": "very_low"}},
-          {{"period": "Year 4", "value": 4364000, "confidence": "very_low"}},
-          {{"period": "Year 5", "value": 4568000, "confidence": "very_low"}},
-          {{"period": "Year 6", "value": 4780000, "confidence": "very_low"}},
-          {{"period": "Year 7", "value": 5000000, "confidence": "very_low"}},
-          {{"period": "Year 8", "value": 5232000, "confidence": "very_low"}},
-          {{"period": "Year 9", "value": 5472000, "confidence": "very_low"}},
-          {{"period": "Year 10", "value": 5724000, "confidence": "very_low"}},
-          {{"period": "Year 11", "value": 5988000, "confidence": "very_low"}},
-          {{"period": "Year 12", "value": 6264000, "confidence": "very_low"}},
-          {{"period": "Year 13", "value": 6552000, "confidence": "very_low"}},
-          {{"period": "Year 14", "value": 6852000, "confidence": "very_low"}},
-          {{"period": "Year 15", "value": 7168000, "confidence": "very_low"}}
-        ],
-        "expenses": [
-          {{"period": "Year 1", "value": 6650000, "confidence": "very_low"}},
-          {{"period": "Year 2", "value": 6980000, "confidence": "very_low"}},
-          {{"period": "Year 3", "value": 7320000, "confidence": "very_low"}},
-          {{"period": "Year 4", "value": 7680000, "confidence": "very_low"}},
-          {{"period": "Year 5", "value": 8060000, "confidence": "very_low"}},
-          {{"period": "Year 6", "value": 8460000, "confidence": "very_low"}},
-          {{"period": "Year 7", "value": 8880000, "confidence": "very_low"}},
-          {{"period": "Year 8", "value": 9320000, "confidence": "very_low"}},
-          {{"period": "Year 9", "value": 9780000, "confidence": "very_low"}},
-          {{"period": "Year 10", "value": 10260000, "confidence": "very_low"}},
-          {{"period": "Year 11", "value": 10770000, "confidence": "very_low"}},
-          {{"period": "Year 12", "value": 11310000, "confidence": "very_low"}},
-          {{"period": "Year 13", "value": 11880000, "confidence": "very_low"}},
-          {{"period": "Year 14", "value": 12470000, "confidence": "very_low"}},
-          {{"period": "Year 15", "value": 13090000, "confidence": "very_low"}}
-        ],
-        "net_profit": [
-          {{"period": "Year 1", "value": 2850000, "confidence": "very_low"}},
-          {{"period": "Year 2", "value": 2970000, "confidence": "very_low"}},
-          {{"period": "Year 3", "value": 3100000, "confidence": "very_low"}},
-          {{"period": "Year 4", "value": 3230000, "confidence": "very_low"}},
-          {{"period": "Year 5", "value": 3360000, "confidence": "very_low"}},
-          {{"period": "Year 6", "value": 3490000, "confidence": "very_low"}},
-          {{"period": "Year 7", "value": 3620000, "confidence": "very_low"}},
-          {{"period": "Year 8", "value": 3760000, "confidence": "very_low"}},
-          {{"period": "Year 9", "value": 3900000, "confidence": "very_low"}},
-          {{"period": "Year 10", "value": 4050000, "confidence": "very_low"}},
-          {{"period": "Year 11", "value": 4200000, "confidence": "very_low"}},
-          {{"period": "Year 12", "value": 4350000, "confidence": "very_low"}},
-          {{"period": "Year 13", "value": 4500000, "confidence": "very_low"}},
-          {{"period": "Year 14", "value": 4650000, "confidence": "very_low"}},
-          {{"period": "Year 15", "value": 4800000, "confidence": "very_low"}}
-        ]
-      }}
-    }},
-    "assumptions": [
-      "Australian economic conditions remain relatively stable across projection periods",
-      "Business operates within Australian Financial Year (July 1 - June 30) framework",
-      "Growth rates naturally decelerate over longer time horizons (1yr: high confidence → 15yr: very low confidence)",
-      "No major disruptions to established business cycle or Australian market conditions",
-      "Regulatory environment in Australia remains supportive of business operations"
-    ],
-    "scenarios": {{
-      "optimistic": {{
-        "description": "Accelerated growth with strong Australian market performance",
-        "growth_multiplier_1_3yr": 1.3,
-        "growth_multiplier_5_10yr": 1.2,
-        "growth_multiplier_15yr": 1.1,
-        "key_drivers": ["Australian market expansion", "operational efficiency", "favorable AUD exchange rates"]
-      }},
-      "conservative": {{
-        "description": "Slower growth due to Australian market challenges",
-        "growth_multiplier_1_3yr": 0.8,
-        "growth_multiplier_5_10yr": 0.7,
-        "growth_multiplier_15yr": 0.6,
-        "key_drivers": ["Australian market saturation", "increased competition", "economic uncertainty", "unfavorable AUD conditions"]
-      }}
-    }},
-    "trend_analysis": {{
-      "overall_trend": "Strong positive growth with Australian seasonal patterns",
-      "seasonality_impact": "Revenue peaks in Q2 FY (Oct-Dec), troughs in Q4 FY (Apr-Jun) due to Australian business cycles",
-      "growth_trajectory": "Decelerating growth rates over time: 1yr (high growth) → 15yr (mature/stable growth)",
-      "volatility_assessment": "Increasing uncertainty over longer projection periods",
-      "australian_factors": "Considerations for Australian market dynamics, FY reporting cycles, and economic patterns"
-    }}
-  }},
-  "methodology": {{
-    "model_chosen": "SARIMA|ARIMA|Prophet|LinearRegression|ExponentialSmoothing|Combined",
-    "model_justification": "MUST PROVIDE: Clear explanation of why this specific model was selected for the data characteristics and business context. Example: Selected SARIMA due to strong seasonal patterns and trend components in revenue data",
-    "preprocessing_steps": [
-      "outlier removal using IQR method",
-      "linear interpolation for missing data points", 
-      "log transformation applied to stabilize variance",
-      "seasonal decomposition for pattern analysis"
-    ],
-    "data_quality_score": 0.92,
-    "train_test_split": "80/20 chronological split with validation period",
-    "validation_metrics": {{
-      "mape": 0.082,
-      "rmse": 14500,
-      "mae": 11200,
-      "r_squared": 0.89,
-      "cross_validation_score": 0.85
-    }},
-    "feature_engineering": [
-      "Australian seasonal indicators (Q2 FY peak, Q4 FY trough)",
-      "economic cycle indicators", 
-      "trend and seasonality decomposition"
-    ],
-    "sensitivity_analysis": "±10% revenue growth scenario analysis shows net profit impact range",
-    "confidence_intervals": "95% confidence intervals calculated using bootstrap resampling",
-    "key_assumptions": [
-      "Australian inflation rate remains within normal range",
-      "No major regulatory changes affecting the industry", 
-      "Business continues current operational model",
-      "No major economic disruptions"
-    ]
-  }},
-  "data_quality_assessment": {{
-    "completeness_score": 0.92,
-    "period_coverage": "24 months with 2 missing data points",
-    "consistency_issues": [
-      "Missing data for specific periods",
-      "Categorization changes in certain quarters"
-    ],
-    "outliers_detected": [
-      {{"item": "Revenue spike December 2023", "deviation": "45% above trend", "impact": "medium", "likely_cause": "holiday_season"}},
-      {{"item": "Expenses drop January 2023", "deviation": "20% below trend", "impact": "low", "likely_cause": "post_holiday_reduction"}}
-    ],
-    "data_gaps": [
-      "Specific missing periods identified in analysis"
-    ],
-    "reliability_flags": [
-      {{"flag": "seasonal_validation", "status": "passed", "impact": "low"}},
-      {{"flag": "trend_consistency", "status": "passed", "impact": "low"}},
-      {{"flag": "ratio_reasonableness", "status": "warning", "items": ["specific_ratio_warnings"], "impact": "medium"}}
-    ]
-  }},
-  "accuracy_considerations": {{
-    "projection_confidence": {{
-      "1_year_ahead": "high",
-      "3_years_ahead": "medium",
-      "5_years_ahead": "medium",
-      "10_years_ahead": "low",
-      "15_years_ahead": "very_low"
-    }},
-    "australian_fy_confidence": "high",
-    "trend_confidence": "high", 
-    "risk_factors": [
-      "Australian economic downturns could disrupt growth patterns",
-      "Changes in Australian tax policy or FY regulations",
-      "Competition could impact long-term growth trajectory",
-      "Currency fluctuations (AUD) affecting international business",
-      "Regulatory changes specific to Australian market"
-    ],
-    "improvement_recommendations": [
-      "Include Australian economic indicators in future analysis",
-      "Consider Australian seasonal business patterns within FY framework",
-      "Add industry-specific Australian market analysis",
-      "Include sensitivity analysis for AUD exchange rate impacts"
-    ],
-    "model_limitations": [
-      "Long-term projections (10-15 years) have inherently high uncertainty",
-      "No consideration of major economic disruptions or policy changes",
-      "Assumes Australian business environment remains relatively stable",
-      "Limited consideration of technological disruption over long horizons"
-    ]
-  }},
-  "qa_checks": {{
-    "period_consistency": [],
-    "seasonal_validation": [],
-    "math_consistency": [],
-    "trend_validation": [],
-    "outlier_assessment": [],
-    "_SCHEMA_COMPLETENESS_CHECK": "VERIFY: All 5 projection periods contain complete sets of 4 financial metrics (revenue, gross_profit, expenses, net_profit) before outputting this JSON"
-  }},
-  "executive_summary": "Comprehensive analysis based on available data points with Australian Financial Year alignment. Specific projections provided for 1, 3, 5, 10, and 15 years ahead, with confidence levels decreasing over longer horizons. Australian seasonal patterns and FY framework considered throughout analysis."
-}}
-
-REASONING STYLE
-• Provide concise *chain-of-thought* reasoning inside the `methodology` fields only.  
-• Use short bullet lists, not paragraphs.
-• Explain model selection rationale clearly.
-• Document preprocessing steps with specific details.
-• Include validation metrics for transparency.
-
-EXAMPLES
-• Monthly format: "2023-01" ; Quarterly: "2023-Q3" ; FY: "FY2024".
-• Model justification: "Selected SARIMA(2,1,1)(1,1,1)[12] due to clear trend and seasonal patterns in revenue data with monthly seasonality"
-• Preprocessing: "Applied log transformation to revenue series to reduce variance heteroscedasticity"
-
-CRITICAL METHODOLOGY FORMAT EXAMPLE
-"methodology": {{
-  "model_chosen": "SARIMA",
-  "model_justification": "Selected SARIMA model due to strong seasonal patterns...",
-  "data_quality_score": 0.92,
-  "preprocessing_steps": ["outlier removal", "interpolation"],
-  "key_assumptions": ["business continues current model"]
-}}
-
-FINAL VALIDATION REQUIREMENT
-Before outputting the JSON, perform this check:
-Does EVERY projection period (1_year_ahead, 3_years_ahead, 5_years_ahead, 10_years_ahead, 15_years_ahead) contain ALL FOUR financial metrics?
-1. revenue: [array with data points]
-2. gross_profit: [array with data points]  
-3. expenses: [array with data points]
-4. net_profit: [array with data points]
-
-If ANY projection period is missing ANY of these four metrics, DO NOT output the JSON. Add the missing metrics first.
-
-REMINDER
-Return JSON only – no other text. Include complete methodology transparency.
-NEVER return methodology as a string - always use the structured object format above.
-MANDATORY: Every projection period MUST contain all four financial metrics: revenue, gross_profit, expenses, net_profit
-""" 

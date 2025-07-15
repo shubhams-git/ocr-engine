@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { 
   Copy, 
@@ -14,13 +14,43 @@ import {
   Table,
   BarChart3,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  Calculator,
+  TrendingUp,
+  DollarSign,
+  PieChart,
+  Activity,
+  AlertCircle,
+  CheckCircle2,
+  Info,
+  Calendar,
+  Target,
+  Zap,
+  ArrowRight,
+  Building,
+  CreditCard,
+  Banknote,
+  Search,
+  Filter
 } from 'lucide-react'
+import FinancialChart from './FinancialChart'
+import ExportUtils from './ExportUtils'
+import SearchFilter from './SearchFilter'
+import { ErrorDisplay } from './ErrorBoundary'
 
 const ResultsDisplay = ({ results, fileName, selectedModel, onReset }) => {
   const [copied, setCopied] = useState(false)
   const [viewMode, setViewMode] = useState('formatted') // 'formatted' or 'raw'
   const [expandedSections, setExpandedSections] = useState({})
+  const [expandedStatements, setExpandedStatements] = useState({})
+  const [filteredData, setFilteredData] = useState(results)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [showCharts, setShowCharts] = useState(false)
+  const [error, setError] = useState(null)
+  
+  // Refs for export functionality
+  const contentRef = useRef(null)
+  const chartRefs = useRef([])
 
   const handleCopy = async () => {
     try {
@@ -42,6 +72,86 @@ const ResultsDisplay = ({ results, fileName, selectedModel, onReset }) => {
     element.click()
     document.body.removeChild(element)
   }
+
+  // Filter and search handlers
+  const handleFilter = (filters) => {
+    let filtered = results
+    
+    // Apply filters here based on the filter criteria
+    if (filters.metricType !== 'all') {
+      // Filter by metric type
+      filtered = { ...filtered }
+      // Implementation depends on data structure
+    }
+    
+    setFilteredData(filtered)
+  }
+
+  const handleSearch = (term) => {
+    setSearchTerm(term)
+    
+    if (!term) {
+      setFilteredData(results)
+      return
+    }
+    
+    // Search through the data
+    const searchResults = { ...results }
+    // Implementation depends on data structure
+    setFilteredData(searchResults)
+  }
+
+  const handleSort = (field, order) => {
+    // Sort the filtered data
+    const sorted = { ...filteredData }
+    // Implementation depends on data structure
+    setFilteredData(sorted)
+  }
+
+  // Generate chart data from financial statements
+  const generateChartData = (data) => {
+    const chartData = []
+    
+    if (data.profit_and_loss_statement) {
+      const pnlData = data.profit_and_loss_statement
+      
+      // Revenue chart
+      if (pnlData['1_year'] && pnlData['1_year'].monthly) {
+        const revenueData = {
+          labels: Object.keys(pnlData['1_year'].monthly),
+          datasets: [{
+            label: 'Monthly Revenue',
+            data: Object.values(pnlData['1_year'].monthly).map(month => month.revenue || 0)
+          }]
+        }
+        chartData.push({
+          type: 'line',
+          title: 'Monthly Revenue Trend',
+          data: revenueData
+        })
+      }
+      
+      // Profit margin chart
+      if (pnlData['1_year'] && pnlData['1_year'].quarterly) {
+        const profitData = {
+          labels: Object.keys(pnlData['1_year'].quarterly),
+          datasets: [{
+            label: 'Quarterly Profit',
+            data: Object.values(pnlData['1_year'].quarterly).map(quarter => quarter.net_profit || 0)
+          }]
+        }
+        chartData.push({
+          type: 'bar',
+          title: 'Quarterly Profit Analysis',
+          data: profitData
+        })
+      }
+    }
+    
+    return chartData
+  }
+
+  const chartData = generateChartData(filteredData)
 
   const getWordsCount = () => {
     return (results.data || '').split(/\s+/).filter(word => word.length > 0).length
@@ -228,6 +338,384 @@ const ResultsDisplay = ({ results, fileName, selectedModel, onReset }) => {
     }))
   }
 
+  const toggleStatement = (statement) => {
+    setExpandedStatements(prev => ({
+      ...prev,
+      [statement]: !prev[statement]
+    }))
+  }
+
+  // New function to detect financial forecast structure
+  const isFinancialForecast = (data) => {
+    if (!data || typeof data !== 'object') return false
+    
+    // Check for three-way forecast structure
+    const hasThreeWayForecast = (
+      data.profit_and_loss_statement ||
+      data.cash_flow_statement ||
+      data.balance_sheet ||
+      data.financial_statements
+    )
+    
+    // Check for calculation chains
+    const hasCalculationChains = (
+      data.calculation_chains ||
+      (data.profit_and_loss_statement && data.profit_and_loss_statement.calculation_chains)
+    )
+    
+    // Check for projections structure
+    const hasProjections = (
+      data.projections ||
+      data.yearly_projections ||
+      data.monthly_projections
+    )
+    
+    return hasThreeWayForecast || hasCalculationChains || hasProjections
+  }
+
+  // New function to render financial statements
+  const renderFinancialStatements = (data) => {
+    if (!data || typeof data !== 'object') return null
+
+    const statements = []
+    
+    // Check for different statement structures
+    if (data.profit_and_loss_statement) {
+      statements.push({
+        key: 'profit_and_loss_statement',
+        title: 'Profit & Loss Statement',
+        icon: <TrendingUp size={20} />,
+        data: data.profit_and_loss_statement,
+        color: 'primary'
+      })
+    }
+    
+    if (data.cash_flow_statement) {
+      statements.push({
+        key: 'cash_flow_statement',
+        title: 'Cash Flow Statement',
+        icon: <Activity size={20} />,
+        data: data.cash_flow_statement,
+        color: 'secondary'
+      })
+    }
+    
+    if (data.balance_sheet) {
+      statements.push({
+        key: 'balance_sheet',
+        title: 'Balance Sheet',
+        icon: <Building size={20} />,
+        data: data.balance_sheet,
+        color: 'success'
+      })
+    }
+    
+    if (data.financial_statements) {
+      // Handle nested financial statements
+      const nestedStatements = data.financial_statements
+      if (nestedStatements.profit_and_loss) {
+        statements.push({
+          key: 'nested_pnl',
+          title: 'Profit & Loss Statement',
+          icon: <TrendingUp size={20} />,
+          data: nestedStatements.profit_and_loss,
+          color: 'primary'
+        })
+      }
+      if (nestedStatements.cash_flow) {
+        statements.push({
+          key: 'nested_cf',
+          title: 'Cash Flow Statement',
+          icon: <Activity size={20} />,
+          data: nestedStatements.cash_flow,
+          color: 'secondary'
+        })
+      }
+      if (nestedStatements.balance_sheet) {
+        statements.push({
+          key: 'nested_bs',
+          title: 'Balance Sheet',
+          icon: <Building size={20} />,
+          data: nestedStatements.balance_sheet,
+          color: 'success'
+        })
+      }
+    }
+
+    return (
+      <div className="financial-statements-container">
+        <div className="statements-header">
+          <h4>
+            <PieChart size={20} />
+            Financial Statements
+          </h4>
+          <span className="statements-count">{statements.length} statements</span>
+        </div>
+        
+        <div className="statements-grid">
+          {statements.map((statement) => (
+            <div key={statement.key} className={`statement-card ${statement.color}`}>
+              <div 
+                className="statement-header"
+                onClick={() => toggleStatement(statement.key)}
+              >
+                <div className="statement-title">
+                  {statement.icon}
+                  <h5>{statement.title}</h5>
+                </div>
+                <div className="statement-toggle">
+                  {expandedStatements[statement.key] ? 
+                    <ChevronDown size={20} /> : 
+                    <ChevronRight size={20} />
+                  }
+                </div>
+              </div>
+              
+              {expandedStatements[statement.key] && (
+                <div className="statement-content">
+                  {renderStatementData(statement.data, statement.key)}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  // New function to render individual statement data
+  const renderStatementData = (statementData, statementKey) => {
+    if (!statementData || typeof statementData !== 'object') return null
+
+    const sections = []
+    
+    // Handle different time periods
+    const timePeriods = ['1_year', '3_year', '5_year', '10_year', '15_year', 'monthly', 'quarterly']
+    
+    timePeriods.forEach(period => {
+      if (statementData[period]) {
+        sections.push({
+          key: period,
+          title: period.replace('_', ' ').toUpperCase(),
+          data: statementData[period],
+          period: period
+        })
+      }
+    })
+    
+    // Handle calculation chains
+    if (statementData.calculation_chains) {
+      sections.push({
+        key: 'calculation_chains',
+        title: 'Calculation Chains',
+        data: statementData.calculation_chains,
+        isCalculationChains: true
+      })
+    }
+
+    return (
+      <div className="statement-sections">
+        {sections.map((section) => (
+          <div key={section.key} className="statement-section">
+            <div className="section-title">
+              <Calendar size={16} />
+              <h6>{section.title}</h6>
+            </div>
+            
+            <div className="section-data">
+              {section.isCalculationChains ? 
+                renderCalculationChains(section.data) :
+                renderFinancialMetrics(section.data, section.period)
+              }
+            </div>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  // New function to render calculation chains
+  const renderCalculationChains = (chains) => {
+    if (!chains || typeof chains !== 'object') return null
+
+    return (
+      <div className="calculation-chains">
+        {Object.entries(chains).map(([metric, chain]) => (
+          <div key={metric} className="calculation-chain">
+            <div className="chain-header">
+              <Calculator size={16} />
+              <span className="chain-metric">{metric.replace(/_/g, ' ')}</span>
+            </div>
+            
+            <div className="chain-formula">
+              {Array.isArray(chain) ? (
+                chain.map((step, index) => (
+                  <div key={index} className="chain-step">
+                    <span className="step-number">{index + 1}.</span>
+                    <span className="step-formula">{step}</span>
+                  </div>
+                ))
+              ) : (
+                <div className="chain-step">
+                  <span className="step-formula">{chain}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  // New function to render financial metrics
+  const renderFinancialMetrics = (metrics, period) => {
+    if (!metrics || typeof metrics !== 'object') return null
+
+    const formatValue = (value) => {
+      if (typeof value === 'number') {
+        return value.toLocaleString('en-US', { 
+          style: 'currency', 
+          currency: 'USD',
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 0
+        })
+      }
+      return value
+    }
+
+    return (
+      <div className="financial-metrics">
+        {Object.entries(metrics).map(([key, value]) => {
+          if (key === 'calculation_chains') return null
+          
+          return (
+            <div key={key} className="metric-row">
+              <div className="metric-label">
+                <DollarSign size={14} />
+                <span>{key.replace(/_/g, ' ')}</span>
+              </div>
+              <div className="metric-value">
+                {typeof value === 'object' ? (
+                  <div className="nested-metrics">
+                    {Object.entries(value).map(([subKey, subValue]) => (
+                      <div key={subKey} className="sub-metric">
+                        <span className="sub-metric-label">{subKey.replace(/_/g, ' ')}</span>
+                        <span className="sub-metric-value">{formatValue(subValue)}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <span className="metric-amount">{formatValue(value)}</span>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
+
+  // New function to render validation results
+  const renderValidationResults = (data) => {
+    if (!data || typeof data !== 'object') return null
+
+    const validation = data.validation || data.validation_results
+    if (!validation) return null
+
+    return (
+      <div className="validation-results">
+        <div className="validation-header">
+          <CheckCircle2 size={20} />
+          <h4>Validation Results</h4>
+        </div>
+        
+        <div className="validation-sections">
+          {Object.entries(validation).map(([key, value]) => {
+            if (key === 'is_valid') return null
+            
+            return (
+              <div key={key} className="validation-section">
+                <div className="validation-title">
+                  <Target size={16} />
+                  <h5>{key.replace(/_/g, ' ')}</h5>
+                </div>
+                
+                <div className="validation-content">
+                  {typeof value === 'object' ? (
+                    <div className="validation-details">
+                      {Object.entries(value).map(([subKey, subValue]) => (
+                        <div key={subKey} className="validation-item">
+                          <span className="validation-label">{subKey.replace(/_/g, ' ')}</span>
+                          <span className={`validation-status ${subValue === true ? 'passed' : 'failed'}`}>
+                            {subValue === true ? (
+                              <><CheckCircle size={14} /> Passed</>
+                            ) : (
+                              <><AlertCircle size={14} /> {subValue}</>
+                            )}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="validation-simple">
+                      <span className={`validation-status ${value === true ? 'passed' : 'failed'}`}>
+                        {value === true ? (
+                          <><CheckCircle size={14} /> Passed</>
+                        ) : (
+                          <><AlertCircle size={14} /> {value}</>
+                        )}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
+
+  // New function to render working capital assumptions
+  const renderWorkingCapitalAssumptions = (data) => {
+    if (!data || typeof data !== 'object') return null
+
+    const wcAssumptions = data.working_capital_assumptions || data.forecast_drivers?.working_capital_assumptions
+    if (!wcAssumptions) return null
+
+    return (
+      <div className="working-capital-assumptions">
+        <div className="wc-header">
+          <CreditCard size={20} />
+          <h4>Working Capital Assumptions</h4>
+        </div>
+        
+        <div className="wc-metrics">
+          {Object.entries(wcAssumptions).map(([key, value]) => (
+            <div key={key} className="wc-metric">
+              <div className="wc-metric-label">
+                <Banknote size={14} />
+                <span>{key.replace(/_/g, ' ')}</span>
+              </div>
+              <div className="wc-metric-value">
+                {typeof value === 'object' ? (
+                  Object.entries(value).map(([subKey, subValue]) => (
+                    <div key={subKey} className="wc-sub-metric">
+                      <span>{subKey}</span>
+                      <span>{subValue}</span>
+                    </div>
+                  ))
+                ) : (
+                  <span>{value}</span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
   const renderStructuredData = (data) => {
     if (Array.isArray(data)) {
       return renderArray(data)
@@ -327,6 +815,78 @@ const ResultsDisplay = ({ results, fileName, selectedModel, onReset }) => {
     if (isValidJSON(extractedData)) {
       const jsonData = parseJSON(extractedData)
       
+      // Check if it's a financial forecast
+      if (isFinancialForecast(jsonData)) {
+        return (
+          <div className="formatted-content financial-forecast">
+            <div className="content-header">
+              <div className="content-title">
+                <BarChart3 size={20} />
+                <h4>Financial Forecast Analysis</h4>
+                <span className="content-type">Three-Way Forecast</span>
+              </div>
+              <div className="view-mode-toggle">
+                <button
+                  onClick={() => setViewMode('formatted')}
+                  className={`view-button ${viewMode === 'formatted' ? 'active' : ''}`}
+                >
+                  <Table size={16} />
+                  Financial View
+                </button>
+                <button
+                  onClick={() => setViewMode('raw')}
+                  className={`view-button ${viewMode === 'raw' ? 'active' : ''}`}
+                >
+                  <Code size={16} />
+                  Raw JSON
+                </button>
+              </div>
+            </div>
+            
+            {viewMode === 'formatted' ? (
+              <div className="financial-forecast-content">
+                {renderFinancialStatements(jsonData)}
+                {renderWorkingCapitalAssumptions(jsonData)}
+                {renderValidationResults(jsonData)}
+                
+                {/* Additional sections for other data */}
+                {jsonData.forecast_drivers && (
+                  <div className="forecast-drivers">
+                    <div className="drivers-header">
+                      <Zap size={20} />
+                      <h4>Forecast Drivers</h4>
+                    </div>
+                    <div className="drivers-content">
+                      {renderStructuredData(jsonData.forecast_drivers)}
+                    </div>
+                  </div>
+                )}
+                
+                {jsonData.projections && (
+                  <div className="projections-section">
+                    <div className="projections-header">
+                      <TrendingUp size={20} />
+                      <h4>Projections</h4>
+                    </div>
+                    <div className="projections-content">
+                      {renderStructuredData(jsonData.projections)}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="json-display">
+                <pre
+                  className="json-content enhanced readable"
+                  dangerouslySetInnerHTML={{ __html: formatJsonWithSyntaxHighlighting(jsonData) }}
+                />
+              </div>
+            )}
+          </div>
+        )
+      }
+      
+      // Regular JSON display for non-financial data
       return (
         <div className="formatted-content">
           <div className="content-header">
@@ -488,6 +1048,19 @@ const ResultsDisplay = ({ results, fileName, selectedModel, onReset }) => {
           <Download size={18} />
           Download
         </motion.button>
+
+        {/* Toggle Charts Button */}
+        {chartData.length > 0 && (
+          <motion.button
+            onClick={() => setShowCharts(!showCharts)}
+            className={`action-button chart-button ${showCharts ? 'active' : ''}`}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <BarChart3 size={18} />
+            {showCharts ? 'Hide Charts' : 'Show Charts'}
+          </motion.button>
+        )}
         
         <motion.button
           onClick={onReset}
@@ -500,12 +1073,95 @@ const ResultsDisplay = ({ results, fileName, selectedModel, onReset }) => {
         </motion.button>
       </motion.div>
 
-      {/* Enhanced Content Display */}
+      {/* Enhanced Export Options */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.7 }}
+        className="enhanced-export-section"
+      >
+        <ExportUtils
+          data={filteredData}
+          fileName={fileName}
+          contentRef={contentRef}
+          chartRefs={chartRefs.current}
+        />
+      </motion.div>
+
+      {/* Search and Filter */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.8 }}
+        className="search-filter-section"
+      >
+        <SearchFilter
+          data={results}
+          onFilter={handleFilter}
+          onSort={handleSort}
+          onSearch={handleSearch}
+        />
+      </motion.div>
+
+      {/* Error Display */}
+      {error && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.9 }}
+          className="error-section"
+        >
+          <ErrorDisplay
+            error={error}
+            onRetry={() => setError(null)}
+            onDismiss={() => setError(null)}
+          />
+        </motion.div>
+      )}
+
+      {/* Charts Section */}
+      {showCharts && chartData.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.9 }}
+          className="charts-section"
+        >
+          <div className="charts-header">
+            <h3>
+              <BarChart3 size={20} />
+              Financial Data Visualization
+            </h3>
+            <span className="charts-count">{chartData.length} charts</span>
+          </div>
+          
+          <div className="charts-grid">
+            {chartData.map((chart, index) => (
+              <div
+                key={index}
+                ref={el => chartRefs.current[index] = el}
+                className="chart-wrapper"
+              >
+                <FinancialChart
+                  data={chart.data}
+                  type={chart.type}
+                  title={chart.title}
+                  subtitle={chart.subtitle}
+                  height={350}
+                />
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
+
+      {/* Enhanced Content Display */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 1.0 }}
         className="extracted-content-container"
+        ref={contentRef}
       >
         {renderFormattedContent()}
       </motion.div>
