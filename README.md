@@ -26,7 +26,7 @@ This comprehensive documentation covers the complete OCR-based Financial Project
 
 ### 2. [Stage 1: Data Extraction & Normalization](02-stage1-data-extraction.md)
 **OCR Service & Data Processing**
-- Multi-format file processing (PDF, CSV, Images)
+- PDF and CSV file processing
 - Australian FY alignment
 - Quality assessment framework
 - Anomaly detection
@@ -75,10 +75,11 @@ This comprehensive documentation covers the complete OCR-based Financial Project
 ## 🎯 Key Features
 
 ### Advanced AI Processing
-- **Gemini 2.5 Flash**: High-volume document extraction
-- **Gemini 2.5 Pro**: Complex business analysis and projections
-- **Intelligent Routing**: Optimal model selection for each task
-- **Concurrency Control**: Quota-aware processing management
+- **Gemini 2.5 Flash**: High-volume document extraction (Stage 1)
+- **Gemini 2.5 Pro**: Complex business analysis and projections (Stages 2-3)
+- **Tiered Model Selection**: Flash for extraction, Pro for analysis
+- **Concurrency Control**: Semaphore-based quota management for Pro model calls
+- **Multiple Model Support**: gemini-2.5-pro, gemini-2.5-flash, gemini-2.0-flash, gemini-1.5-pro
 
 ### Financial Modeling Excellence
 - **3-Way Forecasting**: Integrated P&L, Cash Flow, Balance Sheet
@@ -95,8 +96,8 @@ This comprehensive documentation covers the complete OCR-based Financial Project
 - **Risk Assessment**: Comprehensive risk factor identification
 
 ### Quality Assurance
-- **Multi-Layer Validation**: 5-layer validation framework
-- **AI Semantic Checks**: Business logic validation
+- **Multi-Layer Validation**: Local validation with AI semantic checks
+- **AI Semantic Validation**: Business logic validation using Gemini Flash
 - **Quality Scoring**: Comprehensive quality assessment
 - **Error Recovery**: Graceful degradation and fallback mechanisms
 
@@ -119,10 +120,10 @@ graph TD
 
 ### Processing Flow
 
-1. **Document Ingestion**: Multi-format file processing with validation
-2. **Data Extraction**: AI-powered OCR and normalization (Stage 1)
-3. **Business Analysis**: Context analysis and methodology selection (Stage 2)
-4. **Projection Generation**: 3-way forecast creation (Stage 3)
+1. **Document Ingestion**: PDF and CSV file processing with validation
+2. **Data Extraction**: AI-powered OCR and normalization (Stage 1 - Flash)
+3. **Business Analysis**: Context analysis and methodology selection (Stage 2 - Pro)
+4. **Projection Generation**: 3-way forecast creation (Stage 3 - Pro)
 5. **Quality Validation**: Multi-layer validation and quality scoring
 6. **Output Delivery**: Comprehensive financial projections with metadata
 
@@ -131,16 +132,19 @@ graph TD
 ### Supported File Formats
 - **PDFs**: Up to 50MB, financial statements and reports
 - **CSVs**: Up to 25MB, structured financial data
-- **Images**: Up to 10MB, scanned documents (PNG, JPG, GIF, BMP, TIFF, WEBP)
+- **Images**: Up to 10MB, scanned documents (PNG, JPG, GIF, BMP, TIFF, WEBP) - via OCR endpoint only
+- **Maximum Files**: 10 files per analysis
+- **Timeout**: 600 seconds (10 minutes) for complete analysis
 
-### AI Models
-- **Gemini 2.5 Flash**: Document extraction and simple analysis
-- **Gemini 2.5 Pro**: Complex business analysis and projections
-- **Automatic Selection**: Optimal model routing based on task complexity
+### AI Models & Strategy
+- **Stage 1 (Extraction)**: Gemini 2.5 Flash - optimized for high-volume, parallel processing
+- **Stage 2-3 (Analysis)**: Gemini 2.5 Pro - complex reasoning and financial modeling
+- **Semaphore Control**: Maximum 3 concurrent Pro model calls to prevent quota exhaustion
+- **Automatic Fallback**: Support for gemini-2.0-flash and gemini-1.5-pro
 
 ### Output Formats
 - **Time Horizons**: 1, 3, 5, 10, 15-year projections
-- **Granularity**: Monthly → Quarterly → Yearly aggregation
+- **Granularity**: Monthly, quarterly, yearly (auto-detected)
 - **Statements**: Complete P&L, Cash Flow, Balance Sheet
 - **Scenarios**: Optimistic, Base Case, Conservative projections
 
@@ -148,7 +152,7 @@ graph TD
 
 ### Prerequisites
 - Python 3.8+
-- Google Gemini API keys
+- Google Gemini API keys (multiple keys recommended)
 - 8GB+ RAM recommended
 - Stable internet connection
 
@@ -161,7 +165,7 @@ graph TD
 
 ### First Analysis
 ```bash
-curl -X POST "http://localhost:8000/multi-pdf" \
+curl -X POST "http://localhost:8000/multi-pdf/analyze" \
   -F "files=@financial-statement.pdf" \
   -F "files=@budget-data.csv" \
   -F "model=gemini-2.5-pro"
@@ -264,6 +268,7 @@ curl -X POST "http://localhost:8000/multi-pdf" \
 ## 🔮 Future Enhancements
 
 ### Planned Features
+- **Image Format Support**: Full integration of image processing into multi-PDF workflow
 - **Real-time Updates**: Live financial data integration
 - **Enhanced Visualizations**: Interactive charts and dashboards
 - **Advanced Scenarios**: Monte Carlo simulations and stress testing
