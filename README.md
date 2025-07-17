@@ -1,444 +1,293 @@
-# OCR Engine - Financial Document Analysis Service
+# OCR-Based Financial Projection System Documentation
 
-A FastAPI-based financial analysis service that extracts, analyzes, and generates comprehensive projections from financial documents using AI-powered document processing.
+## Overview
 
-## What It Does
+This comprehensive documentation covers the complete OCR-based Financial Projection System - a sophisticated 3-stage AI-powered platform that transforms financial documents into accurate, validated financial forecasts. The system combines document processing, business intelligence, and advanced financial modeling to deliver professional-grade projections.
 
-The OCR Engine is a sophisticated financial analysis service that:
+## 🚀 Quick Start
 
-- **Extracts data** from financial documents (PDFs, images, CSV files)
-- **Analyzes business context** using advanced AI to understand industry patterns, seasonality, and financial health
-- **Generates comprehensive projections** with 3-way financial forecasts (P&L, Cash Flow, Balance Sheet)
-- **Provides multiple scenarios** (optimistic, base case, conservative) with confidence levels
-- **Supports Australian Financial Year** calculations and business patterns
-- **Offers both single document OCR** and **multi-document analysis** capabilities
+1. **System Overview**: Start with [System Overview](01-system-overview.md) to understand the architecture
+2. **Stage 1**: Learn about [Data Extraction](02-stage1-data-extraction.md) 
+3. **Stage 2**: Understand [Business Analysis](03-stage2-business-analysis.md)
+4. **Stage 3**: Master [Projection Engine](04-stage3-projection-engine.md)
+5. **Quality Assurance**: Review [Validation Framework](05-validation-quality-assurance.md)
+6. **Implementation**: Use [API Reference](06-api-reference-usage.md) for integration
+7. **Deployment**: Follow [Configuration Guide](07-configuration-setup.md) for setup
 
-## Architecture
+## 📖 Documentation Structure
 
-### 3-Stage Enhanced Processing Pipeline
+### 1. [System Overview](01-system-overview.md)
+**Core Architecture & Key Features**
+- 3-stage modular architecture
+- Tiered AI model selection (Flash + Pro)
+- Australian business focus
+- Multi-format document support
+- Advanced forecasting capabilities
 
-1. **Stage 1: Data Extraction & Normalization**
-   - Document classification and data extraction
-   - Quality assessment and anomaly detection
-   - Australian FY alignment and standardization
+### 2. [Stage 1: Data Extraction & Normalization](02-stage1-data-extraction.md)
+**OCR Service & Data Processing**
+- Multi-format file processing (PDF, CSV, Images)
+- Australian FY alignment
+- Quality assessment framework
+- Anomaly detection
+- Robust error handling
 
-2. **Stage 2: Business Intelligence Analysis**
-   - Business context identification (industry, stage, market position)
-   - Pattern recognition and trend analysis
-   - Forecasting methodology selection
-   - Working capital and driver analysis
+### 3. [Stage 2: Business Analysis & Methodology Selection](03-stage2-business-analysis.md)
+**Business Intelligence & Forecasting Strategy**
+- Industry classification
+- Pattern recognition & trend analysis
+- Methodology experimentation
+- Specific assumption definition
+- Risk assessment
 
-3. **Stage 3: Projection Engine**
-   - Multi-horizon financial projections (1, 3, 5, 10, 15 years)
-   - 3-way forecast generation (P&L, Cash Flow, Balance Sheet)
-   - Scenario planning and sensitivity analysis
-   - Validation and reconciliation
+### 4. [Stage 3: Projection Engine & Financial Forecasting](04-stage3-projection-engine.md)
+**3-Way Forecasting & Calculation Chains**
+- Integrated P&L, Cash Flow, Balance Sheet
+- Dividend policy implementation (40% payout)
+- Calculation chain transparency
+- Multi-horizon projections (1, 3, 5, 10, 15 years)
+- Scenario planning
 
-## Project Structure
+### 5. [Validation & Quality Assurance](05-validation-quality-assurance.md)
+**Multi-Layer Validation Framework**
+- Mathematical validation
+- Financial reconciliation
+- Business logic validation
+- AI semantic validation
+- Cross-statement consistency
 
+### 6. [API Reference & Usage Guide](06-api-reference-usage.md)
+**Integration & Implementation**
+- Complete API documentation
+- Request/response formats
+- Error handling
+- Usage examples
+- Integration patterns
+
+### 7. [Configuration & Setup Guide](07-configuration-setup.md)
+**Deployment & Customization**
+- Environment setup
+- API key management
+- Performance tuning
+- Customization options
+- Monitoring & troubleshooting
+
+## 🎯 Key Features
+
+### Advanced AI Processing
+- **Gemini 2.5 Flash**: High-volume document extraction
+- **Gemini 2.5 Pro**: Complex business analysis and projections
+- **Intelligent Routing**: Optimal model selection for each task
+- **Concurrency Control**: Quota-aware processing management
+
+### Financial Modeling Excellence
+- **3-Way Forecasting**: Integrated P&L, Cash Flow, Balance Sheet
+- **Calculation Chains**: Transparent, auditable calculations
+- **Dividend Policy**: Automated 40% quarterly dividend distribution
+- **Balance Sheet Balancing**: Ensures Assets = Liabilities + Equity
+- **Australian FY Alignment**: July-June financial year cycles
+
+### Business Intelligence
+- **Industry Classification**: Automated business categorization
+- **Growth Analysis**: CAGR, volatility, trend analysis
+- **Seasonality Detection**: Australian market seasonal patterns
+- **Methodology Selection**: Data-driven forecasting approach
+- **Risk Assessment**: Comprehensive risk factor identification
+
+### Quality Assurance
+- **Multi-Layer Validation**: 5-layer validation framework
+- **AI Semantic Checks**: Business logic validation
+- **Quality Scoring**: Comprehensive quality assessment
+- **Error Recovery**: Graceful degradation and fallback mechanisms
+
+## 🏗️ System Architecture
+
+```mermaid
+graph TD
+    A[Document Upload] --> B[Stage 1: OCR Service]
+    B --> C[Stage 2: Business Analysis]
+    C --> D[Stage 3: Projection Engine]
+    D --> E[Validation Framework]
+    E --> F[Financial Projections]
+    
+    G[Gemini Flash] --> B
+    H[Gemini Pro] --> C
+    H --> D
+    I[Local Validation] --> E
+    J[AI Semantic Validation] --> E
 ```
-ocr-engine/
-├── backend/                    # FastAPI backend service
-│   ├── main.py                # Application entry point
-│   ├── config.py              # Configuration management
-│   ├── models.py              # Pydantic response models
-│   ├── prompts.py             # AI prompts configuration
-│   ├── routers/               # API endpoints
-│   │   ├── ocr.py            # Single document OCR
-│   │   ├── multi_pdf.py      # Multi-document analysis
-│   │   ├── health.py         # Health checks
-│   │   └── admin.py          # Testing and admin endpoints
-│   └── services/              # Business logic
-│       ├── ocr_service.py           # Document processing
-│       ├── multi_pdf_service.py     # Multi-document analysis
-│       ├── business_analysis_service.py  # Stage 2 analysis
-│       └── projection_service.py    # Stage 3 projections
-├── frontend/                   # React frontend (optional)
-│   ├── src/
-│   │   ├── components/        # React components
-│   │   └── services/          # API client
-│   └── package.json
-├── .env.template              # Environment variables template
-└── requirements.txt           # Python dependencies
-```
 
-## Quick Start
+### Processing Flow
+
+1. **Document Ingestion**: Multi-format file processing with validation
+2. **Data Extraction**: AI-powered OCR and normalization (Stage 1)
+3. **Business Analysis**: Context analysis and methodology selection (Stage 2)
+4. **Projection Generation**: 3-way forecast creation (Stage 3)
+5. **Quality Validation**: Multi-layer validation and quality scoring
+6. **Output Delivery**: Comprehensive financial projections with metadata
+
+## 🔧 Technical Specifications
+
+### Supported File Formats
+- **PDFs**: Up to 50MB, financial statements and reports
+- **CSVs**: Up to 25MB, structured financial data
+- **Images**: Up to 10MB, scanned documents (PNG, JPG, GIF, BMP, TIFF, WEBP)
+
+### AI Models
+- **Gemini 2.5 Flash**: Document extraction and simple analysis
+- **Gemini 2.5 Pro**: Complex business analysis and projections
+- **Automatic Selection**: Optimal model routing based on task complexity
+
+### Output Formats
+- **Time Horizons**: 1, 3, 5, 10, 15-year projections
+- **Granularity**: Monthly → Quarterly → Yearly aggregation
+- **Statements**: Complete P&L, Cash Flow, Balance Sheet
+- **Scenarios**: Optimistic, Base Case, Conservative projections
+
+## 🚀 Getting Started
 
 ### Prerequisites
-
 - Python 3.8+
-- Google Gemini API key
-- Node.js 16+ (for frontend)
+- Google Gemini API keys
+- 8GB+ RAM recommended
+- Stable internet connection
 
-### Environment Setup
+### Quick Setup
+1. Clone the repository
+2. Install dependencies: `pip install -r requirements.txt`
+3. Configure environment variables (see [Configuration Guide](07-configuration-setup.md))
+4. Run the application: `uvicorn backend.main:app --reload`
+5. Access the API at `http://localhost:8000`
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd ocr-engine
-   ```
-
-2. **Set up environment variables**
-   ```bash
-   cp .env.template .env
-   # Edit .env with your configuration
-   ```
-
-3. **Configure API Keys**
-   ```bash
-   # In .env file
-   GEMINI_API_KEY=your_gemini_api_key_here
-   # Or for multiple keys (recommended for production)
-   GEMINI_API_KEY_1=key1
-   GEMINI_API_KEY_2=key2
-   GEMINI_API_KEY_3=key3
-   ```
-
-### Backend Setup
-
+### First Analysis
 ```bash
-cd backend
-pip install -r requirements.txt
-python main.py
-```
-
-The API will be available at `http://localhost:8000`
-
-### Frontend Setup (Optional)
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-The frontend will be available at `http://localhost:5173`
-
-## API Endpoints
-
-### Core Endpoints
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/ocr` | POST | Single document OCR processing |
-| `/multi-pdf/analyze` | POST | Multi-document financial analysis |
-| `/health` | GET | Service health check |
-| `/models` | GET | Available AI models |
-
-### Testing Endpoints (Admin)
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/admin/test/stage1` | POST | Test Stage 1 processing |
-| `/admin/test/stage2` | POST | Test Stage 2 analysis |
-| `/admin/test/stage3` | POST | Test Stage 3 projections |
-| `/admin/test/full-process` | POST | Test complete pipeline |
-
-## Integration with Existing FastAPI Applications
-
-### Option 1: Direct Router Integration
-
-```python
-from fastapi import FastAPI
-from ocr_engine.backend.routers import ocr, multi_pdf, health
-
-app = FastAPI()
-
-# Include OCR Engine routers
-app.include_router(ocr.router, prefix="/api/ocr", tags=["OCR"])
-app.include_router(multi_pdf.router, prefix="/api/analysis", tags=["Analysis"])
-app.include_router(health.router, prefix="/api/health", tags=["Health"])
-```
-
-### Option 2: Service Integration
-
-```python
-from ocr_engine.backend.services.multi_pdf_service import EnhancedMultiPDFService
-
-# Initialize service
-analysis_service = EnhancedMultiPDFService()
-
-# Use in your endpoints
-@app.post("/your-endpoint/analyze")
-async def analyze_documents(files: List[UploadFile]):
-    files_data = [(file.filename, await file.read()) for file in files]
-    result = await analysis_service.analyze_multiple_files(files_data)
-    return result
-```
-
-### Option 3: Microservice Integration
-
-```python
-import httpx
-
-class OCREngineClient:
-    def __init__(self, base_url: str = "http://localhost:8000"):
-        self.base_url = base_url
-        self.client = httpx.AsyncClient()
-    
-    async def analyze_documents(self, files: List[bytes], model: str = "gemini-2.5-flash"):
-        files_data = [("files", file) for file in files]
-        response = await self.client.post(
-            f"{self.base_url}/multi-pdf/analyze",
-            files=files_data,
-            data={"model": model}
-        )
-        return response.json()
-```
-
-## API Usage Examples
-
-### Single Document OCR
-
-```python
-import requests
-
-def process_single_document(file_path: str):
-    with open(file_path, 'rb') as f:
-        files = {'file': f}
-        data = {'model': 'gemini-2.5-flash'}
-        
-        response = requests.post(
-            'http://localhost:8000/ocr',
-            files=files,
-            data=data
-        )
-        
-        return response.json()
-```
-
-### Multi-Document Analysis
-
-```python
-import requests
-
-def analyze_financial_documents(file_paths: List[str]):
-    files = []
-    for file_path in file_paths:
-        files.append(('files', open(file_path, 'rb')))
-    
-    data = {'model': 'gemini-2.5-pro'}
-    
-    response = requests.post(
-        'http://localhost:8000/multi-pdf/analyze',
-        files=files,
-        data=data,
-        timeout=300  # 5 minutes timeout
-    )
-    
-    # Clean up file handles
-    for _, file_handle in files:
-        file_handle.close()
-    
-    return response.json()
-```
-
-## Response Structure
-
-### Multi-Document Analysis Response
-
-```json
-{
-  "success": true,
-  "extracted_data": [...],
-  "normalized_data": {
-    "business_context": {...},
-    "pattern_analysis": {...},
-    "time_series": {...}
-  },
-  "projections": {
-    "base_case_projections": {
-      "1_year_ahead": {
-        "period_label": "FY2025",
-        "granularity": "monthly",
-        "profit_and_loss": [...],
-        "cash_flow_statement": [...],
-        "balance_sheet": [...]
-      }
-    },
-    "scenario_projections": {
-      "optimistic": {...},
-      "conservative": {...}
-    }
-  },
-  "data_quality_assessment": {...},
-  "accuracy_considerations": {...},
-  "methodology": "...",
-  "explanation": "..."
-}
-```
-
-## Configuration
-
-### Environment Variables
-
-```bash
-# API Configuration
-GEMINI_API_KEY=your_api_key
-GEMINI_API_KEY_1=key1  # Multiple keys for load balancing
-GEMINI_API_KEY_2=key2
-GEMINI_API_KEY_3=key3
-
-# Timeouts
-API_TIMEOUT=300
-OVERALL_PROCESS_TIMEOUT=600
-MAX_RETRIES=3
-RETRY_DELAY=1
-
-# CORS (for frontend)
-CORS_ORIGINS=["http://localhost:5173", "https://yourdomain.com"]
-```
-
-### Model Configuration
-
-Available models:
-- `gemini-2.5-pro` - Most capable for complex analysis
-- `gemini-2.5-flash` - Fast and efficient (recommended)
-- `gemini-2.0-flash` - Latest experimental model
-- `gemini-1.5-flash` - Fast and reliable
-- `gemini-1.5-pro` - Advanced reasoning capabilities
-
-## Testing
-
-### Health Check
-
-```bash
-curl http://localhost:8000/health
-```
-
-### Test Single Document Processing
-
-```bash
-curl -X POST \
-  http://localhost:8000/admin/test/stage1 \
-  -F "file=@test_document.pdf" \
-  -F "model=gemini-2.5-flash"
-```
-
-### Test Multi-Document Analysis
-
-```bash
-curl -X POST \
-  http://localhost:8000/admin/test/full-process \
-  -F "files=@document1.pdf" \
-  -F "files=@document2.pdf" \
+curl -X POST "http://localhost:8000/multi-pdf" \
+  -F "files=@financial-statement.pdf" \
+  -F "files=@budget-data.csv" \
   -F "model=gemini-2.5-pro"
 ```
 
-## Supported File Types
+## 📊 Use Cases
 
-- **PDFs**: Financial statements, reports (max 50MB)
-- **Images**: PNG, JPG, JPEG, GIF, BMP, TIFF, WEBP (max 10MB)
-- **CSV**: Structured financial data (max 25MB)
-- **Multiple Files**: Up to 10 files per request
+### Primary Use Cases
+- **Financial Planning**: Comprehensive business forecasting
+- **Investment Analysis**: Due diligence and valuation support
+- **Strategic Planning**: Long-term business projections
+- **Risk Assessment**: Scenario analysis and stress testing
+- **Compliance**: Regulatory reporting and financial planning
 
-## Production Deployment
+### Industries Supported
+- **Professional Services**: Consulting, legal, accounting
+- **Technology**: Software, SaaS, tech startups
+- **Manufacturing**: Production, distribution, industrial
+- **Retail**: E-commerce, brick-and-mortar, consumer goods
+- **Healthcare**: Medical services, pharmaceuticals, biotech
 
-### Docker Deployment
+## 🎯 Business Value
 
-```dockerfile
-FROM python:3.9-slim
+### For Financial Professionals
+- **Automated Analysis**: Reduces manual financial modeling time
+- **Enhanced Accuracy**: AI-powered data extraction and validation
+- **Comprehensive Insights**: Deep business intelligence and context
+- **Audit Trail**: Transparent calculation chains and assumptions
+- **Scenario Planning**: Multiple projection scenarios for strategic planning
 
-WORKDIR /app
-COPY backend/requirements.txt .
-RUN pip install -r requirements.txt
+### For Businesses
+- **Strategic Planning**: Data-driven long-term planning
+- **Investment Decisions**: Informed capital allocation
+- **Risk Management**: Comprehensive risk assessment
+- **Performance Monitoring**: Benchmark against projections
+- **Stakeholder Communication**: Professional financial presentations
 
-COPY backend/ .
-EXPOSE 8000
+## 🔍 Key Differentiators
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
-```
+### Technical Excellence
+- **3-Way Forecasting**: Integrated financial statement modeling
+- **Calculation Transparency**: Every calculation is auditable
+- **AI-Powered Validation**: Intelligent quality assurance
+- **Australian FY Focus**: Local market expertise
+- **Scalable Architecture**: Handles multiple documents and scenarios
 
-### Environment Variables for Production
+### Business Intelligence
+- **Industry Classification**: Automated business categorization
+- **Pattern Recognition**: Advanced trend and seasonality analysis
+- **Methodology Selection**: Data-driven forecasting approach
+- **Risk Assessment**: Comprehensive risk factor identification
+- **Assumption Validation**: Specific, justified assumptions
 
-```bash
-# Production settings
-ENVIRONMENT=production
-LOG_LEVEL=INFO
-API_TIMEOUT=300
-CORS_ORIGINS=["https://yourdomain.com"]
+## 📋 Documentation Navigation
 
-# Multiple API keys for load balancing
-GEMINI_API_KEY_1=key1
-GEMINI_API_KEY_2=key2
-GEMINI_API_KEY_3=key3
-```
+### For Developers
+1. [System Overview](01-system-overview.md) - Architecture understanding
+2. [Stage 1-3 Documentation](02-stage1-data-extraction.md) - Deep technical dive
+3. [API Reference](06-api-reference-usage.md) - Integration implementation
+4. [Configuration Guide](07-configuration-setup.md) - Deployment setup
 
-## Monitoring
+### For Business Users
+1. [System Overview](01-system-overview.md) - Business value and capabilities
+2. [API Reference](06-api-reference-usage.md) - Usage examples and output interpretation
+3. [Validation Framework](05-validation-quality-assurance.md) - Quality assurance understanding
 
-### Health Endpoints
+### For System Administrators
+1. [Configuration Guide](07-configuration-setup.md) - Complete setup and deployment
+2. [Validation Framework](05-validation-quality-assurance.md) - Monitoring and troubleshooting
+3. [API Reference](06-api-reference-usage.md) - Error handling and performance
 
-- `GET /health` - Basic health check
-- `GET /admin/health/detailed` - Detailed system health
-- `GET /admin/performance/metrics` - Performance metrics
+## 🤝 Contributing
 
-### Logging
+### Development Process
+1. Read the [System Overview](01-system-overview.md) to understand architecture
+2. Review [Stage Documentation](02-stage1-data-extraction.md) for implementation details
+3. Follow [Configuration Guide](07-configuration-setup.md) for development setup
+4. Implement changes with comprehensive testing
+5. Update documentation accordingly
 
-The service includes comprehensive logging:
-- Request/response logging
-- API call tracking
-- Stage progression monitoring
-- Error tracking and debugging
+### Code Standards
+- Follow existing code patterns and architecture
+- Maintain calculation chain transparency
+- Ensure comprehensive error handling
+- Add appropriate logging and monitoring
+- Include unit and integration tests
 
-## Contributing
+## 📞 Support
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
+### Documentation Issues
+- Review the specific documentation section for your question
+- Check the [API Reference](06-api-reference-usage.md) for implementation details
+- Consult the [Configuration Guide](07-configuration-setup.md) for setup issues
 
-## License
+### Technical Support
+- Check the troubleshooting section in [Configuration Guide](07-configuration-setup.md)
+- Review validation framework in [Quality Assurance](05-validation-quality-assurance.md)
+- Examine logs and monitoring data
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+## 🔮 Future Enhancements
 
-## Troubleshooting
+### Planned Features
+- **Real-time Updates**: Live financial data integration
+- **Enhanced Visualizations**: Interactive charts and dashboards
+- **Advanced Scenarios**: Monte Carlo simulations and stress testing
+- **Industry Benchmarking**: Automated peer comparison
+- **Workflow Integration**: Enterprise system integration
 
-### Common Issues
+### Customization Opportunities
+- **Industry-Specific Models**: Specialized forecasting for different sectors
+- **Regional Adaptations**: Support for different financial year cycles
+- **Custom Validation Rules**: Business-specific validation frameworks
+- **Integration Plugins**: Seamless ERP and accounting system integration
 
-1. **API Key Issues**
-   - Ensure GEMINI_API_KEY is set in environment
-   - Check API key has sufficient quota
-   - Verify API key permissions
+---
 
-2. **File Upload Issues**
-   - Check file size limits (50MB PDF, 10MB images, 25MB CSV)
-   - Verify file format is supported
-   - Ensure proper Content-Type headers
+## 📄 License
 
-3. **Processing Timeouts**
-   - Increase API_TIMEOUT for large files
-   - Use gemini-2.5-flash for faster processing
-   - Consider splitting large document sets
+This documentation covers a proprietary financial projection system. All rights reserved.
 
-### Support
+## 🏷️ Version
 
-For issues and questions:
-1. Check the logs for detailed error messages
-2. Use the `/admin/health/detailed` endpoint for system diagnostics
-3. Test individual stages using the admin endpoints
-4. Review the API documentation at `http://localhost:8000/docs`
+Documentation Version: 1.0.0  
+System Version: 1.0.0  
+Last Updated: January 2024
 
-## Performance Optimization
+---
 
-### Recommended Settings
-
-```python
-# For high-volume usage
-GEMINI_API_KEY_1=key1
-GEMINI_API_KEY_2=key2
-GEMINI_API_KEY_3=key3
-MAX_RETRIES=2
-RETRY_DELAY=0.5
-API_TIMEOUT=180
-
-# Use faster models for production
-DEFAULT_MODEL=gemini-2.5-flash
-```
-
-### Scaling Considerations
-
-- Use multiple API keys for load balancing
-- Implement Redis caching for repeated analyses
-- Consider async processing for large document sets
-- Monitor API usage and implement rate limiting
+*This documentation is designed to provide comprehensive understanding of the OCR-based Financial Projection System. Start with the [System Overview](01-system-overview.md) and follow the suggested navigation path for your role and use case.*

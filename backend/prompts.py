@@ -274,7 +274,7 @@ Return ONLY valid JSON with this structure:
       {
         "driver_name": "Primary revenue driver (e.g., contract volume, customer growth)",
         "driver_type": "volume|price|mix|market_share",
-        "baseline_value": "SPECIFIC NUMERIC VALUE with units (e.g., $50,000/month, 120 customers)",
+        "baseline_value": "SPECIFIC NUMERIC VALUE with units (e.g., $$50,000/month, 120 customers)",
         "growth_assumptions": "SPECIFIC RATE AND PATTERN (e.g., 5% annual growth, 2% monthly compound)",
         "seasonality_factors": "SPECIFIC SEASONAL ADJUSTMENTS (e.g., +15% in Q2, -10% in Q4)",
         "justification": "DATA-BASED RATIONALE for this assumption"
@@ -284,7 +284,7 @@ Return ONLY valid JSON with this structure:
       {
         "driver_name": "Cost of goods sold driver",
         "driver_type": "percentage_of_revenue|fixed_cost|variable_cost",
-        "baseline_value": "SPECIFIC BASELINE (e.g., 65% of revenue, $25,000/month fixed)",
+        "baseline_value": "SPECIFIC BASELINE (e.g., 65% of revenue, $$25,000/month fixed)",
         "escalation_rate": "SPECIFIC ANNUAL INCREASE (e.g., 3.5% annual inflation)",
         "relationship_to_revenue": "SPECIFIC SCALING RELATIONSHIP (e.g., 1:1 with revenue, fixed regardless of revenue)",
         "justification": "DATA-BASED RATIONALE for this assumption"
@@ -294,9 +294,9 @@ Return ONLY valid JSON with this structure:
       {
         "driver_name": "Operating expense driver",
         "driver_type": "fixed|variable|stepped",
-        "baseline_value": "SPECIFIC MONTHLY/ANNUAL BASELINE (e.g., $15,000/month, $180,000/year)",
+        "baseline_value": "SPECIFIC MONTHLY/ANNUAL BASELINE (e.g., $$15,000/month, $$180,000/year)",
         "inflation_rate": "SPECIFIC INFLATION ADJUSTMENT (e.g., 3.2% annual based on Australian CPI)",
-        "scalability": "SPECIFIC SCALING PATTERN (e.g., +$5,000 per additional $100k revenue)",
+        "scalability": "SPECIFIC SCALING PATTERN (e.g., +$$5,000 per additional $$100k revenue)",
         "justification": "DATA-BASED RATIONALE for this assumption"
       }
     ]
@@ -445,11 +445,11 @@ After calculating the three-way forecast, implement a realistic profit distribut
 7. **Quarterly Distribution**: For monthly projections, calculate quarterly dividends and distribute at month 3, 6, 9, 12
 
 DIVIDEND CALCULATION EXAMPLE:
-- If Net Profit = $100,000 for the quarter
-- Dividend Payment = $100,000 * 0.40 = $40,000
-- Cash Flow from Financing = -$40,000 (cash outflow)
-- Retained Earnings reduction = -$40,000
-- Remaining in Retained Earnings = $60,000
+- If Net Profit = $$100,000 for the quarter
+- Dividend Payment = $$100,000 * 0.40 = $$40,000
+- Cash Flow from Financing = -$$40,000 (cash outflow)
+- Retained Earnings reduction = -$$40,000
+- Remaining in Retained Earnings = $$60,000
 
 This ensures realistic cash management and prevents unrealistic cash accumulation in profitable businesses.
 

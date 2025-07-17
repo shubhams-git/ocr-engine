@@ -27,10 +27,9 @@ function App() {
   // Fallback models if backend is not available
   const fallbackModels = [
     { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', description: 'Most capable model for complex tasks' },
-    { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', description: 'Fast and efficient (Recommended)' },
-    { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', description: 'Latest experimental model' },
-    { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', description: 'Fast and reliable' },
-    { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', description: 'Advanced reasoning capabilities' }
+    { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', description: 'Fast and efficient' },
+    { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', description: 'Cheap and efficient' },
+    { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', description: 'Legacy model with Advanced reasoning capabilities' }
   ]
 
   // Check backend status and load models on component mount
@@ -195,7 +194,7 @@ function App() {
                     <div className="model-info">
                       <span className="model-name">
                         {model.name}
-                        {model.id === 'gemini-2.5-flash' && (
+                        {model.id === 'gemini-2.5-pro' && (
                           <span className="recommended-badge">Recommended</span>
                         )}
                       </span>

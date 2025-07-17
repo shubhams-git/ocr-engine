@@ -6382,3 +6382,8 @@ body {
     flex-wrap: wrap;
   }
 }
+
+.mode-button.active .mode-description {
+  color: white;
+  opacity: 1;
+}
