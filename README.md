@@ -291,7 +291,6 @@ This documentation covers a proprietary financial projection system. All rights 
 
 Documentation Version: 1.0.0  
 System Version: 1.0.0  
-Last Updated: January 2024
 
 ---
 
