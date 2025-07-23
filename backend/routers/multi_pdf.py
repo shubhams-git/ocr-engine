@@ -1,5 +1,6 @@
 """
 Multi-document analysis endpoints
+ENHANCED: Updated projection counting and logging
 """
 import time
 from typing import List
@@ -29,8 +30,9 @@ async def analyze_multiple_files(
     Returns comprehensive analysis with:
     - Extracted data from each document
     - Normalized and combined data
-    - Projections and insights
-    - Detailed explanations
+    - Complete financial projections (Revenue, Expenses, Gross Profit, Net Profit)
+    - Projections for 1, 3, 5, 10, and 15 year horizons
+    - Detailed explanations and business intelligence
     """
     request_start_time = time.time()
     
@@ -65,24 +67,61 @@ async def analyze_multiple_files(
         
         total_request_time = time.time() - request_start_time
         
-        # Log response details
+        # Enhanced projection counting and logging
         files_processed = len(result.extracted_data) if result.extracted_data else 0
         
-        # Count projections correctly based on actual structure
+        # Count projections more accurately
         projections_count = 0
         if result.projections:
             # Check for base_case_projections (new structure)
             base_case = result.projections.get('base_case_projections', {})
             if base_case:
-                projections_count = len(base_case)
+                # Count metrics across all horizons
+                required_metrics = ['revenue', 'expenses', 'gross_profit', 'net_profit']
+                required_horizons = ['1_year_ahead', '3_years_ahead', '5_years_ahead', '10_years_ahead', '15_years_ahead']
+                
+                for horizon in required_horizons:
+                    if horizon in base_case:
+                        horizon_data = base_case[horizon]
+                        if isinstance(horizon_data, dict):
+                            for metric in required_metrics:
+                                if metric in horizon_data:
+                                    metric_data = horizon_data[metric]
+                                    if isinstance(metric_data, list) and len(metric_data) > 0:
+                                        projections_count += 1
+                
+                logger.info(f"🎯 PROJECTION COUNT: {projections_count} metrics found across {len(base_case)} horizons")
             else:
                 # Fallback to specific_projections (legacy structure)
                 projections_count = len(result.projections.get('specific_projections', {}))
+                logger.info(f"🎯 LEGACY PROJECTION COUNT: {projections_count} projections found")
         
+        # Enhanced logging with projection metrics
         log_request_end(logger, "multi-pdf analyze", success=result.success, duration=total_request_time,
                        files_processed=f"{files_processed}/{len(files)}",
                        data_quality_score=result.data_quality_score,
                        projections_generated=projections_count)
+        
+        # Log detailed projection summary
+        if result.success and projections_count > 0:
+            expected_metrics = 20  # 4 metrics × 5 horizons
+            completeness_rate = (projections_count / expected_metrics * 100) if projections_count > 0 else 0
+            complete_horizons = projections_count // 4
+            
+            logger.info(f"🎯 PROJECTION SUMMARY:")
+            logger.info(f"   📊 Total metrics generated: {projections_count}/{expected_metrics}")
+            logger.info(f"   📈 Completeness rate: {completeness_rate:.1f}%")
+            logger.info(f"   🕐 Complete horizons: {complete_horizons}/5")
+            logger.info(f"   📋 Metrics per horizon: Revenue, Expenses, Gross Profit, Net Profit")
+            
+            if projections_count == expected_metrics:
+                logger.info("✅ ALL REQUIRED PROJECTION DATA GENERATED SUCCESSFULLY")
+            elif projections_count >= 16:  # At least 4 complete horizons
+                logger.info("✅ SUBSTANTIAL PROJECTION DATA GENERATED")
+            elif projections_count > 0:
+                logger.warning("⚠️ PARTIAL PROJECTION DATA GENERATED - Some metrics may be missing")
+            else:
+                logger.error("❌ NO PROJECTION DATA GENERATED")
         
         if not result.success:
             logger.error(f"Analysis failed | Error: {result.error}")
@@ -93,4 +132,4 @@ async def analyze_multiple_files(
         total_request_time = time.time() - request_start_time
         log_request_end(logger, "multi-pdf analyze", success=False, duration=total_request_time,
                        error=str(e))
-        raise 
+        raise

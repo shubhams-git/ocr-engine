@@ -1,5 +1,5 @@
 """
-Enhanced Business Analysis Service - Stage 2: Business Analysis with Smart Pro Model Fallback
+Enhanced Analysis Service - Stage 3: Comprehensive Business Analysis with Smart Pro Model Fallback
 Implements intelligent cooldown periods and Flash model fallback after 2nd retry
 UPDATED: Now uses SuperRobustJSONParser and IntelligentMethodologySelector
 """
@@ -16,11 +16,11 @@ from google import genai
 from config import (
     get_next_key, API_KEYS, API_TIMEOUT, MAX_RETRIES, BASE_RETRY_DELAY,
     MAX_RETRY_DELAY, EXPONENTIAL_MULTIPLIER, OVERLOAD_MULTIPLIER,
-    PRO_MODEL_MIN_DELAY, PRO_MODEL_ERROR_DELAY, PRO_MODEL_OVERLOAD_DELAY, 
+    PRO_MODEL_MIN_DELAY, PRO_MODEL_ERROR_DELAY, PRO_MODEL_OVERLOAD_DELAY,
     FLASH_FALLBACK_THRESHOLD,
     calculate_smart_backoff_delay, get_fallback_model, enhance_prompt_for_flash_fallback
 )
-from prompts import STAGE2_CASH_FLOW_PROMPT
+from prompts import STAGE3_ANALYSIS_PROMPT
 from logging_config import (get_logger, log_api_call, log_stage_progress)
 import os
 from .utils import SuperRobustJSONParser, IntelligentMethodologySelector
@@ -102,8 +102,8 @@ class SmartGlobalRateLimiter:
 # Create smart global rate limiter instance
 smart_global_rate_limiter = SmartGlobalRateLimiter()
 
-class BusinessAnalysisService:
-    """Enhanced Service for Stage 2: Business Analysis with Smart Pro Model Fallback"""
+class AnalysisService:
+    """Enhanced Service for Stage 3: Comprehensive Business Analysis with Smart Pro Model Fallback"""
     
     def __init__(self):
         # API configuration from enhanced config
@@ -114,22 +114,22 @@ class BusinessAnalysisService:
         self.exponential_multiplier = EXPONENTIAL_MULTIPLIER
         self.overload_multiplier = OVERLOAD_MULTIPLIER
         self.flash_fallback_threshold = FLASH_FALLBACK_THRESHOLD
-        
+
         # Debug flag for detailed response logging
         self.debug_responses = False
         
         # Only log during main server process, not during uvicorn reloads
         if os.getenv("OCR_SERVER_MAIN") == "true":
-            logger.info("Enhanced Business Analysis Service (Stage 2) initialized with SMART PRO MODEL FALLBACK")
+            logger.info("Enhanced Analysis Service (Stage 3) initialized with SMART PRO MODEL FALLBACK")
             logger.info(f"SMART FALLBACK: Max retries: {self.max_retries} | Base delay: {self.base_retry_delay}s | Max delay: {self.max_retry_delay}s")
             logger.info(f"FALLBACK STRATEGY: Pro model attempts 1-{self.flash_fallback_threshold-1}, Flash fallback from attempt {self.flash_fallback_threshold}")
             logger.info(f"PRO PROTECTION: Min: {PRO_MODEL_MIN_DELAY}s | Error: {PRO_MODEL_ERROR_DELAY}s | Overload: {PRO_MODEL_OVERLOAD_DELAY}s")
             logger.info("UPDATED: Now using SuperRobustJSONParser and IntelligentMethodologySelector")
         
-        logger.debug(f"Enhanced API configuration | Timeout: {self.api_timeout}s | Max retries: {self.max_retries}")
+        logger.debug(f"Enhanced Analysis Service configuration | Timeout: {self.api_timeout}s | Max retries: {self.max_retries}")
         logger.debug(f"Smart backoff | Base: {self.base_retry_delay}s | Max: {self.max_retry_delay}s | Multiplier: {self.exponential_multiplier}x")
         logger.debug(f"API key pool available | Count: {len(API_KEYS)}")
-    
+
     def extract_response_text(self, response) -> str:
         """Extract text from Gemini response"""
         if response and hasattr(response, 'text') and response.text:
@@ -144,7 +144,7 @@ class BusinessAnalysisService:
         
         raise Exception("No data extracted from Gemini response")
     
-    async def process_with_gemini_smart_fallback(self, prompt: str, content: str, original_model: str, operation_name: str = "Business Analysis") -> str:
+    async def process_with_gemini_smart_fallback(self, prompt: str, content: str, original_model: str, operation_name: str = "Analysis") -> str:
         """Process request with Gemini using SMART PRO MODEL FALLBACK"""
         start_time = time.time()
         last_exception = None
@@ -176,19 +176,19 @@ class BusinessAnalysisService:
                 # ENHANCE PROMPT FOR FLASH FALLBACK
                 current_prompt = prompt
                 if is_fallback:
-                    current_prompt = enhance_prompt_for_flash_fallback(prompt, "Stage 2: Business Analysis")
+                    current_prompt = enhance_prompt_for_flash_fallback(prompt, "Stage 3: Comprehensive Business Analysis")
                     logger.info(f"🔧 Enhanced prompt for Flash fallback ({len(current_prompt)} chars)")
                 
                 # Use new SDK client with fresh key
                 client = genai.Client(api_key=api_key)
                 
-                # Create text-based content
-                if content:
-                    contents = f"{content}\n\n{current_prompt}"
-                    logger.debug(f"Request type: text + prompt | Content: {len(content)} chars | Prompt: {len(current_prompt)} chars")
-                else:
+                # Prepare content
+                if content == "":
                     contents = current_prompt
-                    logger.debug(f"Request type: text-only | Prompt length: {len(current_prompt)} chars")
+                    logger.debug(f"Request type: prompt-only | Prompt length: {len(current_prompt)} chars")
+                else:
+                    contents = f"{content}\n\n{current_prompt}"
+                    logger.debug(f"Request type: content + prompt | Content: {len(content)} chars | Prompt: {len(current_prompt)} chars")
                 
                 # Apply timeout to the API call
                 response = await asyncio.wait_for(
@@ -287,82 +287,37 @@ class BusinessAnalysisService:
         log_api_call(logger, operation_name, "FAILED", "FAILED", elapsed_time, success=False, error=final_error)
         logger.error(f"❌ {operation_name} FAILED after {self.max_retries + 1} attempts in {elapsed_time:.2f}s")
         raise last_exception or Exception(f"All {self.max_retries + 1} retry attempts failed")
-    
-    async def generate_cash_flows_and_analyze(self, stage1_results: List[Dict], model: str = "gemini-2.5-pro") -> Dict[str, Any]:
+
+    async def analyze_comprehensive_business_context(self, stage2_result: Dict, model: str = "gemini-2.5-pro") -> Dict[str, Any]:
         """
-        Stage 2: Enhanced Cash Flow Generation & Business Analysis with Smart Pro Model Fallback
+        Stage 3: Enhanced Comprehensive Business Analysis with Smart Pro Model Fallback
         UPDATED: Now uses SuperRobustJSONParser and IntelligentMethodologySelector
         """
         try:
-            logger.info(f"💰 STAGE 2: Enhanced Cash Flow Generation & Business Analysis with SUPER ROBUST JSON PARSER ({len(stage1_results)} documents)")
+            logger.info(f"🎯 STAGE 3: Enhanced Comprehensive Business Analysis with SUPER ROBUST JSON PARSER")
             logger.info(f"🎯 Model: {model} | Max retries: {self.max_retries} | Base delay: {self.base_retry_delay}s | Max delay: {self.max_retry_delay}s")
             logger.info(f"🔄 SMART FALLBACK: Pro attempts 1-{self.flash_fallback_threshold-1}, Flash fallback from attempt {self.flash_fallback_threshold}")
             logger.info("🔧 UPDATED: Using SuperRobustJSONParser with 8 parsing strategies")
             
-            # Prepare stage1 standard field data for cash flow reconstruction
-            stage1_standard_field_data = {
-                "standard_field_mappings": [],
-                "raw_extractions": stage1_results
-            }
+            template = string.Template(STAGE3_ANALYSIS_PROMPT)
+            context_prompt = template.safe_substitute(
+                stage2_comprehensive_analysis_data=json.dumps(stage2_result, indent=2)
+            )
             
-            # Extract standard field mappings from each document
-            for result in stage1_results:
-                if result.get('success') and result.get('data'):
-                    try:
-                        data = result['data']
-                        if isinstance(data, str):
-                            data = json.loads(data)
-                        
-                        standard_fields = data.get('standard_field_mapping', {})
-                        if standard_fields:
-                            stage1_standard_field_data["standard_field_mappings"].append({
-                                "filename": result.get('filename', 'unknown'),
-                                "document_type": data.get('document_type', 'unknown'),
-                                "standard_fields": standard_fields,
-                                "data_quality": data.get('data_quality_assessment', {}),
-                                "legacy_normalized_data": data.get('legacy_normalized_time_series', {})
-                            })
-                    except Exception as e:
-                        logger.warning(f"Error processing document {result.get('filename', 'unknown')}: {str(e)}")
-            
-            # Template processing with error handling
-            try:
-                template = string.Template(STAGE2_CASH_FLOW_PROMPT)
-                context_prompt = template.safe_substitute(
-                    stage1_standard_field_data=json.dumps(stage1_standard_field_data, indent=2)
-                )
-            except Exception as template_error:
-                logger.error(f"❌ Template substitution failed: {str(template_error)}")
-                try:
-                    data_json = json.dumps(stage1_standard_field_data, indent=2)
-                    context_prompt = STAGE2_CASH_FLOW_PROMPT.replace('$stage1_standard_field_data', data_json)
-                    logger.info("✅ Used fallback string replacement for template")
-                except Exception as fallback_error:
-                    logger.error(f"❌ Fallback template replacement also failed: {str(fallback_error)}")
-                    context_prompt = f"""
-Analyze the following financial data and provide cash flow generation and business analysis.
-
-DATA:
-{json.dumps(stage1_standard_field_data, indent=2)}
-
-Please provide a JSON response with business context, methodology evaluation, and comprehensive handover recommendations.
-"""
-                    logger.warning("⚠️ Using simplified fallback prompt due to template issues")
-            
-            logger.debug(f"📋 Enhanced cash flow generation context prepared: {len(context_prompt)} characters")
+            logger.debug(f"📋 Enhanced comprehensive analysis context prepared: {len(context_prompt)} characters")
             
             # USE SMART PRO MODEL FALLBACK METHOD
             response = await self.process_with_gemini_smart_fallback(
                 context_prompt,
                 "",
                 model,
-                "Stage 2: Enhanced Cash Flow Generation & Business Analysis"
+                "Stage 3: Enhanced Comprehensive Business Analysis"
             )
             
-            # UPDATED: Use SuperRobustJSONParser instead of old parser
+            # UPDATED: Use SuperRobustJSONParser instead of old RobustJSONParser
             try:
                 if self.debug_responses:
-                    logger.info(f"🔍 STAGE 2 - Using SuperRobustJSONParser with 8 parsing strategies")
+                    logger.info(f"🔍 STAGE 3 - Using SuperRobustJSONParser with 8 parsing strategies")
                     logger.info(f"📝 Raw response length: {len(response)} characters")
                     logger.info(f"📋 Raw response preview: {response[:500]}...")
                 
@@ -372,9 +327,9 @@ Please provide a JSON response with business context, methodology evaluation, an
                 
                 if result and isinstance(result, dict):
                     # Extract key information for logging
-                    business_stage = result.get('business_context', {}).get('business_stage', 'N/A')
-                    selected_method = result.get('methodology_evaluation', {}).get('selected_method', {}).get('primary_method', 'N/A')
-                    logger.info(f"✅ Stage 2 Success with SUPER ROBUST JSON PARSER: Business Stage: {business_stage}, Method: {selected_method}")
+                    business_stage = result.get('advanced_business_intelligence', {}).get('industry_classification_validated', {}).get('final_industry', 'N/A')
+                    selected_method = result.get('methodology_optimization', {}).get('optimal_methodology_selection', {}).get('primary_method', 'N/A')
+                    logger.info(f"✅ Stage 3 Success with SUPER ROBUST JSON PARSER: Industry: {business_stage}, Selected Method: {selected_method}")
                     return result
                 else:
                     logger.warning(f"⚠️ SuperRobustJSONParser returned invalid result: {result}")
@@ -388,27 +343,34 @@ Please provide a JSON response with business context, methodology evaluation, an
             # UPDATED: Enhanced fallback with intelligent methodology selection
             logger.warning("🔄 Generating intelligent fallback structure with SuperRobustJSONParser")
             
-            # Use intelligent methodology selector instead of hardcoded ARIMA
-            methodology = IntelligentMethodologySelector.select_optimal_methodology(stage1_standard_field_data)
+            # Use intelligent methodology selector instead of hardcoded values
+            methodology = IntelligentMethodologySelector.select_optimal_methodology(stage2_result)
             
             return {
-                "business_context": {
-                    "industry_classification": "Unknown", 
-                    "business_stage": "growth",
-                    "market_geography": "Australian",
-                    "competitive_position": "established"
+                "stage3_processing_summary": {
+                    "comprehensive_analysis_completed": False,
+                    "methodology_selection_completed": True,
+                    "assumptions_validated": False,
+                    "forecasting_strategy_prepared": True,
+                    "stage4_handover_ready": True
                 },
-                "methodology_evaluation": {
-                    "selected_method": {
+                "advanced_business_intelligence": {
+                    "industry_classification_validated": {"final_industry": "Unknown"},
+                    "competitive_position_enhanced": {"market_position": "established"},
+                    "business_model_analysis": {"model_type_confirmed": "mixed"}
+                },
+                "methodology_optimization": {
+                    "optimal_methodology_selection": {
                         "primary_method": methodology["primary_method"],
                         "rationale": f"Intelligent selection due to parsing failure: {methodology['rationale']}", 
-                        "confidence_level": methodology["confidence_level"]
+                        "confidence_level": methodology["confidence_level"],
+                        "fallback_method": methodology.get("fallback_method", "LinearRegression")
                     }
                 },
-                "handover_recommendations": {
-                    "primary_recommendations": [f"Use {methodology['primary_method']} methodology selected based on data characteristics"],
-                    "risk_adjustments": ["Medium uncertainty due to parsing issues but intelligent methodology selected"],
-                    "scenario_considerations": [f"Apply {methodology['primary_method']} with {methodology['confidence_level']} confidence"]
+                "stage4_handover_package": {
+                    "complete_dataset_ready": {"historical_pl_complete": True, "historical_bs_complete": True, "historical_cf_complete": True},
+                    "methodology_ready": {"optimal_method_selected": methodology["primary_method"], "method_parameters_defined": True},
+                    "business_intelligence_complete": {"industry_analysis_final": False}
                 },
                 "raw_analysis": response,
                 "parsing_error": "SuperRobustJSONParser failed - using intelligent methodology selection",
@@ -417,7 +379,7 @@ Please provide a JSON response with business context, methodology evaluation, an
             }
                 
         except Exception as e:
-            logger.error(f"❌ Stage 2 enhanced analysis failed with exception: {str(e)}")
+            logger.error(f"❌ Stage 3 enhanced comprehensive analysis failed with exception: {str(e)}")
             import traceback
             logger.error(f"❌ Full traceback: {traceback.format_exc()}")
             
@@ -425,30 +387,36 @@ Please provide a JSON response with business context, methodology evaluation, an
             methodology = IntelligentMethodologySelector.select_optimal_methodology({})
             
             return {
-                "business_context": {
-                    "industry_classification": "Unknown", 
-                    "business_stage": "unknown",
-                    "market_geography": "Australian",
-                    "competitive_position": "unknown"
+                "stage3_processing_summary": {
+                    "comprehensive_analysis_completed": False,
+                    "methodology_selection_completed": True,
+                    "assumptions_validated": False,
+                    "forecasting_strategy_prepared": False,
+                    "stage4_handover_ready": False
                 },
-                "methodology_evaluation": {
-                    "selected_method": {
+                "advanced_business_intelligence": {
+                    "industry_classification_validated": {"final_industry": "Unknown"},
+                    "competitive_position_enhanced": {"market_position": "unknown"},
+                    "business_model_analysis": {"model_type_confirmed": "unknown"}
+                },
+                "methodology_optimization": {
+                    "optimal_methodology_selection": {
                         "primary_method": methodology["primary_method"],
                         "rationale": f"Emergency fallback due to analysis failure: {methodology['rationale']}",
                         "confidence_level": methodology["confidence_level"]
                     }
                 },
-                "handover_recommendations": {
-                    "primary_recommendations": [f"Use very conservative projections with {methodology['primary_method']} due to system failure"],
-                    "risk_adjustments": ["Very high uncertainty due to system error"],
-                    "scenario_considerations": [f"Emergency fallback - manual review recommended with {methodology['primary_method']}"]
+                "stage4_handover_package": {
+                    "complete_dataset_ready": {"historical_pl_complete": False, "historical_bs_complete": False, "historical_cf_complete": False},
+                    "methodology_ready": {"optimal_method_selected": methodology["primary_method"], "method_parameters_defined": False},
+                    "business_intelligence_complete": {"industry_analysis_final": False}
                 },
                 "error": str(e),
                 "analysis_failed": True,
-                "fallback_reason": "Exception in Stage 2 enhanced analysis process",
+                "fallback_reason": "Exception in Stage 3 enhanced comprehensive analysis process",
                 "super_robust_parser_used": True,
                 "intelligent_methodology_selection": methodology
             }
 
-# Create enhanced business analysis service instance
-business_analysis_service = BusinessAnalysisService()
+# Create enhanced analysis service instance
+analysis_service = AnalysisService()
