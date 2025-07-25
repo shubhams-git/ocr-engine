@@ -1,6 +1,7 @@
 """
-Enhanced OCR Service - Stage 1: Data Extraction with Smart Fallback (Flash Model Only)
-Updated to use smart configuration but Flash model doesn't need fallback logic
+Enhanced OCR Service - Stage 1: Data Extraction with Pro Model Support
+UPDATED: Now optimized for Gemini 2.5 Pro with enhanced response extraction
+ENHANCED: Better handling of large CSV files and complex financial data
 """
 import asyncio
 import time
@@ -25,39 +26,71 @@ from logging_config import (get_logger, log_api_call, log_file_processing,
 # Set up logger
 logger = get_logger(__name__)
 
-# SIMPLE GLOBAL RATE LIMITER - Flash Model Only
-class SimpleGlobalRateLimiter:
-    """Simple global rate limiter for Flash model only"""
+# PRO MODEL RATE LIMITER - Enhanced for Gemini 2.5 Pro
+class ProModelRateLimiter:
+    """Enhanced rate limiter optimized for Gemini 2.5 Pro"""
     
     def __init__(self):
-        self.flash_min_delay = 2.5  # 2.5s for Flash model
-        self.last_flash_request_time = 0
+        # OPTIMIZED DELAYS - Prevents 503 without excessive waiting
+        self.pro_min_delay = 12.0  # 12 seconds for Pro model (optimized from 15s)
+        self.pro_error_delay = 20.0  # 20 seconds after any error (optimized from 30s)
+        self.pro_overload_delay = 45.0  # 45 seconds after overload (optimized from 60s)
+        
+        self.last_pro_request_time = 0
+        self.last_pro_error_time = 0
+        self.last_pro_overload_time = 0
+        
         self.lock = asyncio.Lock()
     
-    async def acquire_flash(self, operation_name: str = "Flash API"):
-        """Acquire rate limit for Flash model calls"""
+    async def acquire_pro(self, operation_name: str = "Pro API"):
+        """Acquire rate limit for Pro model calls with optimized protection"""
         async with self.lock:
             current_time = time.time()
-            time_since_last = current_time - self.last_flash_request_time
+            delays_to_check = []
             
-            if time_since_last < self.flash_min_delay:
-                sleep_time = self.flash_min_delay - time_since_last
-                logger.debug(f"🕐 Flash rate limit: Waiting {sleep_time:.2f}s before {operation_name}")
-                await asyncio.sleep(sleep_time)
+            # Check overload delay (highest priority)
+            time_since_overload = current_time - self.last_pro_overload_time
+            if time_since_overload < self.pro_overload_delay:
+                delays_to_check.append(("overload protection", self.pro_overload_delay - time_since_overload))
             
-            self.last_flash_request_time = time.time()
-            logger.debug(f"✅ Flash rate limit acquired for {operation_name}")
+            # Check error delay (medium priority)
+            time_since_error = current_time - self.last_pro_error_time
+            if time_since_error < self.pro_error_delay:
+                delays_to_check.append(("error protection", self.pro_error_delay - time_since_error))
+            
+            # Check standard delay (lowest priority)
+            time_since_last = current_time - self.last_pro_request_time
+            if time_since_last < self.pro_min_delay:
+                delays_to_check.append(("standard rate limit", self.pro_min_delay - time_since_last))
+            
+            # Apply the longest delay
+            if delays_to_check:
+                delay_reason, delay_time = max(delays_to_check, key=lambda x: x[1])
+                logger.info(f"⏳ Pro model {delay_reason}: Waiting {delay_time:.1f}s before {operation_name}")
+                await asyncio.sleep(delay_time)
+            
+            self.last_pro_request_time = time.time()
+            logger.info(f"✅ Pro rate limit acquired for {operation_name}")
+    
+    def record_pro_error(self, error_type: str = "general"):
+        """Record when any Pro model error occurred"""
+        if "503" in error_type or "overload" in error_type.lower():
+            self.last_pro_overload_time = time.time()
+            logger.warning(f"🚨 Pro model overload recorded - will wait {self.pro_overload_delay}s before next Pro call")
+        else:
+            self.last_pro_error_time = time.time()
+            logger.warning(f"⚠️ Pro model error recorded - will wait {self.pro_error_delay}s before next Pro call")
 
-# Create simple global rate limiter instance
-simple_global_rate_limiter = SimpleGlobalRateLimiter()
+# Create pro model rate limiter instance
+pro_model_rate_limiter = ProModelRateLimiter()
 
-class RobustJSONParser:
-    """Robust JSON parser that can handle malformed AI responses"""
+class EnhancedJSONParser:
+    """Enhanced JSON parser optimized for Gemini 2.5 Pro responses"""
     
     @staticmethod
     def clean_and_parse_json(response_text: str) -> Optional[Dict[str, Any]]:
         """
-        Robust JSON parser that can handle various AI response formats and common JSON errors
+        Enhanced JSON parser specifically optimized for Pro model responses
         """
         if not response_text or not isinstance(response_text, str):
             logger.warning("❌ Invalid input: empty or non-string response")
@@ -66,13 +99,14 @@ class RobustJSONParser:
         # Clean the response text
         cleaned_text = response_text.strip()
         
-        # Try multiple parsing approaches
+        # Enhanced parsing strategies optimized for Pro model
         parsing_attempts = [
             ("Direct JSON parsing", lambda x: json.loads(x)),
+            ("Enhanced markdown extraction", EnhancedJSONParser._extract_from_markdown_enhanced),
             ("JSON5 parsing", lambda x: json5.loads(x)),  
-            ("Extract from markdown", RobustJSONParser._extract_from_markdown),
-            ("Extract JSON patterns", RobustJSONParser._extract_json_patterns),
-            ("Repair and parse", RobustJSONParser._repair_and_parse),
+            ("Pro model pattern extraction", EnhancedJSONParser._extract_pro_model_patterns),
+            ("Content boundary detection", EnhancedJSONParser._extract_boundaries),
+            ("Enhanced repair and parse", EnhancedJSONParser._repair_and_parse_enhanced),
         ]
         
         for attempt_name, parse_func in parsing_attempts:
@@ -80,7 +114,7 @@ class RobustJSONParser:
                 logger.debug(f"🔧 Attempting: {attempt_name}")
                 result = parse_func(cleaned_text)
                 
-                if result and isinstance(result, dict):
+                if result and isinstance(result, dict) and len(result) > 0:
                     logger.info(f"✅ Successfully parsed with: {attempt_name}")
                     return result
                 else:
@@ -90,50 +124,140 @@ class RobustJSONParser:
                 logger.debug(f"❌ {attempt_name} failed: {str(e)}")
                 continue
         
-        logger.error("❌ All JSON parsing attempts failed")
+        logger.error("❌ All enhanced JSON parsing attempts failed")
         return None
     
     @staticmethod
-    def _extract_from_markdown(text: str) -> Optional[Dict[str, Any]]:
-        """Extract JSON from markdown code blocks"""
-        json_blocks = re.findall(r'```(?:json)?\s*(\{.*?\})\s*```', text, re.DOTALL | re.IGNORECASE)
+    def _extract_from_markdown_enhanced(text: str) -> Optional[Dict[str, Any]]:
+        """Enhanced markdown extraction for Pro model responses"""
+        # Multiple markdown patterns that Pro model might use
+        markdown_patterns = [
+            r'```json\s*(\{.*?\})\s*```',
+            r'```\s*(\{.*?\})\s*```',
+            r'`(\{.*?\})`',
+            r'```json\n(.*?)```',
+            r'```\n(.*?)```'
+        ]
         
-        for block in json_blocks:
+        for pattern in markdown_patterns:
+            matches = re.findall(pattern, text, re.DOTALL | re.IGNORECASE)
+            for match in matches:
+                try:
+                    result = json.loads(match.strip())
+                    if isinstance(result, dict) and len(result) > 0:
+                        return result
+                except:
+                    try:
+                        result = json5.loads(match.strip())
+                        if isinstance(result, dict) and len(result) > 0:
+                            return result
+                    except:
+                        continue
+        
+        return None
+    
+    @staticmethod
+    def _extract_pro_model_patterns(text: str) -> Optional[Dict[str, Any]]:
+        """Extract JSON using patterns specific to Pro model responses"""
+        # Pro model often generates well-structured JSON with specific indentation
+        patterns = [
+            r'\{\s*"document_type".*?\}',  # Look for document_type as anchor
+            r'\{\s*"source_filename".*?\}',  # Look for source_filename as anchor
+            r'\{\s*"data_quality_assessment".*?\}',  # Look for assessment as anchor
+        ]
+        
+        for pattern in patterns:
+            # Use safe brace matching instead of regex for full extraction
+            match = re.search(pattern, text, re.DOTALL | re.IGNORECASE)
+            if match:
+                start_pos = match.start()
+                
+                # Find the complete JSON object using brace matching
+                brace_count = 0
+                end_pos = -1
+                
+                for i in range(start_pos, len(text)):
+                    if text[i] == '{':
+                        brace_count += 1
+                    elif text[i] == '}':
+                        brace_count -= 1
+                        if brace_count == 0:
+                            end_pos = i + 1
+                            break
+                
+                if end_pos > start_pos:
+                    candidate = text[start_pos:end_pos]
+                    try:
+                        result = json.loads(candidate)
+                        if isinstance(result, dict) and len(result) > 0:
+                            return result
+                    except:
+                        try:
+                            result = json5.loads(candidate)
+                            if isinstance(result, dict) and len(result) > 0:
+                                return result
+                        except:
+                            continue
+        
+        return None
+    
+    @staticmethod
+    def _extract_boundaries(text: str) -> Optional[Dict[str, Any]]:
+        """Enhanced boundary detection for Pro model responses"""
+        start = text.find('{')
+        if start == -1:
+            return None
+        
+        # Find matching closing brace using safe scanning
+        brace_count = 0
+        end = -1
+        
+        for i in range(start, len(text)):
+            if text[i] == '{':
+                brace_count += 1
+            elif text[i] == '}':
+                brace_count -= 1
+                if brace_count == 0:
+                    end = i + 1
+                    break
+        
+        if end > start:
+            candidate = text[start:end]
             try:
-                result = json.loads(block.strip())
-                if isinstance(result, dict):
+                result = json.loads(candidate)
+                if isinstance(result, dict) and len(result) > 0:
                     return result
             except:
                 try:
-                    result = json5.loads(block.strip())
-                    if isinstance(result, dict):
+                    result = json5.loads(candidate)
+                    if isinstance(result, dict) and len(result) > 0:
                         return result
                 except:
-                    continue
+                    pass
         
         return None
     
     @staticmethod
-    def _repair_and_parse(text: str) -> Optional[Dict[str, Any]]:
-        """Attempt to repair common JSON formatting issues"""
-        repaired = RobustJSONParser._repair_json_format(text)
+    def _repair_and_parse_enhanced(text: str) -> Optional[Dict[str, Any]]:
+        """Enhanced repair for Pro model responses"""
+        repaired = EnhancedJSONParser._repair_json_format_enhanced(text)
         if repaired:
             try:
                 result = json.loads(repaired)
-                if isinstance(result, dict):
+                if isinstance(result, dict) and len(result) > 0:
                     return result
             except:
                 try:
                     result = json5.loads(repaired)
-                    if isinstance(result, dict):
+                    if isinstance(result, dict) and len(result) > 0:
                         return result
                 except:
                     pass
         return None
     
     @staticmethod
-    def _repair_json_format(text: str) -> Optional[str]:
-        """Fix common JSON formatting issues"""
+    def _repair_json_format_enhanced(text: str) -> Optional[str]:
+        """Enhanced JSON format repair for Pro model responses"""
         try:
             json_match = re.search(r'\{.*\}', text, re.DOTALL)
             if not json_match:
@@ -141,43 +265,22 @@ class RobustJSONParser:
             
             content = json_match.group(0)
             
-            # Basic repairs
+            # Enhanced repairs for Pro model responses
             content = re.sub(r',\s*}', '}', content)  # Remove trailing commas before }
             content = re.sub(r',\s*]', ']', content)  # Remove trailing commas before ]
             content = re.sub(r':\s*,', ': null,', content)  # Replace empty values
+            
+            # Fix common Pro model formatting issues
+            content = re.sub(r'([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:', r'\1"\2":', content)  # Quote unquoted keys
+            content = re.sub(r':\s*([^",{\[\]}\s][^,}\]]*?)(\s*[,}])', r': "\1"\2', content)  # Quote unquoted values
             
             return content
             
         except Exception:
             return None
-    
-    @staticmethod
-    def _extract_json_patterns(text: str) -> Optional[Dict[str, Any]]:
-        """Extract JSON using pattern matching"""
-        patterns = [
-            r'\{(?:[^{}]|{[^{}]*})*\}',  # Simple nested JSON
-            r'\{.*?\}',  # Basic JSON pattern
-        ]
-        
-        for pattern in patterns:
-            matches = re.findall(pattern, text, re.DOTALL)
-            for match in matches:
-                try:
-                    result = json.loads(match)
-                    if isinstance(result, dict):
-                        return result
-                except:
-                    try:
-                        result = json5.loads(match)
-                        if isinstance(result, dict):
-                            return result
-                    except:
-                        continue
-        
-        return None
 
 class EnhancedOCRService:
-    """Enhanced OCR Service for Stage 1: Data extraction with smart backoff (Flash model only)"""
+    """Enhanced OCR Service for Stage 1: Data extraction optimized for Gemini 2.5 Pro"""
     
     def __init__(self):
         # File size limits by type
@@ -199,9 +302,10 @@ class EnhancedOCRService:
         # Only log during main server process, not during uvicorn reloads
         import os
         if os.getenv("OCR_SERVER_MAIN") == "true":
-            logger.info("Enhanced OCR Service (Stage 1) initialized with SMART BACKOFF for Flash model")
-            logger.info(f"SMART BACKOFF: Max retries: {self.max_retries} | Base delay: {self.base_retry_delay}s | Max delay: {self.max_retry_delay}s")
-            logger.info("NOTE: Stage 1 uses Flash model only - no Pro model fallback needed")
+            logger.info("🚀 Enhanced OCR Service (Stage 1) initialized for GEMINI 2.5 PRO")
+            logger.info(f"⚡ OPTIMIZED RATE LIMITING | Pro delay: 12s | Error: 20s | Overload: 45s")
+            logger.info("✅ ENHANCED JSON PARSING | Optimized for Pro model responses")
+            logger.info("🎯 LARGE FILE SUPPORT | Enhanced handling for complex CSV files")
         
         logger.debug(f"Service configuration | PDF limit: {self.max_pdf_size//1024//1024}MB | CSV limit: {self.max_csv_size//1024//1024}MB | Image limit: {self.max_image_size//1024//1024}MB")
         logger.debug(f"Enhanced API configuration | Timeout: {self.api_timeout}s | Max retries: {self.max_retries} | Base delay: {self.base_retry_delay}s")
@@ -336,32 +440,55 @@ class EnhancedOCRService:
         return "Other"
     
     def extract_response_text(self, response) -> str:
-        """Extract text from Gemini response"""
-        if response and hasattr(response, 'text') and response.text:
-            return response.text.strip()
-        elif response and hasattr(response, 'candidates') and response.candidates:
-            candidate = response.candidates[0]
-            if hasattr(candidate, 'content') and candidate.content:
-                if hasattr(candidate.content, 'parts') and candidate.content.parts:
-                    text_part = candidate.content.parts[0].text
-                    if text_part:
-                        return text_part.strip()
-        
-        raise Exception("No data extracted from Gemini response")
+        """Enhanced response text extraction for Gemini 2.5 Pro"""
+        try:
+            # Method 1: Direct text attribute (most common)
+            if response and hasattr(response, 'text') and response.text:
+                text = response.text.strip()
+                if text:
+                    logger.debug(f"✅ Extracted response via text attribute: {len(text)} chars")
+                    return text
+            
+            # Method 2: Candidates structure (backup)
+            if response and hasattr(response, 'candidates') and response.candidates:
+                candidate = response.candidates[0]
+                if hasattr(candidate, 'content') and candidate.content:
+                    if hasattr(candidate.content, 'parts') and candidate.content.parts:
+                        text_part = candidate.content.parts[0]
+                        if hasattr(text_part, 'text') and text_part.text:
+                            text = text_part.text.strip()
+                            if text:
+                                logger.debug(f"✅ Extracted response via candidates: {len(text)} chars")
+                                return text
+            
+            # Method 3: Check for any string representation
+            if response:
+                response_str = str(response).strip()
+                if response_str and len(response_str) > 10:  # Minimum viable response
+                    logger.debug(f"✅ Extracted response via string conversion: {len(response_str)} chars")
+                    return response_str
+            
+            # If all methods fail, log the response structure for debugging
+            logger.error(f"❌ Could not extract text from response. Response type: {type(response)}")
+            if hasattr(response, '__dict__'):
+                logger.error(f"❌ Response attributes: {list(response.__dict__.keys())}")
+            
+            raise Exception("No data extracted from Gemini response")
+            
+        except Exception as e:
+            logger.error(f"❌ Response extraction failed: {str(e)}")
+            raise Exception("No data extracted from Gemini response")
     
-    async def process_with_gemini_smart_backoff(self, prompt: str, content: Any, model: str, operation_name: str = "OCR") -> str:
-        """Process request with Gemini using SMART BACKOFF for Flash model"""
+    async def process_with_gemini_pro_optimized(self, prompt: str, content: Any, model: str, operation_name: str = "OCR") -> str:
+        """Process request with Gemini 2.5 Pro using optimized rate limiting"""
         start_time = time.time()
         last_exception = None
         had_previous_error = False
         
-        # Flash model typically has better quotas
-        is_flash_model = "flash" in model.lower()
-        
         for attempt in range(self.max_retries + 1):
             try:
-                # SIMPLE RATE LIMITING FOR FLASH MODEL
-                await simple_global_rate_limiter.acquire_flash(f"{operation_name} (Attempt {attempt + 1})")
+                # OPTIMIZED RATE LIMITING FOR PRO MODEL
+                await pro_model_rate_limiter.acquire_pro(f"{operation_name} (Attempt {attempt + 1})")
                 
                 # GET FRESH API KEY FOR EACH ATTEMPT
                 api_key = get_next_key()
@@ -417,6 +544,10 @@ class EnhancedOCRService:
                 elapsed_time = time.time() - start_time
                 last_exception = e
                 had_previous_error = True
+                
+                # Record error for rate limiting
+                pro_model_rate_limiter.record_pro_error("timeout")
+                
                 logger.warning(f"⏰ API call TIMEOUT: {operation_name} | Attempt {attempt + 1}/{self.max_retries + 1} | Duration: {elapsed_time:.2f}s")
                 
                 if attempt >= self.max_retries:
@@ -452,6 +583,12 @@ class EnhancedOCRService:
                     "500 Internal Server Error"
                 ])
                 
+                # Record errors for rate limiting
+                if is_503_overload:
+                    pro_model_rate_limiter.record_pro_error("503_overload")
+                else:
+                    pro_model_rate_limiter.record_pro_error("general")
+                
                 is_retryable = is_503_overload or other_retryable
                 
                 if is_retryable and attempt < self.max_retries:
@@ -480,12 +617,12 @@ class EnhancedOCRService:
         logger.error(f"❌ {operation_name} FAILED after {self.max_retries + 1} attempts in {elapsed_time:.2f}s")
         raise last_exception or Exception(f"All {self.max_retries + 1} retry attempts failed")
     
-    async def process_ocr(self, content: bytes, filename: str, model: str = "gemini-2.5-flash") -> OCRResponse:
+    async def process_ocr(self, content: bytes, filename: str, model: str = "gemini-2.5-pro") -> OCRResponse:
         """
-        Enhanced OCR processing with Stage 1 logic and SMART BACKOFF (Flash model only)
+        Enhanced OCR processing with Stage 1 logic optimized for Gemini 2.5 Pro
         """
         try:
-            log_stage_progress(logger, "1", f"Processing '{filename}'", "Extract, Normalize, Quality Assessment with SMART BACKOFF")
+            log_stage_progress(logger, "1", f"Processing '{filename}'", "Extract, Normalize, Quality Assessment with PRO MODEL")
             
             # Validate file
             self.validate_file(filename, content)
@@ -502,22 +639,22 @@ class EnhancedOCRService:
                 content_for_analysis = content  # keep binary for PDFs/images
                 logger.debug(f"Content preparation | Type: {file_type.upper()} | Size: {len(content)} bytes")
             
-            # Process with Gemini using SMART BACKOFF (Flash only, no fallback needed)
-            response = await self.process_with_gemini_smart_backoff(
+            # Process with Gemini Pro using optimized rate limiting
+            response = await self.process_with_gemini_pro_optimized(
                 STAGE1_EXTRACTION_PROMPT,
                 content_for_analysis,
                 model,
                 f"Stage 1: Enhanced Extract & Normalize - {filename}"
             )
             
-            # Parse JSON response using robust parser
+            # Parse JSON response using enhanced parser
             try:
                 if self.debug_responses:
-                    logger.info(f"🔍 STAGE 1 - Attempting robust JSON parsing for {filename}")
+                    logger.info(f"🔍 STAGE 1 - Attempting enhanced JSON parsing for {filename}")
                     logger.info(f"📝 Raw response length: {len(response)} characters")
                     logger.info(f"📋 Raw response preview: {response[:500]}...")
                 
-                result = RobustJSONParser.clean_and_parse_json(response)
+                result = EnhancedJSONParser.clean_and_parse_json(response)
                 
                 if result and isinstance(result, dict):
                     # Validate and correct document type and filename if needed
@@ -549,11 +686,11 @@ class EnhancedOCRService:
                         error=None
                     )
                 else:
-                    logger.warning(f"⚠️ RobustJSONParser returned invalid result for {filename}: {type(result)}")
+                    logger.warning(f"⚠️ EnhancedJSONParser returned invalid result for {filename}: {type(result)}")
                     logger.warning("⚠️ Using enhanced fallback structure")
                     
             except Exception as parse_error:
-                logger.error(f"❌ Exception in robust JSON parsing for {filename}: {str(parse_error)}")
+                logger.error(f"❌ Exception in enhanced JSON parsing for {filename}: {str(parse_error)}")
                 import traceback
                 logger.error(f"❌ Parse error traceback: {traceback.format_exc()}")
             
@@ -588,7 +725,7 @@ class EnhancedOCRService:
                     "period_range": "Unknown",
                     "data_gaps": [],
                     "anomalies_detected": [],
-                    "consistency_issues": ["JSON parsing failed - using fallback with smart backoff"],
+                    "consistency_issues": ["JSON parsing failed - using enhanced fallback with Pro model optimization"],
                     "quality_flags": ["insufficient_data"],
                     "standard_field_coverage": {
                         "total_standard_fields_found": "0 out of 25",
@@ -616,17 +753,18 @@ class EnhancedOCRService:
                 },
                 "basic_context": {
                     "currency_detected": "AUD",
-                    "business_indicators": ["Fallback structure due to parsing failure with smart backoff"],
+                    "business_indicators": ["Enhanced fallback structure due to parsing failure with Pro model optimization"],
                     "reporting_frequency": "monthly",
                     "latest_period": "Unknown"
                 },
-                "processing_notes": f"JSON parsing failed for {filename}. Using fallback structure with smart backoff support. Raw response preserved.",
+                "processing_notes": f"Enhanced JSON parsing failed for {filename}. Using enhanced fallback structure with Pro model optimization. Raw response preserved.",
                 "raw_response": response,
-                "parsing_error": "Robust JSON parsing failed - using enhanced fallback structure with smart backoff",
-                "smart_backoff_used": True
+                "parsing_error": "Enhanced JSON parsing failed - using enhanced fallback structure with Pro model optimization",
+                "pro_model_optimized": True,
+                "enhanced_parser_used": True
             }
             
-            log_stage_progress(logger, "1", "FALLBACK", f"File: {filename} | Type: {doc_type} | Quality Score: 0.5 (Fallback with smart backoff)")
+            log_stage_progress(logger, "1", "FALLBACK", f"File: {filename} | Type: {doc_type} | Quality Score: 0.5 (Enhanced fallback with Pro model)")
             
             return OCRResponse(
                 success=True,  # Mark as success so document type detection works
@@ -641,7 +779,7 @@ class EnhancedOCRService:
             return OCRResponse(
                 success=False,
                 data="",
-                error=f"Enhanced OCR processing with smart backoff failed: {str(e)}"
+                error=f"Enhanced OCR processing with Pro model optimization failed: {str(e)}"
             )
 
 # Create enhanced OCR service instance

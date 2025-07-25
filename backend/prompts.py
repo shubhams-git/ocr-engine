@@ -41,7 +41,7 @@ If you cannot generate complete analysis, use this minimal valid JSON:
 
 REMEMBER: Output ONLY the JSON - no other text whatsoever.
 """
-# Enhanced OCR prompt - unchanged as it's working well
+# Enhanced OCR prompt 
 OCR_PROMPT = """Extract and structure the financial data from this business document in a clear, accurate JSON format.
 
 DOCUMENT CONTEXT:
@@ -84,7 +84,7 @@ TASK: Process this financial document with comprehensive extraction and mapping 
 CRITICAL BUSINESS CONTEXT:
 Different businesses use varying chart of accounts, but certain high-level categories are universally present. Your task is to extract ALL available data but focus on mapping to these 25 GUARANTEED STANDARD FIELDS that exist across all businesses:
 
-GUARANTEED P&L STANDARD FIELDS (10 fields):
+GUARANTEED P&L STANDARD FIELDS (10 fields) (Only include points 1-10 if the document has profit and loss statement data):
 1. Revenue (Sales, Turnover, Income)
 2. Cost of Sales (COGS, Cost of Goods Sold, Direct Costs)
 3. Gross Profit (Gross Margin, Gross Income)
@@ -96,7 +96,7 @@ GUARANTEED P&L STANDARD FIELDS (10 fields):
 9. Earnings After Tax (EAT, Profit After Tax, After-tax Income)
 10. Net Income (Net Profit, Bottom Line, Final Profit)
 
-GUARANTEED BALANCE SHEET STANDARD FIELDS (15 fields):
+GUARANTEED BALANCE SHEET STANDARD FIELDS (15 fields) (Only include points 11-25 if the document has balance sheet data):
 ASSETS:
 11. Total Cash & Equivalents (Cash, Bank, Liquid Assets)
 12. Total Current Assets (Current Assets, Short-term Assets)
