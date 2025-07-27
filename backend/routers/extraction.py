@@ -4,14 +4,14 @@ OCR processing endpoints
 from pathlib import Path
 from fastapi import APIRouter, File, UploadFile, Form, HTTPException
 from models import OCRResponse
-from services.ocr_service import ocr_service
+from services.extraction_service import extraction_service
 from logging_config import get_logger, log_request_start, log_request_end
 
 logger = get_logger(__name__)
-router = APIRouter(tags=["ocr"])
+router = APIRouter(tags=["extraction"])
 
-@router.post("/ocr", response_model=OCRResponse)
-async def process_ocr(
+@router.post("/extract", response_model=OCRResponse)
+async def process_extraction(
     file: UploadFile = File(...), 
     model: str = Form(default="gemini-2.5-pro")
 ):
@@ -32,7 +32,7 @@ async def process_ocr(
         logger.debug(f"File content read | Size: {len(content)} bytes")
         
         # Process using the OCR service
-        result = await ocr_service.process_ocr(content, file.filename, model)
+        result = await extraction_service.process_extraction(content, file.filename, model)
         
         log_request_end(logger, "OCR processing", success=result.success, duration=0,
                        filename=file.filename)

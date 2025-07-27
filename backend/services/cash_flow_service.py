@@ -151,6 +151,8 @@ class BusinessAnalysisService:
         had_previous_error = False
         
         for attempt in range(self.max_retries + 1):
+            current_model = original_model
+            is_pro_model = "pro" in current_model.lower()
             try:
                 # SMART FALLBACK: Determine which model to use
                 current_model = get_fallback_model(original_model, attempt)
@@ -451,4 +453,4 @@ Please provide a JSON response with business context, methodology evaluation, an
             }
 
 # Create enhanced business analysis service instance
-business_analysis_service = BusinessAnalysisService()
+cash_flow_service = BusinessAnalysisService()

@@ -154,6 +154,8 @@ class ProjectionService:
         had_previous_error = False
         
         for attempt in range(self.max_retries + 1):
+            current_model = original_model
+            is_pro_model = "pro" in current_model.lower()
             try:
                 # SMART FALLBACK: Determine which model to use
                 current_model = get_fallback_model(original_model, attempt)
@@ -552,7 +554,7 @@ class ProjectionService:
                 '15_years_ahead': 'very_low'
             }
     
-    async def generate_projections(self, stage3_result: Dict, model: str = "gemini-2.5-pro") -> Dict[str, Any]:
+    async def generate_projections(self, stage3_5_result: Dict, model: str = "gemini-2.5-pro", projection_start_date: str = "2026-01-01") -> Dict[str, Any]:
         """
         Stage 4: Enhanced projection engine with smart Pro model fallback and SUPER ROBUST JSON PARSING
         UPDATED: Now uses SuperRobustJSONParser and IntelligentMethodologySelector
@@ -569,27 +571,29 @@ class ProjectionService:
             try:
                 template = string.Template(STAGE4_PROJECTION_PROMPT)
                 context_prompt = template.safe_substitute(
-                    stage3_comprehensive_business_analysis=json.dumps(stage3_result, indent=2)
+                    stage3_5_enhanced_analysis=json.dumps(stage3_5_result, indent=2),
+                    projection_start_date=projection_start_date
                 )
             except Exception as template_error:
                 logger.error(f"❌ Template substitution failed: {str(template_error)}")
                 # Fallback: Use direct string formatting
                 try:
-                    analysis_json = json.dumps(stage3_result, indent=2)
-                    context_prompt = STAGE4_PROJECTION_PROMPT.replace('$stage3_comprehensive_business_analysis', analysis_json)
+                    analysis_json = json.dumps(stage3_5_result, indent=2)
+                    context_prompt = STAGE4_PROJECTION_PROMPT.replace('$stage3_5_enhanced_analysis', analysis_json)
+                    context_prompt = context_prompt.replace('$projection_start_date', projection_start_date)
                     logger.info("✅ Used fallback string replacement for template")
                 except Exception as fallback_error:
                     logger.error(f"❌ Fallback template replacement also failed: {str(fallback_error)}")
                     # Last resort: use simplified prompt
                     context_prompt = f"""
-Generate comprehensive financial projections with ALL required data:
+Generate comprehensive financial projections with ALL required data starting from {projection_start_date}:
 
-BUSINESS ANALYSIS DATA:
-{json.dumps(stage3_result, indent=2)}
+ENHANCED ANALYSIS DATA:
+{json.dumps(stage3_5_result, indent=2)}
 
 CRITICAL REQUIREMENT: Generate complete base_case_projections containing:
 - 1_year_ahead (monthly data - 12 points)
-- 3_years_ahead (quarterly data - 12 points) 
+- 3_years_ahead (quarterly data - 12 points)
 - 5_years_ahead (yearly data - 5 points)
 - 10_years_ahead (yearly data - 10 points)
 - 15_years_ahead (yearly data - 15 points)
@@ -640,14 +644,14 @@ Return as valid JSON with complete base_case_projections structure.
 
             # ENHANCED: Use complete fallback generation instead of minimal structure
             logger.warning("🔄 Generating complete fallback projections with all required data")
-            return self._create_complete_fallback_projections(stage3_result)
+            return self._create_complete_fallback_projections(stage3_5_result)
 
         except Exception as e:
             logger.error(f"❌ Stage 4 enhanced projection generation failed: {str(e)}")
             
             # ENHANCED: Return complete fallback even in exception cases
             logger.warning("🔄 Exception occurred, generating complete fallback projections")
-            return self._create_complete_fallback_projections(stage3_result)
+            return self._create_complete_fallback_projections(stage3_5_result)
     
     def get_methodology_string(self, stage3_result: Dict) -> str:
         """Get methodology string from Stage 3 result - UPDATED with intelligent fallback"""

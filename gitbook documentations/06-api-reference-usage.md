@@ -2,245 +2,145 @@
 
 ## Overview
 
-This guide shows you how to use the OCR-based Financial Projection System to generate comprehensive financial forecasts from your business documents.
+This guide shows you how to use the Financial Projection System API to generate comprehensive financial forecasts from your business documents.
 
 ## How to Use the System
 
 ### 1. Basic Usage
 
-**Endpoint**: `POST /multi-pdf`
+**Endpoint**: `POST /multi-pdf/analyze`
 
 **What you need:**
-- Financial documents (PDF, CSV, or images)
-- At least one Profit & Loss statement
-- Documents should be clear and readable
+- Financial documents (PDF or CSV).
+- At least one **Profit & Loss statement** and one **Balance Sheet** are required for the analysis to work correctly.
+- Documents should be clear, readable, and cover at least 12-24 months of financial history for best results.
 
 **Simple example:**
 ```bash
-curl -X POST "http://localhost:8000/multi-pdf" \
-  -F "files=@q1-financial-statement.pdf" \
-  -F "files=@q2-financial-statement.pdf" \
-  -F "files=@budget-data.csv"
+curl -X POST "http://localhost:8000/multi-pdf/analyze" \
+  -F "files=@fy2022_pl_bs.pdf" \
+  -F "files=@fy2023_pl_bs.pdf"
 ```
 
 ### 2. File Requirements
 
 **Supported formats:**
-- **PDFs**: Up to 50MB (financial statements, reports)
-- **CSVs**: Up to 25MB (budget data, financial tables)
-- **Images**: Up to 10MB (scanned documents)
+- **PDFs**: Up to 50MB (financial statements, reports).
+- **CSVs**: Up to 25MB (budget data, financial tables).
 
 **What works best:**
-- Clear, readable financial statements
-- Standard accounting formats
-- Multiple periods of data (12+ months preferred)
-- Consistent number formatting
+- Clear, readable financial statements with both P&L and Balance Sheet data.
+- Standard accounting formats.
+- Multiple periods of data (24+ months preferred for accurate seasonal analysis).
 
 ## What You Get Back
 
 ### 1. Complete Financial Analysis
-The system returns comprehensive projections including:
-- **Revenue forecasts** for 1, 3, 5, 10, and 15 years
-- **Expense projections** with detailed breakdowns
-- **Gross profit** and **net profit** across all time horizons
-- **Business intelligence** about your industry and growth patterns
+The system returns a comprehensive JSON object containing the full 4-stage analysis, including:
+- **Stage 1**: Standardized P&L and Balance Sheet data.
+- **Stage 2**: Reconstructed historical Cash Flow statements and calculated working capital drivers (DSO, DPO).
+- **Stage 3**: Deep business analysis and the selected forecasting strategy.
+- **Stage 4**: Final projections for **Revenue, Expenses, Gross Profit, and Net Profit** across all time horizons.
 
-### 2. Time Horizon Breakdown
-```json
-{
-  "1_year_ahead": {
-    "granularity": "monthly",
-    "data_points": 12,
-    "confidence": "high"
-  },
-  "3_years_ahead": {
-    "granularity": "quarterly",
-    "data_points": 12,
-    "confidence": "medium"
-  },
-  "5_years_ahead": {
-    "granularity": "yearly",
-    "data_points": 5,
-    "confidence": "medium"
-  },
-  "10_years_ahead": {
-    "granularity": "yearly",
-    "data_points": 10,
-    "confidence": "low"
-  },
-  "15_years_ahead": {
-    "granularity": "yearly",
-    "data_points": 15,
-    "confidence": "very_low"
-  }
-}
-```
+### 2. Sample Response Structure
+The response is a rich object containing the results of each stage. The final projections are found in the `projections` key.
 
-### 3. Sample Response Structure
 ```json
 {
   "success": true,
-  "data_quality_score": 0.92,
-  "business_context": {
-    "industry_classification": "Professional Services",
-    "business_stage": "growth",
-    "competitive_position": "established"
-  },
-  "projections": {
-    "1_year_ahead": {
-      "revenue": [
-        {"month": "2024-07", "value": 150000},
-        {"month": "2024-08", "value": 157500}
-      ],
-      "gross_profit": [
-        {"month": "2024-07", "value": 52500},
-        {"month": "2024-08", "value": 55125}
-      ],
-      "net_profit": [
-        {"month": "2024-07", "value": 12250},
-        {"month": "2024-08", "value": 13563}
-      ]
+  "extracted_data": [
+    // ... results from Stage 1
+  ],
+  "normalized_data": {
+    // ... results from Stage 2 (Cash Flow) & Stage 3 (Analysis)
+    "cash_flow_integration_analysis": {
+      "working_capital_analysis": {
+        "calculated_dso": { "historical_average": "52 days" },
+        "calculated_dpo": { "historical_average": "38 days" }
+      }
     },
-    "5_years_ahead": {
-      "revenue": [
-        {"year": "FY2025", "value": 1950000},
-        {"year": "FY2026", "value": 2047500}
-      ],
-      "gross_profit": [
-        {"year": "FY2025", "value": 682500},
-        {"year": "FY2026", "value": 716625}
-      ],
-      "net_profit": [
-        {"year": "FY2025", "value": 175000},
-        {"year": "FY2026", "value": 193750}
-      ]
+    "methodology_optimization": {
+      "optimal_methodology_selection": { "primary_method": "Prophet" }
     }
   },
-  "scenarios": {
-    "base_case": "Most likely outcome",
-    "optimistic": "25% uplift scenario",
-    "conservative": "25% reduction scenario"
+  "projections": {
+    // ... results from Stage 4
+    "base_case_projections": {
+      "1_year_ahead": {
+        "granularity": "monthly",
+        "revenue": [{"period": "2026-01", "value": 125000, "confidence": "high"}],
+        "expenses": [{"period": "2026-01", "value": 75000, "confidence": "high"}],
+        "gross_profit": [{"period": "2026-01", "value": 50000, "confidence": "high"}],
+        "net_profit": [{"period": "2026-01", "value": 35000, "confidence": "high"}]
+      },
+      "5_years_ahead": {
+        "granularity": "yearly",
+        "revenue": [{"period": "2026", "value": 1500000, "confidence": "medium"}]
+        // ... other metrics
+      }
+      // ... other time horizons
+    }
+  },
+  "explanation": "Enhanced 4-stage financial analysis completed...",
+  "data_analysis_summary": {
+    "architecture_type": "unified_pro_model_optimized_rate_limiting",
+    "stage_timings": {
+        "stage1_extraction_normalization": 15.2,
+        "stage2_cash_flow_generation": 10.5,
+        "stage3_comprehensive_analysis": 12.1,
+        "stage4_projection_engine": 8.5
+    }
   }
 }
 ```
 
 ## Key Features
 
-### 1. Australian Business Focus
-- **Financial Year Alignment**: July-June cycles
-- **Local Seasonality**: Understands Australian business patterns
-- **Tax and Dividend Policy**: 25% tax rate, 40% dividend payout
+### 1. Data-Driven Projections
+- **Actuals-Based**: Forecasts are based on the company's own historical cash flow and working capital performance, not generic assumptions.
+- **Australian Business Focus**: Aligns with July-June financial year cycles and local business patterns.
 
-### 2. Intelligent Analysis
-- **Industry Classification**: Automatically identifies your business type
-- **Growth Pattern Recognition**: Identifies trends and seasonality
-- **Methodology Selection**: Chooses the best forecasting approach
+### 2. Intelligent & Resilient Analysis
+- **Unified Pro Model**: Uses `gemini-2.5-pro` for all stages, ensuring deep analysis throughout.
+- **Smart Rate Limiting**: Prevents API errors and ensures stability.
+- **Graceful Fallbacks**: `SuperRobustJSONParser` and `IntelligentMethodologySelector` handle potential API issues to deliver a result.
 
-### 3. Quality Assurance
-- **Data Quality Score**: 0-100% quality rating
-- **Confidence Levels**: Different confidence for different time horizons
-- **Validation Checks**: Mathematical and business logic validation
-
-### 4. Comprehensive Outputs
-- **Multi-horizon forecasts**: From 1 to 15 years
-- **Detailed breakdowns**: Revenue, expenses, profits
-- **Business insights**: Industry analysis and growth drivers
-- **Scenario planning**: Multiple outcome scenarios
+### 3. Comprehensive Outputs
+- **Multi-horizon forecasts**: From 1 to 15 years with appropriate granularity.
+- **Detailed breakdowns**: Revenue, expenses, and profits.
+- **Deep business insights**: Includes calculated DSO/DPO and cash-constrained growth analysis.
+- **Scenario planning**: Provides base, optimistic, and conservative scenarios.
 
 ## Understanding Your Results
 
-### 1. Quality Score Interpretation
-- **90-100%**: Excellent quality, high confidence
-- **80-89%**: Good quality, minor issues
-- **70-79%**: Acceptable quality, some concerns
-- **Below 70%**: Poor quality, needs better data
+### 1. Working Capital Drivers
+Check the `normalized_data.cash_flow_integration_analysis.working_capital_analysis` section to see the **actual, calculated** DSO, DPO, and Cash Conversion Cycle for the business. This is a key indicator of operational efficiency.
 
-### 2. Confidence Levels
-- **1 Year**: High confidence based on recent trends
-- **3 Years**: Medium confidence, some uncertainty
-- **5 Years**: Medium confidence, business cycle effects
-- **10-15 Years**: Low confidence, many variables
+### 2. Selected Methodology
+The `normalized_data.methodology_optimization.optimal_methodology_selection` section shows which forecasting method the AI determined was best suited for the company's specific financial patterns.
 
-### 3. Business Context
-The system identifies:
-- **Industry type**: Professional services, manufacturing, technology, etc.
-- **Business stage**: Startup, growth, mature, decline
-- **Competitive position**: Market leader, established, emerging
-- **Growth patterns**: Seasonal effects, trends, volatility
-
-## Common Use Cases
-
-### 1. Business Planning
-- **Operational planning**: Use 1-year monthly projections
-- **Strategic planning**: Use 3-5 year projections
-- **Investment decisions**: Use 5-15 year projections
-
-### 2. Stakeholder Communication
-- **Investor presentations**: Professional financial projections
-- **Loan applications**: Comprehensive financial forecasts
-- **Board reporting**: Quality-assured business projections
-
-### 3. Performance Monitoring
-- **Budget vs. actual**: Compare projections to real results
-- **Variance analysis**: Understand projection accuracy
-- **Model refinement**: Improve future projections
+### 3. Confidence Levels
+Each data point in the final projection has a confidence level (`high`, `medium`, `low`, `very_low`). Confidence naturally decreases over longer time horizons.
 
 ## Error Handling
 
 ### Common Issues and Solutions
 
-**File too large:**
-- Solution: Reduce file size or split into multiple files
-- PDF limit: 50MB, CSV limit: 25MB, Image limit: 10MB
+**`400 Bad Request: "No Profit & Loss statement detected"`**
+- **Cause**: The AI did not identify a P&L statement in the uploaded documents.
+- **Solution**: Ensure at least one clear, readable P&L document is included.
 
-**No P&L statement detected:**
-- Solution: Include at least one clear profit & loss statement
-- Ensure financial data is clearly visible and readable
+**`400 Bad Request: "No Balance Sheet statement detected"`**
+- **Cause**: The AI did not identify a Balance Sheet, which is required for cash flow reconstruction.
+- **Solution**: Ensure a clear Balance Sheet document covering the same periods as the P&L is included.
 
-**Poor quality score:**
-- Solution: Provide more complete financial data
-- Include 12+ months of historical data for better analysis
+**`500 Internal Server Error`**
+- **Cause**: A processing error occurred in one of the four stages. This could be due to highly unusual financial data or an API issue.
+- **Solution**: Check the logs for details. If the problem persists, review the source documents for clarity and completeness.
 
-**Processing timeout:**
-- Solution: Reduce number of files or file complexity
-- System timeout: 10 minutes maximum processing time
-
-## Best Practices
-
-### 1. Document Preparation
-- **Use clear, readable documents**
-- **Include multiple time periods** (12+ months)
-- **Provide complete financial statements**
-- **Use consistent number formatting**
-
-### 2. File Organization
-- **Name files descriptively** (e.g., "Q1-2024-PL.pdf")
-- **Include document dates** for proper sequencing
-- **Group related documents** together
-
-### 3. Data Quality
-- **Ensure completeness**: Include all relevant financial metrics
-- **Check accuracy**: Verify numbers before uploading
-- **Maintain consistency**: Use same accounting methods across periods
-
-## Advanced Features
-
-### 1. Scenario Analysis
-The system automatically generates:
-- **Base case**: Most likely outcome
-- **Optimistic scenario**: 25% uplift in key metrics
-- **Conservative scenario**: 25% reduction in key metrics
-
-### 2. Transparent Calculations
-Every projection includes:
-- **Calculation explanations**: How each number was derived
-- **Source traceability**: Track back to original data
-- **Assumption documentation**: Clear reasoning for projections
-
-### 3. Australian Business Intelligence
-- **Industry benchmarking**: Compare to industry standards
-- **Seasonal adjustment**: Account for Australian business cycles
-- **Economic context**: Consider local market conditions
+**`504 Gateway Timeout`**
+- **Cause**: The entire 4-stage process took longer than the server's overall timeout (currently 20 minutes).
+- **Solution**: Try again with fewer or less complex documents.
 
 ## System Health
 
@@ -248,29 +148,7 @@ Every projection includes:
 ```bash
 GET /health
 ```
+Returns a simple `{"status": "healthy"}` if the service is running.
 
-Returns system status and service availability.
-
-### Response Time
-- **Typical processing**: 2-5 minutes
-- **Maximum timeout**: 10 minutes
-- **File processing**: Parallel processing for multiple files
-
-## Integration Tips
-
-### 1. Automated Workflows
-- **Batch processing**: Analyze multiple companies
-- **Scheduled analysis**: Regular projection updates
-- **API integration**: Build projections into your systems
-
-### 2. Data Management
-- **Version control**: Track different projection versions
-- **Data backup**: Store important analysis results
-- **Comparison tracking**: Monitor projection accuracy over time
-
-### 3. Business Intelligence
-- **Dashboard creation**: Build executive dashboards
-- **Report generation**: Create standardized reports
-- **Trend analysis**: Track business performance over time
-
-**Key Takeaway**: The system transforms your financial documents into comprehensive, multi-horizon projections that provide clear insights into your business's future revenue, expenses, gross profit, and net profit across 1, 3, 5, 10, and 15-year timeframes. 
+**Key Takeaway**: The API is designed to be simple to use while providing an incredibly deep and sophisticated financial analysis. Providing complete, high-quality P&L and Balance Sheet documents is the key to unlocking the full power of the 4-stage engine.
+ 

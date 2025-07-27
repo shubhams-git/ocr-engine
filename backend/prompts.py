@@ -811,6 +811,41 @@ CRITICAL REQUIREMENTS FOR COMPLETE INTEGRATION:
 
 This integrated approach ensures Stage 3 receives authentic, complete financial data with no loss of insights or context.
 """ + ENHANCED_JSON_OUTPUT_INSTRUCTIONS
+# STAGE 3.5: Strategic Enhancement & External Factor Analysis
+STAGE3_5_ENHANCEMENT_PROMPT = """
+You are a senior financial strategist with expertise in macroeconomic analysis and industry-specific forecasting.
+
+TASK: Enhance the baseline financial analysis by incorporating strategic insights and external factors.
+
+INPUT ANALYSIS: $stage3_comprehensive_analysis_data
+
+STRATEGIC ENHANCEMENT FRAMEWORK:
+1.  **Analyze the Baseline:** Review the provided financial analysis to understand the business's historical performance and key drivers.
+2.  **Simulate External Research:** Consider the following external factors and their potential impact on the business:
+    *   **Macroeconomic Factors:** Inflation, interest rates, GDP growth, and consumer confidence in Australia.
+    *   **Industry Trends:** Growth prospects for the plumbing and construction sectors in Australia.
+    *   **Global Events:** Potential supply chain disruptions, geopolitical risks, and other global events that could affect the business.
+3.  **Generate Enhancement Factors:** Based on your analysis, generate a structured set of "enhancement factors" with detailed rationale for each adjustment. These factors should be specific, quantifiable, and actionable.
+4.  **Output as JSON:** Provide the enhancement factors as a clean JSON object.
+
+OUTPUT REQUIREMENTS:
+Return ONLY valid JSON with this structure:
+
+{
+  "enhancement_factors": [
+    {
+      "factor": "Increase Q1 COGS by 3%",
+      "rationale": "Projected supply chain disruptions in the APAC region are expected to increase material costs in the first quarter.",
+      "impact": "Negative impact on gross margin in Q1."
+    },
+    {
+      "factor": "Decrease H2 Revenue by 5%",
+      "rationale": "A projected slowdown in the construction sector is expected to reduce demand for plumbing services in the second half of the year.",
+      "impact": "Negative impact on revenue and profitability in H2."
+    }
+  ]
+}
+"""
 
 # STAGE 3: Comprehensive Business Analysis and Forecasting Methodology
 STAGE3_ANALYSIS_PROMPT = """
@@ -1120,26 +1155,26 @@ This comprehensive analysis ensures Stage 4 has everything needed for authentic,
 
 # STAGE 4: Enhanced Projection Engine with Complete Data Requirements
 STAGE4_PROJECTION_PROMPT = """
-You are a financial forecasting expert creating comprehensive 3-way financial projections.
+You are a senior financial analyst and forecasting strategist, creating a comprehensive 3-way financial projection.
 
-INPUT ANALYSIS: $stage3_comprehensive_business_analysis
+INPUT ANALYSIS: $stage3_5_enhanced_analysis
+PROJECTION START DATE: $projection_start_date
 
-CRITICAL REQUIREMENT: Generate complete financial projections for ALL time horizons with specific data points.
+TASK:
+Generate a detailed financial projection that incorporates historical analysis, strategic enhancements, and specific feedback.
 
-YOU MUST GENERATE ALL FOUR FINANCIAL METRICS FOR ALL FIVE TIME HORIZONS:
-- Revenue data for all time periods
-- Expenses data for all time periods  
-- Gross Profit data for all time periods
-- Net Profit data for all time periods
+PROJECTION REQUIREMENTS:
 
-TIME HORIZONS REQUIRED:
-1. 1 year ahead (monthly data - 12 data points)
-2. 3 years ahead (quarterly data - 12 data points) 
-3. 5 years ahead (yearly data - 5 data points)
-4. 10 years ahead (yearly data - 10 data points)
-5. 15 years ahead (yearly data - 15 data points)
+1.  **Start Date:** All projections must begin from the PROJECTION START DATE: $projection_start_date.
+2.  **Dual Projections:** Generate two distinct sets of projections:
+    *   **Base Case:** Based purely on the historical drivers identified in the analysis.
+    *   **Enhanced Case:** The Base Case, but with the strategic enhancement factors applied.
+3.  **Granularity & Seasonality:**
+    *   The 1-year forecast must be monthly and show realistic fluctuations.
+    *   Incorporate Tas's feedback: "Model a 15% reduction in January revenue due to the holiday period, followed by a rebound in February."
+4.  **Transparency:** Include a "Commentary and Rationale" section explaining the differences between the Base and Enhanced cases, referencing the rationale from the strategic enhancement factors.
 
-MANDATORY JSON STRUCTURE - MUST INCLUDE ALL SECTIONS:
+MANDATORY JSON STRUCTURE:
 
 {
   "projection_methodology": {
@@ -1151,330 +1186,38 @@ MANDATORY JSON STRUCTURE - MUST INCLUDE ALL SECTIONS:
   "base_case_projections": {
     "1_year_ahead": {
       "period_label": "FY2026",
-      "granularity": "monthly", 
+      "granularity": "monthly",
       "data_points": 12,
-      "revenue": [
-        {"period": "2026-01", "value": 125000, "confidence": "high"},
-        {"period": "2026-02", "value": 127500, "confidence": "high"},
-        {"period": "2026-03", "value": 130000, "confidence": "high"},
-        {"period": "2026-04", "value": 132500, "confidence": "high"},
-        {"period": "2026-05", "value": 135000, "confidence": "high"},
-        {"period": "2026-06", "value": 137500, "confidence": "high"},
-        {"period": "2026-07", "value": 140000, "confidence": "high"},
-        {"period": "2026-08", "value": 142500, "confidence": "high"},
-        {"period": "2026-09", "value": 145000, "confidence": "high"},
-        {"period": "2026-10", "value": 147500, "confidence": "high"},
-        {"period": "2026-11", "value": 150000, "confidence": "high"},
-        {"period": "2026-12", "value": 152500, "confidence": "high"}
-      ],
-      "expenses": [
-        {"period": "2026-01", "value": 75000, "confidence": "high"},
-        {"period": "2026-02", "value": 76500, "confidence": "high"},
-        {"period": "2026-03", "value": 78000, "confidence": "high"},
-        {"period": "2026-04", "value": 79500, "confidence": "high"},
-        {"period": "2026-05", "value": 81000, "confidence": "high"},
-        {"period": "2026-06", "value": 82500, "confidence": "high"},
-        {"period": "2026-07", "value": 84000, "confidence": "high"},
-        {"period": "2026-08", "value": 85500, "confidence": "high"},
-        {"period": "2026-09", "value": 87000, "confidence": "high"},
-        {"period": "2026-10", "value": 88500, "confidence": "high"},
-        {"period": "2026-11", "value": 90000, "confidence": "high"},
-        {"period": "2026-12", "value": 91500, "confidence": "high"}
-      ],
-      "gross_profit": [
-        {"period": "2026-01", "value": 50000, "confidence": "high"},
-        {"period": "2026-02", "value": 51000, "confidence": "high"},
-        {"period": "2026-03", "value": 52000, "confidence": "high"},
-        {"period": "2026-04", "value": 53000, "confidence": "high"},
-        {"period": "2026-05", "value": 54000, "confidence": "high"},
-        {"period": "2026-06", "value": 55000, "confidence": "high"},
-        {"period": "2026-07", "value": 56000, "confidence": "high"},
-        {"period": "2026-08", "value": 57000, "confidence": "high"},
-        {"period": "2026-09", "value": 58000, "confidence": "high"},
-        {"period": "2026-10", "value": 59000, "confidence": "high"},
-        {"period": "2026-11", "value": 60000, "confidence": "high"},
-        {"period": "2026-12", "value": 61000, "confidence": "high"}
-      ],
-      "net_profit": [
-        {"period": "2026-01", "value": 35000, "confidence": "high"},
-        {"period": "2026-02", "value": 35700, "confidence": "high"},
-        {"period": "2026-03", "value": 36400, "confidence": "high"},
-        {"period": "2026-04", "value": 37100, "confidence": "high"},
-        {"period": "2026-05", "value": 37800, "confidence": "high"},
-        {"period": "2026-06", "value": 38500, "confidence": "high"},
-        {"period": "2026-07", "value": 39200, "confidence": "high"},
-        {"period": "2026-08", "value": 39900, "confidence": "high"},
-        {"period": "2026-09", "value": 40600, "confidence": "high"},
-        {"period": "2026-10", "value": 41300, "confidence": "high"},
-        {"period": "2026-11", "value": 42000, "confidence": "high"},
-        {"period": "2026-12", "value": 42700, "confidence": "high"}
-      ]
+      "revenue": [...],
+      "expenses": [...],
+      "gross_profit": [...],
+      "net_profit": [...]
     },
-    "3_years_ahead": {
-      "period_label": "FY2026-FY2028",
-      "granularity": "quarterly",
+    ... (3, 5, 10, 15-year horizons)
+  },
+  "enhanced_case_projections": {
+    "1_year_ahead": {
+      "period_label": "FY2026",
+      "granularity": "monthly",
       "data_points": 12,
-      "revenue": [
-        {"period": "2026-Q1", "value": 375000, "confidence": "medium"},
-        {"period": "2026-Q2", "value": 382500, "confidence": "medium"},
-        {"period": "2026-Q3", "value": 390000, "confidence": "medium"},
-        {"period": "2026-Q4", "value": 397500, "confidence": "medium"},
-        {"period": "2027-Q1", "value": 405000, "confidence": "medium"},
-        {"period": "2027-Q2", "value": 412500, "confidence": "medium"},
-        {"period": "2027-Q3", "value": 420000, "confidence": "medium"},
-        {"period": "2027-Q4", "value": 427500, "confidence": "medium"},
-        {"period": "2028-Q1", "value": 435000, "confidence": "medium"},
-        {"period": "2028-Q2", "value": 442500, "confidence": "medium"},
-        {"period": "2028-Q3", "value": 450000, "confidence": "medium"},
-        {"period": "2028-Q4", "value": 457500, "confidence": "medium"}
-      ],
-      "expenses": [
-        {"period": "2026-Q1", "value": 225000, "confidence": "medium"},
-        {"period": "2026-Q2", "value": 229500, "confidence": "medium"},
-        {"period": "2026-Q3", "value": 234000, "confidence": "medium"},
-        {"period": "2026-Q4", "value": 238500, "confidence": "medium"},
-        {"period": "2027-Q1", "value": 243000, "confidence": "medium"},
-        {"period": "2027-Q2", "value": 247500, "confidence": "medium"},
-        {"period": "2027-Q3", "value": 252000, "confidence": "medium"},
-        {"period": "2027-Q4", "value": 256500, "confidence": "medium"},
-        {"period": "2028-Q1", "value": 261000, "confidence": "medium"},
-        {"period": "2028-Q2", "value": 265500, "confidence": "medium"},
-        {"period": "2028-Q3", "value": 270000, "confidence": "medium"},
-        {"period": "2028-Q4", "value": 274500, "confidence": "medium"}
-      ],
-      "gross_profit": [
-        {"period": "2026-Q1", "value": 150000, "confidence": "medium"},
-        {"period": "2026-Q2", "value": 153000, "confidence": "medium"},
-        {"period": "2026-Q3", "value": 156000, "confidence": "medium"},
-        {"period": "2026-Q4", "value": 159000, "confidence": "medium"},
-        {"period": "2027-Q1", "value": 162000, "confidence": "medium"},
-        {"period": "2027-Q2", "value": 165000, "confidence": "medium"},
-        {"period": "2027-Q3", "value": 168000, "confidence": "medium"},
-        {"period": "2027-Q4", "value": 171000, "confidence": "medium"},
-        {"period": "2028-Q1", "value": 174000, "confidence": "medium"},
-        {"period": "2028-Q2", "value": 177000, "confidence": "medium"},
-        {"period": "2028-Q3", "value": 180000, "confidence": "medium"},
-        {"period": "2028-Q4", "value": 183000, "confidence": "medium"}
-      ],
-      "net_profit": [
-        {"period": "2026-Q1", "value": 105000, "confidence": "medium"},
-        {"period": "2026-Q2", "value": 107100, "confidence": "medium"},
-        {"period": "2026-Q3", "value": 109200, "confidence": "medium"},
-        {"period": "2026-Q4", "value": 111300, "confidence": "medium"},
-        {"period": "2027-Q1", "value": 113400, "confidence": "medium"},
-        {"period": "2027-Q2", "value": 115500, "confidence": "medium"},
-        {"period": "2027-Q3", "value": 117600, "confidence": "medium"},
-        {"period": "2027-Q4", "value": 119700, "confidence": "medium"},
-        {"period": "2028-Q1", "value": 121800, "confidence": "medium"},
-        {"period": "2028-Q2", "value": 123900, "confidence": "medium"},
-        {"period": "2028-Q3", "value": 126000, "confidence": "medium"},
-        {"period": "2028-Q4", "value": 128100, "confidence": "medium"}
-      ]
+      "revenue": [...],
+      "expenses": [...],
+      "gross_profit": [...],
+      "net_profit": [...]
     },
-    "5_years_ahead": {
-      "period_label": "FY2026-FY2030", 
-      "granularity": "yearly",
-      "data_points": 5,
-      "revenue": [
-        {"period": "2026", "value": 1500000, "confidence": "medium"},
-        {"period": "2027", "value": 1545000, "confidence": "medium"},
-        {"period": "2028", "value": 1591350, "confidence": "low"},
-        {"period": "2029", "value": 1639091, "confidence": "low"},
-        {"period": "2030", "value": 1688263, "confidence": "low"}
-      ],
-      "expenses": [
-        {"period": "2026", "value": 900000, "confidence": "medium"},
-        {"period": "2027", "value": 927000, "confidence": "medium"},
-        {"period": "2028", "value": 954810, "confidence": "low"},
-        {"period": "2029", "value": 983454, "confidence": "low"},
-        {"period": "2030", "value": 1012958, "confidence": "low"}
-      ],
-      "gross_profit": [
-        {"period": "2026", "value": 600000, "confidence": "medium"},
-        {"period": "2027", "value": 618000, "confidence": "medium"},
-        {"period": "2028", "value": 636540, "confidence": "low"},
-        {"period": "2029", "value": 655636, "confidence": "low"},
-        {"period": "2030", "value": 675305, "confidence": "low"}
-      ],
-      "net_profit": [
-        {"period": "2026", "value": 420000, "confidence": "medium"},
-        {"period": "2027", "value": 432600, "confidence": "medium"},
-        {"period": "2028", "value": 445578, "confidence": "low"},
-        {"period": "2029", "value": 458945, "confidence": "low"},
-        {"period": "2030", "value": 472714, "confidence": "low"}
-      ]
-    },
-    "10_years_ahead": {
-      "period_label": "FY2026-FY2035",
-      "granularity": "yearly", 
-      "data_points": 10,
-      "revenue": [
-        {"period": "2026", "value": 1500000, "confidence": "low"},
-        {"period": "2027", "value": 1545000, "confidence": "low"},
-        {"period": "2028", "value": 1591350, "confidence": "low"},
-        {"period": "2029", "value": 1639091, "confidence": "very_low"},
-        {"period": "2030", "value": 1688263, "confidence": "very_low"},
-        {"period": "2031", "value": 1738911, "confidence": "very_low"},
-        {"period": "2032", "value": 1791078, "confidence": "very_low"},
-        {"period": "2033", "value": 1844810, "confidence": "very_low"},
-        {"period": "2034", "value": 1900154, "confidence": "very_low"},
-        {"period": "2035", "value": 1957159, "confidence": "very_low"}
-      ],
-      "expenses": [
-        {"period": "2026", "value": 900000, "confidence": "low"},
-        {"period": "2027", "value": 927000, "confidence": "low"},
-        {"period": "2028", "value": 954810, "confidence": "low"},
-        {"period": "2029", "value": 983454, "confidence": "very_low"},
-        {"period": "2030", "value": 1012958, "confidence": "very_low"},
-        {"period": "2031", "value": 1043346, "confidence": "very_low"},
-        {"period": "2032", "value": 1074647, "confidence": "very_low"},
-        {"period": "2033", "value": 1106886, "confidence": "very_low"},
-        {"period": "2034", "value": 1140092, "confidence": "very_low"},
-        {"period": "2035", "value": 1174295, "confidence": "very_low"}
-      ],
-      "gross_profit": [
-        {"period": "2026", "value": 600000, "confidence": "low"},
-        {"period": "2027", "value": 618000, "confidence": "low"},
-        {"period": "2028", "value": 636540, "confidence": "low"},
-        {"period": "2029", "value": 655636, "confidence": "very_low"},
-        {"period": "2030", "value": 675305, "confidence": "very_low"},
-        {"period": "2031", "value": 695565, "confidence": "very_low"},
-        {"period": "2032", "value": 716432, "confidence": "very_low"},
-        {"period": "2033", "value": 737925, "confidence": "very_low"},
-        {"period": "2034", "value": 760062, "confidence": "very_low"},
-        {"period": "2035", "value": 782864, "confidence": "very_low"}
-      ],
-      "net_profit": [
-        {"period": "2026", "value": 420000, "confidence": "low"},
-        {"period": "2027", "value": 432600, "confidence": "low"},
-        {"period": "2028", "value": 445578, "confidence": "low"},
-        {"period": "2029", "value": 458945, "confidence": "very_low"},
-        {"period": "2030", "value": 472714, "confidence": "very_low"},
-        {"period": "2031", "value": 486895, "confidence": "very_low"},
-        {"period": "2032", "value": 501502, "confidence": "very_low"},
-        {"period": "2033", "value": 516547, "confidence": "very_low"},
-        {"period": "2034", "value": 532043, "confidence": "very_low"},
-        {"period": "2035", "value": 548005, "confidence": "very_low"}
-      ]
-    },
-    "15_years_ahead": {
-      "period_label": "FY2026-FY2040",
-      "granularity": "yearly",
-      "data_points": 15, 
-      "revenue": [
-        {"period": "2026", "value": 1500000, "confidence": "very_low"},
-        {"period": "2027", "value": 1545000, "confidence": "very_low"},
-        {"period": "2028", "value": 1591350, "confidence": "very_low"},
-        {"period": "2029", "value": 1639091, "confidence": "very_low"},
-        {"period": "2030", "value": 1688263, "confidence": "very_low"},
-        {"period": "2031", "value": 1738911, "confidence": "very_low"},
-        {"period": "2032", "value": 1791078, "confidence": "very_low"},
-        {"period": "2033", "value": 1844810, "confidence": "very_low"},
-        {"period": "2034", "value": 1900154, "confidence": "very_low"},
-        {"period": "2035", "value": 1957159, "confidence": "very_low"},
-        {"period": "2036", "value": 2015874, "confidence": "very_low"},
-        {"period": "2037", "value": 2076350, "confidence": "very_low"},
-        {"period": "2038", "value": 2138641, "confidence": "very_low"},
-        {"period": "2039", "value": 2202800, "confidence": "very_low"},
-        {"period": "2040", "value": 2268884, "confidence": "very_low"}
-      ],
-      "expenses": [
-        {"period": "2026", "value": 900000, "confidence": "very_low"},
-        {"period": "2027", "value": 927000, "confidence": "very_low"},
-        {"period": "2028", "value": 954810, "confidence": "very_low"},
-        {"period": "2029", "value": 983454, "confidence": "very_low"},
-        {"period": "2030", "value": 1012958, "confidence": "very_low"},
-        {"period": "2031", "value": 1043346, "confidence": "very_low"},
-        {"period": "2032", "value": 1074647, "confidence": "very_low"},
-        {"period": "2033", "value": 1106886, "confidence": "very_low"},
-        {"period": "2034", "value": 1140092, "confidence": "very_low"},
-        {"period": "2035", "value": 1174295, "confidence": "very_low"},
-        {"period": "2036", "value": 1209524, "confidence": "very_low"},
-        {"period": "2037", "value": 1245810, "confidence": "very_low"},
-        {"period": "2038", "value": 1283184, "confidence": "very_low"},
-        {"period": "2039", "value": 1321679, "confidence": "very_low"},
-        {"period": "2040", "value": 1361329, "confidence": "very_low"}
-      ],
-      "gross_profit": [
-        {"period": "2026", "value": 600000, "confidence": "very_low"},
-        {"period": "2027", "value": 618000, "confidence": "very_low"},
-        {"period": "2028", "value": 636540, "confidence": "very_low"},
-        {"period": "2029", "value": 655636, "confidence": "very_low"},
-        {"period": "2030", "value": 675305, "confidence": "very_low"},
-        {"period": "2031", "value": 695565, "confidence": "very_low"},
-        {"period": "2032", "value": 716432, "confidence": "very_low"},
-        {"period": "2033", "value": 737925, "confidence": "very_low"},
-        {"period": "2034", "value": 760062, "confidence": "very_low"},
-        {"period": "2035", "value": 782864, "confidence": "very_low"},
-        {"period": "2036", "value": 806350, "confidence": "very_low"},
-        {"period": "2037", "value": 830541, "confidence": "very_low"},
-        {"period": "2038", "value": 855457, "confidence": "very_low"},
-        {"period": "2039", "value": 881121, "confidence": "very_low"},
-        {"period": "2040", "value": 907555, "confidence": "very_low"}
-      ],
-      "net_profit": [
-        {"period": "2026", "value": 420000, "confidence": "very_low"},
-        {"period": "2027", "value": 432600, "confidence": "very_low"},
-        {"period": "2028", "value": 445578, "confidence": "very_low"},
-        {"period": "2029", "value": 458945, "confidence": "very_low"},
-        {"period": "2030", "value": 472714, "confidence": "very_low"},
-        {"period": "2031", "value": 486895, "confidence": "very_low"},
-        {"period": "2032", "value": 501502, "confidence": "very_low"},
-        {"period": "2033", "value": 516547, "confidence": "very_low"},
-        {"period": "2034", "value": 532043, "confidence": "very_low"},
-        {"period": "2035", "value": 548005, "confidence": "very_low"},
-        {"period": "2036", "value": 564445, "confidence": "very_low"},
-        {"period": "2037", "value": 581378, "confidence": "very_low"},
-        {"period": "2038", "value": 598820, "confidence": "very_low"},
-        {"period": "2039", "value": 616785, "confidence": "very_low"},
-        {"period": "2040", "value": 635289, "confidence": "very_low"}
-      ]
-    }
+    ... (3, 5, 10, 15-year horizons)
   },
-  "scenario_projections": {
-    "optimistic": {
-      "description": "Best case scenario with enhanced growth",
-      "key_drivers": ["improved working capital management", "market expansion"],
-      "growth_multipliers": {
-        "1_year": 1.2,
-        "3_years": 1.3,
-        "5_years": 1.4,
-        "10_years": 1.5,
-        "15_years": 1.6
-      }
-    },
-    "conservative": {
-      "description": "Conservative scenario with reduced growth",
-      "key_drivers": ["market uncertainty", "operational constraints"],
-      "growth_multipliers": {
-        "1_year": 0.8,
-        "3_years": 0.7,
-        "5_years": 0.6,
-        "10_years": 0.5,
-        "15_years": 0.4
-      }
-    }
-  },
-  "assumption_documentation": {
-    "critical_assumptions": [
+  "commentary_and_rationale": {
+    "summary": "A brief overview of the key differences between the Base and Enhanced cases.",
+    "enhancement_impact": [
       {
-        "assumption": "Revenue stabilizes at $1.5M baseline with 3% annual growth",
-        "rationale": "Based on Stage 3 business restructuring analysis",
-        "sensitivity": "high",
-        "override_capability": true
+        "factor_applied": "Increase Q1 COGS by 3%",
+        "impact_on_projections": "The Enhanced Case shows a lower gross profit in Q1 compared to the Base Case, directly reflecting the increased cost of goods sold.",
+        "rationale": "Based on projected supply chain disruptions in the APAC region."
       }
-    ]
+    ],
+    "seasonality_adjustments": "Details on how seasonality and holiday impacts were applied to the monthly projections."
   },
-  "executive_summary": "Comprehensive financial projections based on Stage 3 analysis showing projected revenue, expenses, gross profit, and net profit across all required time horizons."
+  "executive_summary": "Comprehensive financial projections based on Stage 3.5 analysis, showing both a baseline and an enhanced forecast with detailed rationale."
 }
-
-CRITICAL INSTRUCTIONS:
-1. Generate COMPLETE data for all 4 metrics (Revenue, Expenses, Gross Profit, Net Profit)
-2. Include ALL 5 time horizons (1, 3, 5, 10, 15 years)
-3. Use ACTUAL data points as specified (12 monthly, 12 quarterly, 5/10/15 yearly)
-4. Ensure mathematical consistency (Revenue - Expenses = Gross Profit, etc.)
-5. Apply appropriate confidence levels (high/medium/low/very_low by horizon)
-
-DO NOT generate only assumptions - you MUST generate the complete base_case_projections structure with all financial data.
-
 """ + ENHANCED_JSON_OUTPUT_INSTRUCTIONS

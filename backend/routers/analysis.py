@@ -6,16 +6,17 @@ import time
 from typing import List
 from fastapi import APIRouter, File, UploadFile, Form
 from models import MultiPDFAnalysisResponse
-from services.multi_pdf_service import multi_pdf_service
+from services.orchestration_service import orchestration_service
 from logging_config import get_logger, log_request_start, log_request_end, log_file_processing
 
 logger = get_logger(__name__)
-router = APIRouter(prefix="/multi-pdf", tags=["multi-pdf"])
+router = APIRouter(prefix="/analysis", tags=["analysis"])
 
 @router.post("/analyze", response_model=MultiPDFAnalysisResponse)
 async def analyze_multiple_files(
-    files: List[UploadFile] = File(...), 
-    model: str = Form(default="gemini-2.5-pro")
+    files: List[UploadFile] = File(...),
+    model: str = Form(default="gemini-2.5-pro"),
+    projection_start_date: str = Form(default="2026-01-01")
 ):
     """
     Analyze multiple PDF and CSV files with data extraction, normalization, and projections
@@ -63,7 +64,7 @@ async def analyze_multiple_files(
         logger.info(f"File reading completed | Duration: {file_read_time:.2f}s | Starting analysis")
         
         # Process using the multi-file service
-        result = await multi_pdf_service.analyze_multiple_files(files_data, model)
+        result = await orchestration_service.analyze_multiple_files(files_data, model, projection_start_date)
         
         total_request_time = time.time() - request_start_time
         

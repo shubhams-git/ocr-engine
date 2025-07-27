@@ -127,3 +127,7 @@ docs/_build/
 # Local configuration overrides
 local_settings.py
 local_config.py 
+
+Gemini.md
+SYSTEM.md
+*.json

@@ -6,7 +6,7 @@ const API_BASE_URL = 'http://localhost:8000'
 // Create axios instance with default config
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  timeout: import.meta.env.VITE_API_TIMEOUT || 600000, // 10 minute timeout (from env or default)
+  timeout: import.meta.env.VITE_API_TIMEOUT || 1320000, // 22 minutes (20min backend + 2min buffer)
 })
 
 // Utility function to clean and parse JSON responses
@@ -202,19 +202,20 @@ export const getAvailableModels = async () => {
 /**
  * Process multi-PDF analysis
  * @param {File[]} files - Array of PDF files to analyze
- * @param {Object} options - Additional options
+ * @param {string} model - Model to use for analysis
  * @returns {Promise<Object>} - Multi-PDF analysis results
  */
-export const processMultiPDFAnalysis = async (files, options = {}) => {
-  // Validate files
+export const processMultiPDFAnalysis = async (files, model = 'gemini-2.5-pro') => {
+  console.log('processMultiPDFAnalysis - Starting analysis with files:', files.map(f => f.name))
+  
   if (!files || files.length === 0) {
-    throw new Error('No files provided')
+    throw new Error('No files provided for analysis')
   }
-
+  
   if (files.length > 10) {
-    throw new Error('Too many files. Maximum is 10 files.')
+    throw new Error('Maximum of 10 files allowed')
   }
-
+  
   // Check each file
   for (const file of files) {
     const fileName = file.name.toLowerCase()
@@ -238,29 +239,63 @@ export const processMultiPDFAnalysis = async (files, options = {}) => {
       throw new Error(`File ${file.name} is too large. Maximum size for ${fileTypeStr} files is ${maxSizeMB}MB.`)
     }
   }
-
-  // Create FormData
+  
   const formData = new FormData()
   
-  // Add all files
-  files.forEach(file => {
+  files.forEach((file, index) => {
+    console.log(`Adding file ${index + 1}:`, file.name, `(${(file.size / 1024 / 1024).toFixed(2)} MB)`)
     formData.append('files', file)
   })
+  formData.append('model', model)
   
-  // Add model if specified
-  if (options.model) {
-    formData.append('model', options.model)
+  console.log('processMultiPDFAnalysis - Sending request with model:', model)
+  
+  try {
+    const response = await apiClient.post('/multi-pdf/analyze', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+      // CRITICAL FIX: Extended timeout for multi-PDF processing
+      timeout: 1500000, // 25 minutes for complex multi-PDF analysis
+      
+      // Progress tracking
+      onUploadProgress: (progressEvent) => {
+        const percentCompleted = Math.round(
+          (progressEvent.loaded * 100) / progressEvent.total
+        )
+        console.log(`Upload progress: ${percentCompleted}%`)
+      }
+    })
+    
+    console.log('processMultiPDFAnalysis - Received response:', response.status)
+    console.log('processMultiPDFAnalysis - Response data keys:', Object.keys(response.data || {}))
+    
+    return response.data
+  } catch (error) {
+    console.error('processMultiPDFAnalysis - Error details:', {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+      timeout: error.code === 'ECONNABORTED',
+      files: files.map(f => ({ name: f.name, size: f.size }))
+    })
+    
+    // Better error messages for timeout
+    if (error.code === 'ECONNABORTED') {
+      throw new Error('Analysis is taking longer than expected. This can happen with complex financial documents. Please try with fewer files or simpler documents.')
+    }
+    
+    // Handle other errors...
+    if (error.response?.status === 413) {
+      throw new Error('Files are too large. Please reduce file sizes or number of files.')
+    } else if (error.response?.status === 422) {
+      throw new Error(`Invalid request: ${error.response.data?.detail || 'Please check your files and try again'}`)
+    } else if (error.response?.status === 500) {
+      throw new Error(`Server error: ${error.response.data?.detail || error.message}`)
+    }
+    
+    throw new Error(`Analysis failed: ${error.response?.data?.detail || error.message}`)
   }
-
-  // Make API request with longer timeout for multiple files
-  const response = await apiClient.post('/multi-pdf/analyze', formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data',
-    },
-    timeout: 600000, // 10 minutes timeout for multi-PDF processing
-  })
-
-  return response.data
 }
 
 /**

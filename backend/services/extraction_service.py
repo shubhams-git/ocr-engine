@@ -617,7 +617,7 @@ class EnhancedOCRService:
         logger.error(f"❌ {operation_name} FAILED after {self.max_retries + 1} attempts in {elapsed_time:.2f}s")
         raise last_exception or Exception(f"All {self.max_retries + 1} retry attempts failed")
     
-    async def process_ocr(self, content: bytes, filename: str, model: str = "gemini-2.5-pro") -> OCRResponse:
+    async def process_extraction(self, content: bytes, filename: str, model: str = "gemini-2.5-pro") -> OCRResponse:
         """
         Enhanced OCR processing with Stage 1 logic optimized for Gemini 2.5 Pro
         """
@@ -631,6 +631,7 @@ class EnhancedOCRService:
             file_type, _ = self.get_file_type_and_mime(filename, content)
             
             # Prepare content for analysis
+            csv_text = ""
             if file_type == 'csv':
                 csv_text = self.process_csv_content(content, filename)
                 content_for_analysis = f"CSV File: {filename}\n\n{csv_text}"
@@ -783,4 +784,4 @@ class EnhancedOCRService:
             )
 
 # Create enhanced OCR service instance
-ocr_service = EnhancedOCRService()
+extraction_service = EnhancedOCRService()

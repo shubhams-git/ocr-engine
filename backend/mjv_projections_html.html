@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MJV Plumbing Services - Financial Projections Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f9fafb;
+            color: #111827;
+            line-height: 1.5;
+        }
+        
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+        
+        .header {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+        
+        .header h1 {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #1f2937;
+            margin-bottom: 8px;
+        }
+        
+        .header h2 {
+            font-size: 1.25rem;
+            color: #6b7280;
+            margin-bottom: 24px;
+        }
+        
+        .view-toggle {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 24px;
+        }
+        
+        .view-btn {
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: none;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .view-btn.active {
+            background: #2563eb;
+            color: white;
+        }
+        
+        .view-btn:not(.active) {
+            background: #e5e7eb;
+            color: #374151;
+        }
+        
+        .view-btn:not(.active):hover {
+            background: #d1d5db;
+        }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        
+        .metric-card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            padding: 24px;
+        }
+        
+        .metric-card h3 {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #6b7280;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        .metric-card .value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+        
+        .metric-card .subtitle {
+            font-size: 0.875rem;
+            color: #6b7280;
+        }
+        
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+        
+        .chart-card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            padding: 24px;
+        }
+        
+        .chart-card h3 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+        
+        .table-card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .table-header {
+            padding: 16px 24px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .table-header h3 {
+            font-size: 1.125rem;
+            font-weight: 600;
+        }
+        
+        .table-container {
+            overflow-x: auto;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th {
+            background: #f9fafb;
+            padding: 12px 24px;
+            text-align: left;
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        td {
+            padding: 16px 24px;
+            border-bottom: 1px solid #f3f4f6;
+            font-size: 0.875rem;
+        }
+        
+        tbody tr:nth-child(even) {
+            background: #f9fafb;
+        }
+        
+        .text-green { color: #059669; }
+        .text-blue { color: #2563eb; }
+        .text-purple { color: #7c3aed; }
+        .text-gray { color: #1f2937; }
+        
+        .seasonality-card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            padding: 24px;
+            margin-top: 24px;
+        }
+        
+        .seasonality-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+        }
+        
+        .quarter-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+        }
+        
+        .quarter-item:nth-child(even) {
+            background: #dbeafe;
+        }
+        
+        .quarter-item:nth-child(odd) {
+            background: #f3f4f6;
+        }
+        
+        .observation {
+            padding: 12px;
+            border-radius: 6px;
+            border-left: 4px solid;
+            margin-bottom: 12px;
+        }
+        
+        .observation.warning {
+            background: #fef3c7;
+            border-color: #f59e0b;
+        }
+        
+        .observation.info {
+            background: #dbeafe;
+            border-color: #3b82f6;
+        }
+        
+        .observation.error {
+            background: #fee2e2;
+            border-color: #ef4444;
+        }
+        
+        .observation-title {
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+        
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>MJV Plumbing Services</h1>
+            <h2>Financial Projections Dashboard</h2>
+            
+            <div class="view-toggle">
+                <button class="view-btn active" onclick="switchView('monthly')">Monthly (CY2026)</button>
+                <button class="view-btn" onclick="switchView('quarterly')">Quarterly (3 Years)</button>
+                <button class="view-btn" onclick="switchView('annual')">Annual (5 Years)</button>
+            </div>
+        </div>
+
+        <!-- Key Metrics -->
+        <div class="metrics-grid" id="metrics-monthly">
+            <div class="metric-card">
+                <h3>CY2026 Revenue</h3>
+                <p class="value text-gray">$2.64M</p>
+                <p class="subtitle">Calendar year projection</p>
+            </div>
+            <div class="metric-card">
+                <h3>Net Profit</h3>
+                <p class="value text-green">$211.2k</p>
+                <p class="subtitle">8.0% margin</p>
+            </div>
+            <div class="metric-card">
+                <h3>Gross Profit</h3>
+                <p class="value text-blue">$792k</p>
+                <p class="subtitle">30.0% margin</p>
+            </div>
+            <div class="metric-card">
+                <h3>Highest Month</h3>
+                <p class="value text-purple">$242k</p>
+                <p class="subtitle">Apr, May, Jun, Oct-Dec</p>
+            </div>
+        </div>
+
+        <div class="metrics-grid hidden" id="metrics-annual">
+            <div class="metric-card">
+                <h3>2030 Revenue</h3>
+                <p class="value text-gray">$3.73M</p>
+                <p class="subtitle text-green">+7.0% CAGR</p>
+            </div>
+            <div class="metric-card">
+                <h3>2030 Net Profit</h3>
+                <p class="value text-green">$298k</p>
+                <p class="subtitle text-green">+7.1% CAGR</p>
+            </div>
+            <div class="metric-card">
+                <h3>Total 5-Year Revenue</h3>
+                <p class="value text-blue">$15.9M</p>
+                <p class="subtitle">Cumulative</p>
+            </div>
+            <div class="metric-card">
+                <h3>Total 5-Year Profit</h3>
+                <p class="value text-purple">$1.27M</p>
+                <p class="subtitle">Cumulative net</p>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="charts-grid">
+            <div class="chart-card">
+                <h3 id="chart1-title">Monthly Revenue & Profit (CY2026)</h3>
+                <div class="chart-container">
+                    <canvas id="revenueChart"></canvas>
+                </div>
+            </div>
+            <div class="chart-card">
+                <h3>Profit Structure</h3>
+                <div class="chart-container">
+                    <canvas id="profitChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Table -->
+        <div class="table-card">
+            <div class="table-header">
+                <h3 id="table-title">Monthly Projections - CY2026</h3>
+            </div>
+            <div class="table-container">
+                <table id="dataTable">
+                    <thead>
+                        <tr>
+                            <th>Period</th>
+                            <th>Revenue</th>
+                            <th>Expenses</th>
+                            <th>Gross Profit</th>
+                            <th>Net Profit</th>
+                            <th>Net Margin</th>
+                            <th id="growth-header" class="hidden">Growth %</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Seasonality Analysis -->
+        <div class="seasonality-card" id="seasonality-analysis">
+            <h3 style="font-size: 1.125rem; font-weight: 600; margin-bottom: 16px;">Seasonality Analysis - CY2026</h3>
+            <div class="seasonality-grid">
+                <div>
+                    <h4 style="font-weight: 500; margin-bottom: 12px;">Quarterly Performance</h4>
+                    <div class="quarter-item">
+                        <span>Q1 (Jan-Mar)</span>
+                        <div style="text-align: right;">
+                            <div style="font-weight: 500;">$561k revenue</div>
+                            <div style="font-size: 0.875rem; color: #059669;">$44.9k profit</div>
+                        </div>
+                    </div>
+                    <div class="quarter-item">
+                        <span>Q2 (Apr-Jun)</span>
+                        <div style="text-align: right;">
+                            <div style="font-weight: 500;">$726k revenue</div>
+                            <div style="font-size: 0.875rem; color: #059669;">$58.1k profit</div>
+                        </div>
+                    </div>
+                    <div class="quarter-item">
+                        <span>Q3 (Jul-Sep)</span>
+                        <div style="text-align: right;">
+                            <div style="font-weight: 500;">$627k revenue</div>
+                            <div style="font-size: 0.875rem; color: #059669;">$50.2k profit</div>
+                        </div>
+                    </div>
+                    <div class="quarter-item">
+                        <span>Q4 (Oct-Dec)</span>
+                        <div style="text-align: right;">
+                            <div style="font-weight: 500;">$726k revenue</div>
+                            <div style="font-size: 0.875rem; color: #059669;">$58.1k profit</div>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <h4 style="font-weight: 500; margin-bottom: 12px;">Key Observations</h4>
+                    <div class="observation warning">
+                        <p class="observation-title" style="color: #92400e;">Uniform Monthly Patterns</p>
+                        <p style="color: #b45309; font-size: 0.875rem;">Revenue shows identical figures within quarters, suggesting lack of seasonal variation modelling.</p>
+                    </div>
+                    <div class="observation info">
+                        <p class="observation-title" style="color: #1e40af;">Peak Seasons</p>
+                        <p style="color: #1d4ed8; font-size: 0.875rem;">Q2 and Q4 show highest activity ($242k/month vs $187k in Q1 and $209k in Q3).</p>
+                    </div>
+                    <div class="observation error">
+                        <p class="observation-title" style="color: #b91c1c;">Tas' Concern</p>
+                        <p style="color: #dc2626; font-size: 0.875rem;">Monthly figures too similar - need more granular seasonality and holiday impact consideration.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Data
+        const monthlyData = [
+            { period: 'Jan 2026', revenue: 187000, expenses: 130900, gross_profit: 56100, net_profit: 14960 },
+            { period: 'Feb 2026', revenue: 187000, expenses: 130900, gross_profit: 56100, net_profit: 14960 },
+            { period: 'Mar 2026', revenue: 187000, expenses: 130900, gross_profit: 56100, net_profit: 14960 },
+            { period: 'Apr 2026', revenue: 242000, expenses: 169400, gross_profit: 72600, net_profit: 19360 },
+            { period: 'May 2026', revenue: 242000, expenses: 169400, gross_profit: 72600, net_profit: 19360 },
+            { period: 'Jun 2026', revenue: 242000, expenses: 169400, gross_profit: 72600, net_profit: 19360 },
+            { period: 'Jul 2026', revenue: 209000, expenses: 146300, gross_profit: 62700, net_profit: 16720 },
+            { period: 'Aug 2026', revenue: 209000, expenses: 146300, gross_profit: 62700, net_profit: 16720 },
+            { period: 'Sep 2026', revenue: 209000, expenses: 146300, gross_profit: 62700, net_profit: 16720 },
+            { period: 'Oct 2026', revenue: 242000, expenses: 169400, gross_profit: 72600, net_profit: 19360 },
+            { period: 'Nov 2026', revenue: 242000, expenses: 169400, gross_profit: 72600, net_profit: 19360 },
+            { period: 'Dec 2026', revenue: 242000, expenses: 169400, gross_profit: 72600, net_profit: 19360 }
+        ];
+
+        const quarterlyData = [
+            { period: '2026 Q1', revenue: 561000, expenses: 392700, gross_profit: 168300, net_profit: 44880 },
+            { period: '2026 Q2', revenue: 726000, expenses: 508200, gross_profit: 217800, net_profit: 58080 },
+            { period: '2026 Q3', revenue: 627000, expenses: 438900, gross_profit: 188100, net_profit: 50160 },
+            { period: '2026 Q4', revenue: 726000, expenses: 508200, gross_profit: 217800, net_profit: 58080 },
+            { period: '2027 Q1', revenue: 617100, expenses: 431970, gross_profit: 185130, net_profit: 49368 },
+            { period: '2027 Q2', revenue: 798600, expenses: 559020, gross_profit: 239580, net_profit: 63888 },
+            { period: '2027 Q3', revenue: 689700, expenses: 482790, gross_profit: 206910, net_profit: 55176 },
+            { period: '2027 Q4', revenue: 798600, expenses: 559020, gross_profit: 239580, net_profit: 63888 },
+            { period: '2028 Q1', revenue: 678810, expenses: 475167, gross_profit: 203643, net_profit: 54305 },
+            { period: '2028 Q2', revenue: 878460, expenses: 614922, gross_profit: 263538, net_profit: 70277 },
+            { period: '2028 Q3', revenue: 758670, expenses: 531069, gross_profit: 227601, net_profit: 60694 },
+            { period: '2028 Q4', revenue: 878460, expenses: 614922, gross_profit: 263538, net_profit: 70277 }
+        ];
+
+        const annualData = [
+            { period: '2026', revenue: 2640000, expenses: 1848000, gross_profit: 792000, net_profit: 211200 },
+            { period: '2027', revenue: 2904000, expenses: 2032800, gross_profit: 871200, net_profit: 232320 },
+            { period: '2028', revenue: 3194400, expenses: 2236080, gross_profit: 958320, net_profit: 255552 },
+            { period: '2029', revenue: 3449952, expenses: 2414966, gross_profit: 1034986, net_profit: 275996 },
+            { period: '2030', revenue: 3725948, expenses: 2608164, gross_profit: 1117784, net_profit: 298076 }
+        ];
+
+        let currentView = 'monthly';
+        let revenueChart, profitChart;
+
+        function formatCurrency(value) {
+            if (value >= 1000000) {
+                return `$${(value / 1000000).toFixed(1)}M`;
+            } else if (value >= 1000) {
+                return `$${(value / 1000).toFixed(0)}k`;
+            }
+            return `$${value.toLocaleString()}`;
+        }
+
+        function calculateGrowth(current, previous) {
+            if (!previous) return 0;
+            return ((current - previous) / previous * 100);
+        }
+
+        function switchView(view) {
+            currentView = view;
+            
+            // Update button states
+            document.querySelectorAll('.view-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // Update metrics
+            document.getElementById('metrics-monthly').classList.toggle('hidden', view !== 'monthly');
+            document.getElementById('metrics-annual').classList.toggle('hidden', view !== 'annual');
+            
+            // Update seasonality analysis
+            document.getElementById('seasonality-analysis').classList.toggle('hidden', view !== 'monthly');
+            
+            // Update growth header
+            document.getElementById('growth-header').classList.toggle('hidden', view !== 'annual');
+            
+            // Update titles
+            const titles = {
+                monthly: 'Monthly Revenue & Profit (CY2026)',
+                quarterly: 'Quarterly Revenue & Profit (3 Years)',
+                annual: 'Annual Revenue & Profit (5 Years)'
+            };
+            
+            const tableTitles = {
+                monthly: 'Monthly Projections - CY2026',
+                quarterly: 'Quarterly Projections - 2026-2028',
+                annual: 'Annual Projections - 2026-2030'
+            };
+            
+            document.getElementById('chart1-title').textContent = titles[view];
+            document.getElementById('table-title').textContent = tableTitles[view];
+            
+            updateCharts();
+            updateTable();
+        }
+
+        function getData() {
+            switch(currentView) {
+                case 'monthly': return monthlyData;
+                case 'quarterly': return quarterlyData;
+                case 'annual': return annualData;
+                default: return monthlyData;
+            }
+        }
+
+        function updateCharts() {
+            const data = getData();
+            
+            // Revenue Chart
+            if (revenueChart) revenueChart.destroy();
+            
+            const ctx1 = document.getElementById('revenueChart').getContext('2d');
+            revenueChart = new Chart(ctx1, {
+                type: 'line',
+                data: {
+                    labels: data.map(d => d.period),
+                    datasets: [{
+                        label: 'Revenue',
+                        data: data.map(d => d.revenue),
+                        borderColor: '#3B82F6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        borderWidth: 3,
+                        fill: false
+                    }, {
+                        label: 'Net Profit',
+                        data: data.map(d => d.net_profit),
+                        borderColor: '#10B981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        borderWidth: 3,
+                        fill: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return formatCurrency(value);
+                                }
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                maxRotation: 45,
+                                minRotation: 45
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': ' + formatCurrency(context.parsed.y);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Profit Chart
+            if (profitChart) profitChart.destroy();
+            
+            const ctx2 = document.getElementById('profitChart').getContext('2d');
+            profitChart = new Chart(ctx2, {
+                type: 'bar',
+                data: {
+                    labels: data.map(d => d.period),
+                    datasets: [{
+                        label: 'Expenses',
+                        data: data.map(d => d.expenses),
+                        backgroundColor: 'rgba(239, 68, 68, 0.3)',
+                        borderColor: '#EF4444',
+                        borderWidth: 1
+                    }, {
+                        label: 'Gross Profit',
+                        data: data.map(d => d.gross_profit),
+                        backgroundColor: 'rgba(59, 130, 246, 0.3)',
+                        borderColor: '#3B82F6',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            stacked: true,
+                            ticks: {
+                                maxRotation: 45,
+                                minRotation: 45
+                            }
+                        },
+                        y: {
+                            stacked: true,
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return formatCurrency(value);
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': ' + formatCurrency(context.parsed.y);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateTable() {
+            const data = getData();
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+            
+            data.forEach((row, index) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td style="font-weight: 500;">${row.period}</td>
+                    <td>${formatCurrency(row.revenue)}</td>
+                    <td>${formatCurrency(row.expenses)}</td>
+                    <td>${formatCurrency(row.gross_profit)}</td>
+                    <td style="font-weight: 500; color: #059669;">${formatCurrency(row.net_profit)}</td>
+                    <td>${((row.net_profit / row.revenue) * 100).toFixed(1)}%</td>
+                    <td class="${currentView !== 'annual' ? 'hidden' : ''}">
+                        ${index === 0 ? '-' : `${calculateGrowth(row.revenue, data[index-1].revenue).toFixed(1)}%`}
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            updateCharts();
+            updateTable();
+        });
+    </script>
+</body>
+</html>

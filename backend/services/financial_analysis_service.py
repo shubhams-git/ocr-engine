@@ -151,6 +151,8 @@ class AnalysisService:
         had_previous_error = False
         
         for attempt in range(self.max_retries + 1):
+            current_model = original_model
+            is_pro_model = "pro" in current_model.lower()
             try:
                 # SMART FALLBACK: Determine which model to use
                 current_model = get_fallback_model(original_model, attempt)
@@ -419,4 +421,4 @@ class AnalysisService:
             }
 
 # Create enhanced analysis service instance
-analysis_service = AnalysisService()
+financial_analysis_service = AnalysisService()

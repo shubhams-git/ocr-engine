@@ -10,10 +10,10 @@ from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Body
 from fastapi.responses import JSONResponse
 
 from models import OCRResponse, MultiPDFAnalysisResponse
-from services.ocr_service import ocr_service
-from services.business_analysis_service import business_analysis_service
+from services.extraction_service import extraction_service
+from services.cash_flow_service import cash_flow_service
 from services.projection_service import projection_service
-from services.multi_pdf_service import multi_pdf_service
+from services.orchestration_service import orchestration_service
 from logging_config import get_logger
 
 # Set up logger and router
@@ -31,10 +31,10 @@ async def get_detailed_health():
             "timestamp": time.time(),
             "overall_status": "healthy",
             "services": {
-                "ocr_service": {"status": "unknown", "response_time": None, "error": None},
-                "business_analysis_service": {"status": "unknown", "response_time": None, "error": None},
+                "extraction_service": {"status": "unknown", "response_time": None, "error": None},
+                "cash_flow_service": {"status": "unknown", "response_time": None, "error": None},
                 "projection_service": {"status": "unknown", "response_time": None, "error": None},
-                "multi_pdf_service": {"status": "unknown", "response_time": None, "error": None}
+                "orchestration_service": {"status": "unknown", "response_time": None, "error": None}
             },
             "system_info": {
                 "total_response_time": None,
@@ -47,20 +47,20 @@ async def get_detailed_health():
         try:
             service_start = time.time()
             # Simple service availability check
-            health_results["services"]["ocr_service"]["status"] = "healthy"
-            health_results["services"]["ocr_service"]["response_time"] = time.time() - service_start
+            health_results["services"]["extraction_service"]["status"] = "healthy"
+            health_results["services"]["extraction_service"]["response_time"] = time.time() - service_start
         except Exception as e:
-            health_results["services"]["ocr_service"]["status"] = "unhealthy"
-            health_results["services"]["ocr_service"]["error"] = str(e)
+            health_results["services"]["extraction_service"]["status"] = "unhealthy"
+            health_results["services"]["extraction_service"]["error"] = str(e)
         
         # Test Business Analysis service
         try:
             service_start = time.time()
-            health_results["services"]["business_analysis_service"]["status"] = "healthy" 
-            health_results["services"]["business_analysis_service"]["response_time"] = time.time() - service_start
+            health_results["services"]["cash_flow_service"]["status"] = "healthy"
+            health_results["services"]["cash_flow_service"]["response_time"] = time.time() - service_start
         except Exception as e:
-            health_results["services"]["business_analysis_service"]["status"] = "unhealthy"
-            health_results["services"]["business_analysis_service"]["error"] = str(e)
+            health_results["services"]["cash_flow_service"]["status"] = "unhealthy"
+            health_results["services"]["cash_flow_service"]["error"] = str(e)
             
         # Test Projection service
         try:
@@ -74,11 +74,11 @@ async def get_detailed_health():
         # Test Multi-PDF service
         try:
             service_start = time.time()
-            health_results["services"]["multi_pdf_service"]["status"] = "healthy"
-            health_results["services"]["multi_pdf_service"]["response_time"] = time.time() - service_start
+            health_results["services"]["orchestration_service"]["status"] = "healthy"
+            health_results["services"]["orchestration_service"]["response_time"] = time.time() - service_start
         except Exception as e:
-            health_results["services"]["multi_pdf_service"]["status"] = "unhealthy"
-            health_results["services"]["multi_pdf_service"]["error"] = str(e)
+            health_results["services"]["orchestration_service"]["status"] = "unhealthy"
+            health_results["services"]["orchestration_service"]["error"] = str(e)
         
         # Check overall status
         unhealthy_services = [name for name, info in health_results["services"].items() 
@@ -101,7 +101,7 @@ async def get_detailed_health():
         raise HTTPException(status_code=500, detail=f"Health check failed: {str(e)}")
 
 @router.post("/test/stage1")
-async def test_stage1_ocr(
+async def test_stage1_extraction(
     file: UploadFile = File(...),
     model: str = Form("gemini-2.5-flash")
 ):
@@ -115,14 +115,14 @@ async def test_stage1_ocr(
         
         # Test OCR service directly
         filename = file.filename or "uploaded_file"
-        result = await ocr_service.process_ocr(content, filename, model)
+        result = await extraction_service.process_extraction(content, filename, model)
         
         processing_time = time.time() - start_time
         
         # Enhance result with testing metadata
         test_result = {
-            "stage": "stage1_ocr",
-            "service": "ocr_service",
+            "stage": "stage1_extraction",
+            "service": "extraction_service",
             "success": result.success,
             "processing_time": processing_time,
             "file_info": {
@@ -192,7 +192,7 @@ async def test_stage2_business_analysis(
         logger.info(f"✅ Processed {len(processed_data)} documents for Stage 2 analysis")
         
         # Test business analysis service directly with processed data
-        result = await business_analysis_service.analyze_business_context(processed_data, model)
+        result = await cash_flow_service.generate_cash_flows_and_analyze(processed_data, model)
         
         processing_time = time.time() - start_time
         
@@ -201,7 +201,7 @@ async def test_stage2_business_analysis(
         
         test_result = {
             "stage": "stage2_business_analysis", 
-            "service": "business_analysis_service",
+            "service": "cash_flow_service",
             "success": success,
             "processing_time": processing_time,
             "input_documents": len(extracted_data),
@@ -260,7 +260,7 @@ async def test_full_process(
         start_time = time.time()
         logger.info(f"Testing full 3-stage process | Files: {len(files)} | Model: {model}")
         
-        # Convert files to format expected by multi_pdf_service
+        # Convert files to format expected by orchestration_service
         files_data = []
         for file in files:
             content = await file.read()
@@ -271,7 +271,7 @@ async def test_full_process(
         
         # Run full process
         full_start = time.time()
-        result = await multi_pdf_service.analyze_multiple_files(files_data, model)
+        result = await orchestration_service.analyze_multiple_files(files_data, model)
         total_time = time.time() - full_start
         
         # Extract stage timings from result if available
@@ -317,10 +317,10 @@ async def validate_all_services():
             "timestamp": time.time(),
             "overall_valid": True,
             "services": {
-                "ocr_service": {"valid": False, "issues": []},
-                "business_analysis_service": {"valid": False, "issues": []},
+                "extraction_service": {"valid": False, "issues": []},
+                "cash_flow_service": {"valid": False, "issues": []},
                 "projection_service": {"valid": False, "issues": []},
-                "multi_pdf_service": {"valid": False, "issues": []}
+                "orchestration_service": {"valid": False, "issues": []}
             },
             "configuration": {
                 "api_keys_available": False,
@@ -332,21 +332,21 @@ async def validate_all_services():
         # Validate OCR service
         try:
             # Check if service exists and basic methods are available
-            if hasattr(ocr_service, 'process_ocr'):
-                validation_results["services"]["ocr_service"]["valid"] = True
+            if hasattr(extraction_service, 'process_extraction'):
+                validation_results["services"]["extraction_service"]["valid"] = True
             else:
-                validation_results["services"]["ocr_service"]["issues"].append("process_ocr method not found")
+                validation_results["services"]["extraction_service"]["issues"].append("process_extraction method not found")
         except Exception as e:
-            validation_results["services"]["ocr_service"]["issues"].append(str(e))
+            validation_results["services"]["extraction_service"]["issues"].append(str(e))
         
         # Validate Business Analysis service
         try:
-            if hasattr(business_analysis_service, 'analyze_business_context'):
-                validation_results["services"]["business_analysis_service"]["valid"] = True
+            if hasattr(cash_flow_service, 'generate_cash_flows_and_analyze'):
+                validation_results["services"]["cash_flow_service"]["valid"] = True
             else:
-                validation_results["services"]["business_analysis_service"]["issues"].append("analyze_business_context method not found")
+                validation_results["services"]["cash_flow_service"]["issues"].append("generate_cash_flows_and_analyze method not found")
         except Exception as e:
-            validation_results["services"]["business_analysis_service"]["issues"].append(str(e))
+            validation_results["services"]["cash_flow_service"]["issues"].append(str(e))
         
         # Validate Projection service
         try:
@@ -359,12 +359,12 @@ async def validate_all_services():
             
         # Validate Multi-PDF service
         try:
-            if hasattr(multi_pdf_service, 'analyze_multiple_files'):
-                validation_results["services"]["multi_pdf_service"]["valid"] = True
+            if hasattr(orchestration_service, 'analyze_multiple_files'):
+                validation_results["services"]["orchestration_service"]["valid"] = True
             else:
-                validation_results["services"]["multi_pdf_service"]["issues"].append("analyze_multiple_files method not found")
+                validation_results["services"]["orchestration_service"]["issues"].append("analyze_multiple_files method not found")
         except Exception as e:
-            validation_results["services"]["multi_pdf_service"]["issues"].append(str(e))
+            validation_results["services"]["orchestration_service"]["issues"].append(str(e))
         
         # Check overall validity
         all_valid = all(service["valid"] for service in validation_results["services"].values())
@@ -396,8 +396,8 @@ async def get_performance_metrics():
                 "average_response_time": "N/A"
             },
             "services": {
-                "ocr_service": {"requests": 0, "avg_time": 0, "success_rate": 0},
-                "business_analysis_service": {"requests": 0, "avg_time": 0, "success_rate": 0},
+                "extraction_service": {"requests": 0, "avg_time": 0, "success_rate": 0},
+                "cash_flow_service": {"requests": 0, "avg_time": 0, "success_rate": 0},
                 "projection_service": {"requests": 0, "avg_time": 0, "success_rate": 0}
             }
         }

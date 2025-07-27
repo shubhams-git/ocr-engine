@@ -2,229 +2,68 @@
 
 ## Overview
 
-Our validation framework ensures that every financial projection meets high standards of accuracy, consistency, and business logic. Think of it as a comprehensive quality control system that checks our work from multiple angles.
+Our validation framework is a multi-stage process designed to ensure the integrity, consistency, and business logic of the financial analysis from start to finish. Each of the four stages in our architecture has a specific quality assurance role.
 
 ## Why Validation Matters
 
-### Ensuring Accuracy
-- **Mathematical Correctness**: All calculations are verified
-- **Financial Integrity**: The 3-way forecast components work together properly
-- **Business Logic**: Projections make real-world business sense
-- **Transparency**: Every number can be traced back to its source
+- **Ensuring Accuracy**: Verifies that the analysis is mathematically sound and financially logical at each step.
+- **Building Confidence**: Provides clear quality indicators, allowing users to trust the final output.
+- **Data-Driven Integrity**: Ensures that the final projections are directly traceable to the validated historical data.
 
-### Building Confidence
-- **Quality Scoring**: Each projection gets a quality score (0-100%)
-- **Confidence Levels**: Clear indicators of projection reliability
-- **Risk Assessment**: Identifies potential issues before they become problems
+## Our 4-Stage Validation System
 
-## Our 5-Layer Validation System
+### Stage 1: Data Standardization Validation
+**Location**: `OCRService`
 
-### Layer 1: Mathematical Validation
 **What it checks:**
-- All calculations are mathematically correct
-- Numbers are in the right format and range
-- Formulas produce expected results
+- **File Integrity**: Validates file format (PDF, CSV) and size.
+- **Standard Field Coverage**: This is the most critical check. It measures the percentage of the **25 guaranteed standard fields** that were successfully mapped from the source documents. A high score is essential to proceed.
+- **Data Quality**: The AI assesses the completeness of the extracted data and flags anomalies (e.g., negative revenue, major inconsistencies).
 
-**Example checks:**
-- Revenue - Costs = Gross Profit ✓
-- Growth rates are reasonable (not 1000% overnight)
-- Percentages add up correctly
+**Output**: A `data_quality_assessment` object for each file, with a strong focus on the standard field coverage score.
 
-### Layer 2: Financial Reconciliation
+### Stage 2: Cash Flow Reconciliation
+**Location**: `BusinessAnalysisService`
+
 **What it checks:**
-- P&L flows correctly from revenue to net profit
-- Cash flow statement components balance
-- Balance sheet always balances (Assets = Liabilities + Equity)
+- **The Fundamental Law of Cash Flow**: This is a critical mathematical reconciliation. The service ensures that the reconstructed cash flow statement is correct by verifying:
+  - **Total Cash Flow (Operating + Investing + Financing) = Change in Cash on the Balance Sheet**
+- **Variance Analysis**: It calculates the variance for each historical period. Any period with a variance greater than a small threshold (e.g., $1,000) is flagged for review.
 
-**Key validations:**
-- **P&L Waterfall**: Revenue → Gross Profit → EBITDA → Net Profit
-- **Cash Flow Logic**: Operating + Investing + Financing = Net Cash Change
-- **Balance Sheet Balancing**: Must balance to the penny
+**Output**: A `cash_flow_quality_assessment` that shows the validation status (Pass/Fail) for each historical period, ensuring the 3-statement historical model is mathematically sound.
 
-### Layer 3: Business Logic Validation
+### Stage 3: Business Logic & Strategy Validation
+**Location**: `AnalysisService`
+
 **What it checks:**
-- Growth rates are realistic for the business type
-- Profit margins align with industry standards
-- Seasonal patterns make business sense
+- **Holistic Reasonableness**: The AI acts as a senior financial analyst, reviewing the complete 3-statement historical data for logical consistency.
+- **Quality of Earnings**: It validates the relationship between reported profits (P&L) and actual cash generation (Cash Flow).
+- **Assumption Validation**: It ensures that the strategic assumptions it develops (e.g., target DSO, sustainable growth rate) are directly supported by the validated historical data from Stage 2.
 
-**Example checks:**
-- A mature professional services firm growing 500% annually? Flagged as unrealistic
-- 90% profit margins for a manufacturing business? Probably an error
-- Massive revenue spike in a typically slow month? Needs explanation
+**Output**: A validated forecasting strategy where every assumption is data-driven and defensible.
 
-### Layer 4: AI Semantic Validation
+### Stage 4: Projection Completeness Check
+**Location**: `ProjectionService` & `MultiPDFService`
+
 **What it checks:**
-- AI reviews projections for overall reasonableness
-- Identifies patterns that might not be obvious to mathematical checks
-- Provides a "sanity check" from a business perspective
+- **Completeness**: This final check verifies that the AI has successfully generated all required data points.
+- **Mandatory Metrics**: It ensures projections for **Revenue, Expenses, Gross Profit, and Net Profit** are present.
+- **All Time Horizons**: It confirms that data for **1, 3, 5, 10, and 15-year** horizons has been generated.
 
-**AI validation questions:**
-- Do these projections make sense for this type of business?
-- Are the trends and patterns realistic?
-- Are there any obvious red flags?
+**Output**: A final, complete set of projections that meets the specific output requirements of the system.
 
-### Layer 5: Cross-Statement Consistency
-**What it checks:**
-- P&L, Cash Flow, and Balance Sheet all connect properly
-- Dividend policy is applied consistently
-- Working capital changes flow through all statements
+---
 
-**Integration checks:**
-- P&L net profit matches cash flow starting point
-- Dividend payments (40% of profit) appear in cash flow and balance sheet
-- Depreciation appears in both P&L and cash flow
+### A Note on Post-Projection Validation
 
-## Quality Scoring System
+To improve system stability and prevent timeouts caused by additional complex API calls, **local post-projection validation (which involved re-balancing a projected balance sheet) has been disabled.** The current validation focus is on ensuring the integrity of the historical data and the logic of the forecasting strategy, which provides a strong foundation for the final AI-generated projections.
 
-### How We Score Quality
-```json
-{
-  "overall_score": 0.92,
-  "grade": "A",
-  "interpretation": {
-    "90-100%": "Excellent - High confidence in projections",
-    "80-89%": "Good - Minor issues, generally reliable",
-    "70-79%": "Acceptable - Some concerns, use with caution",
-    "60-69%": "Poor - Significant issues, needs review",
-    "Below 60%": "Failing - Not recommended for use"
-  }
-}
-```
+## Quality Scoring
 
-### Quality Factors
-- **Data Quality**: How complete and accurate was the input data?
-- **Mathematical Accuracy**: Are all calculations correct?
-- **Business Logic**: Do the projections make business sense?
-- **Consistency**: Do all statements integrate properly?
-- **Transparency**: Can every number be traced and verified?
+The overall quality of the final output is a reflection of the success of the validation at each of the four stages. A high-quality result depends on:
+- **High Standard Field Coverage** in Stage 1.
+- **Successful Cash Flow Reconciliation** in Stage 2.
+- **Logical and Data-Driven Strategy** in Stage 3.
+- **Complete Generation of Projections** in Stage 4.
 
-## Key Validation Checks
-
-### Revenue Validation
-- **Growth Rate Reasonableness**: 5% annual growth? Reasonable. 500%? Flagged.
-- **Seasonal Pattern Logic**: Q4 retail boost? Makes sense. Q1 Christmas sales? Doesn't.
-- **Industry Alignment**: Growth patterns match business type?
-
-### Expense Validation
-- **Cost Ratio Consistency**: Cost of services as % of revenue stable over time?
-- **Inflation Adjustments**: Are costs increasing at reasonable rates?
-- **Fixed vs Variable**: Do costs scale appropriately with revenue?
-
-### Profit Validation
-- **Margin Trends**: Are profit margins improving, stable, or declining logically?
-- **Seasonality Impact**: Do seasonal revenue changes affect profitability correctly?
-- **Tax Calculations**: Is the 25% corporate tax rate applied correctly?
-
-### Cash Flow Validation
-- **Working Capital Logic**: Do customer payment terms affect cash flow correctly?
-- **Dividend Payments**: Is the 40% dividend policy applied at the right times?
-- **Cash Balance**: Does the business maintain sufficient cash?
-
-### Balance Sheet Validation
-- **Balancing Requirement**: Assets must equal Liabilities + Equity exactly
-- **Asset Growth**: Do assets grow in line with business expansion?
-- **Debt Management**: Are debt levels reasonable for the business size?
-
-## What You Get from Validation
-
-### Quality Report
-```json
-{
-  "validation_summary": {
-    "overall_valid": true,
-    "overall_score": 0.92,
-    "total_errors": 0,
-    "total_warnings": 2,
-    "grade": "A"
-  },
-  "key_findings": [
-    "All mathematical calculations verified",
-    "3-way forecast integration successful",
-    "Growth rates align with business stage",
-    "Minor warning: Q3 revenue slightly below trend"
-  ],
-  "confidence_levels": {
-    "1_year": "high",
-    "3_years": "medium",
-    "5_years": "medium",
-    "10_years": "low",
-    "15_years": "very_low"
-  }
-}
-```
-
-### Specific Validation Results
-- **Passed Checks**: What validations were successful
-- **Warnings**: Areas that need attention but don't prevent use
-- **Errors**: Critical issues that must be fixed
-- **Recommendations**: Suggestions for improving projection quality
-
-## How Validation Improves Projections
-
-### Early Error Detection
-- **Catches mistakes before they compound** over multiple years
-- **Identifies unrealistic assumptions** before they skew results
-- **Prevents mathematical errors** from invalidating projections
-
-### Business Sense Checking
-- **Ensures projections are realistic** for the business type
-- **Validates seasonal patterns** make sense for the industry
-- **Confirms growth rates** are achievable
-
-### Stakeholder Confidence
-- **Transparent quality scoring** helps users understand reliability
-- **Clear explanations** of any issues found
-- **Audit trail** showing how quality was assessed
-
-## Common Validation Findings
-
-### Typical Issues We Catch
-- **Unrealistic growth rates**: 200% annual growth for mature businesses
-- **Margin inconsistencies**: Profit margins that don't align with costs
-- **Seasonal illogic**: Christmas sales spike in June for Australian retail
-- **Mathematical errors**: Calculations that don't add up correctly
-
-### How We Handle Issues
-- **Automatic Corrections**: Simple mathematical errors are fixed
-- **Warnings**: Unusual patterns are flagged for review
-- **Confidence Adjustments**: Quality scores reflect any concerns
-- **Transparency**: All issues are clearly documented
-
-## Australian Business Validation
-
-### Local Context Checks
-- **Financial Year Alignment**: Projections follow July-June cycles
-- **Seasonal Patterns**: Australian business seasonality is logical
-- **Tax Compliance**: 25% corporate tax rate applied correctly
-- **Dividend Policy**: 40% quarterly payout implemented properly
-
-### Regional Business Logic
-- **EOFY Effects**: End of financial year impacts are reasonable
-- **Holiday Patterns**: Christmas and Easter impacts make sense
-- **Economic Context**: Projections consider Australian economic conditions
-
-## Continuous Improvement
-
-### Learning from Validation
-- **Pattern Recognition**: AI learns from validation results
-- **Rule Refinement**: Validation rules improve over time
-- **Quality Enhancement**: System gets better at catching issues
-
-### Feedback Integration
-- **User Input**: Validation incorporates user feedback
-- **Industry Updates**: Rules adapt to changing business conditions
-- **Methodology Updates**: Validation evolves with best practices
-
-## Key Benefits
-
-### For Business Planning
-- **Reliable Projections**: High confidence in forecast accuracy
-- **Risk Awareness**: Clear understanding of potential issues
-- **Decision Support**: Quality-assured data for strategic decisions
-
-### For Stakeholders
-- **Transparency**: Clear quality metrics and explanations
-- **Accountability**: Auditable validation process
-- **Professional Standards**: Meets high-quality financial projection standards
-
-**Key Takeaway**: Our comprehensive validation ensures that every financial projection is mathematically correct, business-logical, and transparently quality-assessed, giving you confidence in using the projections for critical business decisions. 
+**Key Takeaway**: Our validation framework is integrated directly into the 4-stage processing pipeline. It builds a chain of trust, starting with standardized source data, reconciling it into a complete historical view, building a logical strategy upon it, and finally ensuring the final projections are complete. 

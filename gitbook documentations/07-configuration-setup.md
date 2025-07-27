@@ -2,13 +2,13 @@
 
 ## Overview
 
-This guide covers the essential setup and configuration needed to run the OCR-based Financial Projection System effectively.
+This guide covers the essential setup and configuration needed to run the Financial Projection System effectively.
 
 ## System Requirements
 
 ### Hardware Needs
 - **CPU**: 4+ cores (8+ recommended)
-- **Memory**: 8GB RAM minimum (16GB+ recommended)
+- **Memory**: 8GB RAM minimum (16GB+ recommended for large documents)
 - **Storage**: 20GB available space
 - **Network**: Stable internet connection for AI API calls
 
@@ -16,271 +16,137 @@ This guide covers the essential setup and configuration needed to run the OCR-ba
 - **Python 3.8+**
 - **FastAPI framework**
 - **Google Gemini API access**
-- **Standard Python libraries** (see requirements.txt)
+- **Standard Python libraries** (see `backend/requirements.txt`)
 
-## Essential Configuration
+## Essential Configuration (`backend/.env` file)
 
-### 1. API Keys Setup
-You need Google Gemini API keys for the system to work:
+Create a `.env` file inside the `backend` directory.
+
+### 1. API Keys Setup (Required)
+You need at least one Google Gemini API key. Multiple keys are highly recommended for resilience and performance.
 
 ```bash
-# Single API key
-GOOGLE_API_KEY=your_gemini_api_key_here
-
-# Multiple API keys (recommended for better performance)
-GOOGLE_API_KEY_1=your_first_api_key
-GOOGLE_API_KEY_2=your_second_api_key
-GOOGLE_API_KEY_3=your_third_api_key
+# Provide one or more keys as a comma-separated list or on separate lines.
+# The system will rotate through them automatically.
+GEMINI_API_KEY_1=your_first_api_key
+GEMINI_API_KEY_2=your_second_api_key
+GEMINI_API_KEY_3=your_third_api_key
 ```
 
-**Why multiple keys?**
-- Better performance through load distribution
-- Higher API quota limits
-- Improved reliability
+### 2. Core Processing Settings
+These settings control the performance and stability of the system. The defaults are optimized to prevent API overload errors.
 
-### 2. Basic Configuration (.env file)
 ```bash
-# Server settings
+# --- TIMEOUTS ---
+# Max time for a single API call to Gemini
+GEMINI_API_TIMEOUT=720 # (12 minutes)
+# Max time for the entire 4-stage process for a single request
+OVERALL_PROCESS_TIMEOUT=1200 # (20 minutes)
+
+# --- RETRY LOGIC ---
+# Controls how the system handles temporary API errors
+GEMINI_MAX_RETRIES=6
+GEMINI_BASE_RETRY_DELAY=15 # (seconds)
+GEMINI_MAX_RETRY_DELAY=120 # (seconds)
+GEMINI_EXPONENTIAL_MULTIPLIER=1.5
+GEMINI_OVERLOAD_MULTIPLIER=2.0
+
+# --- SMART RATE LIMITING (PRO MODEL PROTECTION) ---
+# These settings are crucial for preventing 503 overload errors.
+# The system dynamically waits based on the longest required delay.
+PRO_MODEL_MIN_DELAY=12.0 # (seconds) Standard delay between any two Pro calls.
+PRO_MODEL_ERROR_DELAY=20.0 # (seconds) Delay after any non-overload error.
+PRO_MODEL_OVERLOAD_DELAY=45.0 # (seconds) Longer delay after a 503/overload error.
+```
+
+### 3. Server and Frontend Configuration
+```bash
+# --- SERVER SETTINGS ---
 PORT=8000
 HOST=0.0.0.0
 LOG_LEVEL=INFO
 
-# Processing limits
-API_TIMEOUT=60
-MAX_RETRIES=3
-OVERALL_PROCESS_TIMEOUT=600
-
-# File size limits
-MAX_PDF_SIZE=52428800     # 50MB
-MAX_CSV_SIZE=26214400     # 25MB
-MAX_IMAGE_SIZE=10485760   # 10MB
-MAX_FILES=10
-
-# Australian business settings
-DEFAULT_CURRENCY=AUD
-FINANCIAL_YEAR_START=07-01  # July 1st
-FINANCIAL_YEAR_END=06-30    # June 30th
-DEFAULT_TAX_RATE=0.25       # 25% corporate tax
-DIVIDEND_PAYOUT_RATIO=0.40  # 40% dividend payout
-```
-
-### 3. Performance Settings
-```bash
-# Concurrency control
-PRO_MODEL_SEMAPHORE_LIMIT=3        # Gemini Pro model concurrent calls
-FLASH_MODEL_CONCURRENT_LIMIT=10    # Gemini Flash model concurrent calls
-
-# Feature toggles
-ENABLE_AI_SEMANTIC_VALIDATION=true
-ENABLE_ROBUST_JSON_PARSING=true
-ENABLE_MONITORING=true
+# --- CORS ---
+# URL of the frontend application for Cross-Origin Resource Sharing
+FRONTEND_URL=http://localhost:5173
 ```
 
 ## Key Configuration Concepts
 
-### 1. Model Selection Strategy
-The system uses a **tiered approach**:
-- **Gemini Flash**: For data extraction (Stage 1) - faster, higher quotas
-- **Gemini Pro**: For analysis and projections (Stages 2-3) - more sophisticated
+### 1. Unified Model Strategy
+The system uses a **unified model architecture**.
+- **`gemini-2.5-pro`** is used for all four stages of the analysis.
+- This ensures maximum analytical power and consistency throughout the process.
+- There is no need to configure separate models for different stages.
 
-### 2. Concurrency Management
-- **Pro Model Limit**: 3 concurrent calls (prevents quota exhaustion)
-- **Flash Model Limit**: 10 concurrent calls (higher quota available)
-- **API Key Rotation**: Distributes load across multiple keys
+### 2. Smart Rate Limiting
+This is the most critical performance feature. Instead of simple, fixed delays, the system uses a dynamic "smart delay" before each call to the `gemini-2.5-pro` model.
+- It checks the time since the last call, the last error, and the last overload.
+- It applies the **longest necessary delay**, ensuring it respects API limits without waiting longer than needed.
+- This strategy is designed to **eliminate 503 Service Unavailable errors** from the API.
 
-### 3. Australian Business Context
-- **Financial Year**: July-June cycles (not calendar year)
-- **Tax Rate**: 25% corporate tax rate
-- **Dividend Policy**: 40% quarterly dividend payout
-- **Seasonality**: Understands Australian business patterns
+### 3. Concurrency Management
+- The system is configured to process **one Pro model call at a time** across the entire application, managed by a semaphore.
+- This sequential processing is essential for the 4-stage pipeline, as each stage's output is the input for the next, building a chain of context and analysis.
 
-## File Processing Limits
-
-### Why These Limits Exist
-- **Processing Efficiency**: Prevents system overload
-- **API Quota Management**: Stays within service limits
-- **Quality Assurance**: Ensures reliable processing
-
-### Recommended File Sizes
-- **PDFs**: 10-20MB typical, 50MB maximum
-- **CSVs**: 5-10MB typical, 25MB maximum
-- **Images**: 2-5MB typical, 10MB maximum
-
-## Performance Optimization
-
-### 1. API Key Management
-**Best practices:**
-- Use multiple API keys for better performance
-- Rotate keys to distribute load
-- Monitor usage to avoid quota limits
-
-### 2. Processing Optimization
-**Key settings:**
-- **Timeout Values**: Balance thoroughness with responsiveness
-- **Retry Logic**: Handle temporary failures gracefully
-- **Concurrent Processing**: Process multiple files simultaneously
-
-### 3. Memory Management
-**Considerations:**
-- **Large Files**: Streamed processing for efficiency
-- **Concurrent Requests**: Managed to prevent memory issues
-- **Cleanup**: Temporary files removed automatically
-
-## Business Rule Customization
-
-### 1. Industry-Specific Settings
-```bash
-# Default settings work for most Australian businesses
-# Can be customized for specific industries:
-
-# Technology companies
-DEFAULT_DSO=30              # Faster customer payments
-DEFAULT_INVENTORY_DAYS=0    # No inventory
-
-# Manufacturing
-DEFAULT_DSO=60              # Longer payment terms
-DEFAULT_INVENTORY_DAYS=90   # Higher inventory levels
-
-# Retail
-DEFAULT_DSO=15              # Quick customer payments
-DEFAULT_INVENTORY_DAYS=45   # Moderate inventory
-```
-
-### 2. Regional Adaptations
-**Australian settings (default):**
-- July-June financial year
-- 25% corporate tax rate
-- Local seasonal patterns
-- AUD currency
-
-**Other regions can be configured:**
-- Different financial year cycles
-- Local tax rates
-- Regional business patterns
-
-## Deployment Options
+## Deployment
 
 ### 1. Local Development
+From the project root directory:
 ```bash
-# Simple local setup
-pip install -r requirements.txt
-python -m uvicorn backend.main:app --reload
+# 1. Install backend dependencies
+pip install -r backend/requirements.txt
+
+# 2. Configure your backend/.env file
+
+# 3. Run the backend server
+uvicorn backend.main:app --reload
 ```
+The backend will be available at `http://localhost:8000`.
+
+From a separate terminal, run the frontend:
+```bash
+# 1. Navigate to the frontend directory
+cd frontend
+
+# 2. Install frontend dependencies
+npm install
+
+# 3. Run the frontend development server
+npm run dev
+```
+The frontend will be available at `http://localhost:5173`.
 
 ### 2. Production Deployment
-**Docker recommended:**
-```dockerfile
-FROM python:3.9-slim
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-COPY . .
-CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
-```
-
-### 3. Cloud Deployment
-**Considerations:**
-- **Scaling**: Multiple instances for high load
-- **Load Balancing**: Distribute requests across instances
-- **Monitoring**: Track performance and errors
-- **Security**: Protect API keys and data
+Using Docker is recommended for production. You can build separate containers for the frontend and backend and use a reverse proxy like Nginx to manage traffic.
 
 ## Monitoring & Logging
 
 ### 1. System Health
-The system provides:
-- **Health check endpoint**: `/health`
-- **Performance metrics**: Response times, success rates
-- **Error tracking**: Detailed error logs
-- **Quality monitoring**: Data quality scores
+- **Health Check Endpoint**: `GET /health` provides a simple status check.
+- **Admin Endpoints**: The `/admin` routes provide more detailed health checks and allow for testing individual stages of the pipeline.
 
 ### 2. Log Levels
-```bash
-DEBUG   # Detailed debugging information
-INFO    # General system information (default)
-WARNING # Potential issues
-ERROR   # System errors
-```
+Set `LOG_LEVEL` in your `.env` file:
+- `INFO`: Default level for general operational messages.
+- `DEBUG`: Very detailed logs, useful for troubleshooting specific issues.
 
 ### 3. Key Metrics to Monitor
-- **Processing time**: How long analyses take
-- **Success rate**: Percentage of successful analyses
-- **Quality scores**: Average data quality
-- **API usage**: Track quota consumption
-
-## Security Considerations
-
-### 1. API Key Protection
-- **Environment Variables**: Never hardcode keys
-- **Access Control**: Limit who can access keys
-- **Key Rotation**: Regularly update API keys
-- **Monitoring**: Track API key usage
-
-### 2. Data Security
-- **File Upload**: Validate file types and sizes
-- **Processing**: Secure handling of financial data
-- **Storage**: Temporary files cleaned up automatically
-- **Transmission**: Use HTTPS in production
+- **Processing Time**: The `data_analysis_summary` in the final response contains detailed timings for each of the four stages.
+- **API Errors**: Monitor logs for any API call failures, especially overload warnings, though the smart rate-limiter aims to prevent these.
+- **Projection Completeness**: The logs and the final response indicate how many of the required projection metrics were successfully generated.
 
 ## Troubleshooting
 
-### Common Issues
-
 **"No API keys configured"**
-- Solution: Set GOOGLE_API_KEY environment variable
-- Check: API key format and validity
+- **Solution**: Ensure your `backend/.env` file exists and contains at least one `GEMINI_API_KEY_1`.
 
-**"File too large"**
-- Solution: Reduce file size or split into multiple files
-- Check: File size limits in configuration
+**`504 Gateway Timeout` or `Process exceeded X seconds limit`**
+- **Cause**: The entire 4-stage process is taking longer than the `OVERALL_PROCESS_TIMEOUT`. This can happen with a large number of very complex, multi-page documents.
+- **Solution**: Try reducing the number of files in a single request.
 
-**"Processing timeout"**
-- Solution: Increase OVERALL_PROCESS_TIMEOUT
-- Check: File complexity and system load
+**Poor Quality Projections or Errors in Analysis**
+- **Cause**: The quality of the input documents is low (blurry scans, non-standard formats, missing data).
+- **Solution**: Ensure you are providing clear, complete P&L and Balance Sheet documents covering at least 12-24 months. The quality of the output is directly dependent on the quality of the input.
 
-**"Poor quality score"**
-- Solution: Provide clearer, more complete financial data
-- Check: Document quality and completeness
-
-### Performance Issues
-
-**Slow processing:**
-- Add more API keys for better performance
-- Increase concurrency limits carefully
-- Check system resources (CPU, memory)
-
-**Memory problems:**
-- Reduce file sizes
-- Limit concurrent processing
-- Monitor system memory usage
-
-## Best Practices
-
-### 1. Configuration Management
-- **Use environment variables** for all settings
-- **Document configuration changes**
-- **Test configuration changes** before production
-- **Keep configuration secure**
-
-### 2. Performance Optimization
-- **Monitor system metrics** regularly
-- **Optimize API key usage**
-- **Balance accuracy with speed**
-- **Scale resources as needed**
-
-### 3. Quality Assurance
-- **Validate configuration** on startup
-- **Test with sample data** before production
-- **Monitor quality scores**
-- **Implement proper error handling**
-
-## Getting Started Checklist
-
-1. **✓ Install Python 3.8+** and required packages
-2. **✓ Obtain Google Gemini API keys**
-3. **✓ Configure .env file** with your settings
-4. **✓ Test with sample financial documents**
-5. **✓ Verify system health** using `/health` endpoint
-6. **✓ Monitor performance** and adjust as needed
-
-**Key Takeaway**: The system is designed to work out-of-the-box with minimal configuration, while providing flexibility for customization based on your specific business needs and deployment requirements. 
+**Key Takeaway**: The system is highly optimized out-of-the-box. The most important configuration steps are providing your Gemini API keys and ensuring the `FRONTEND_URL` matches your setup. The smart rate-limiting and timeout settings are pre-tuned for stability. 

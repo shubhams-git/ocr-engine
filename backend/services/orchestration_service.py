@@ -23,10 +23,11 @@ from logging_config import (get_logger, log_request_start, log_request_end,
                           log_stage_progress, log_validation_result)
 
 # Import the enhanced separate services
-from services.ocr_service import ocr_service
-from services.business_analysis_service import business_analysis_service
-from services.analysis_service import analysis_service
+from services.extraction_service import extraction_service
+from services.cash_flow_service import cash_flow_service
+from services.financial_analysis_service import financial_analysis_service
 from services.projection_service import projection_service
+from services.enhancement_service import enhancement_service
 
 # Set up logger
 logger = get_logger(__name__)
@@ -221,7 +222,7 @@ class UnifiedProModelService:
             logger.warning(f"⚠️ Error counting projections: {str(e)}")
             return 0
 
-    async def _internal_analyze_multiple_files(self, files_data: List[Tuple[str, bytes]], requested_model: str = "gemini-2.5-pro") -> MultiPDFAnalysisResponse:
+    async def _internal_analyze_multiple_files(self, files_data: List[Tuple[str, bytes]], requested_model: str = "gemini-2.5-pro", projection_start_date: str = "2026-01-01") -> MultiPDFAnalysisResponse:
         """
         Internal method for 4-stage multi-file analysis using UNIFIED PRO MODEL with optimized rate limiting
         """
@@ -256,7 +257,7 @@ class UnifiedProModelService:
                     await self._acquire_pro_model_with_optimized_delay(f"Stage 1 File {i+1}: {filename}")
                     
                     # Process with Pro model
-                    result = await ocr_service.process_ocr(content, filename, unified_model)
+                    result = await extraction_service.process_extraction(content, filename, unified_model)
                     stage1_results.append(result)
                     
                     logger.info(f"✅ Stage 1 File {i+1} SUCCESS: {filename} | Model: {unified_model}")
@@ -339,7 +340,7 @@ class UnifiedProModelService:
             # Use optimized rate limiting for Stage 2
             try:
                 await self._acquire_pro_model_with_optimized_delay("Stage 2")
-                stage2_result = await business_analysis_service.generate_cash_flows_and_analyze(successful_extractions, unified_model)
+                stage2_result = await cash_flow_service.generate_cash_flows_and_analyze(successful_extractions, unified_model)
             except Exception as e:
                 # Record error for rate limiting
                 self._record_pro_error(str(e))
@@ -362,7 +363,7 @@ class UnifiedProModelService:
             # Use optimized rate limiting for Stage 3
             try:
                 await self._acquire_pro_model_with_optimized_delay("Stage 3")
-                stage3_result = await analysis_service.analyze_comprehensive_business_context(stage2_result, unified_model)
+                stage3_result = await financial_analysis_service.analyze_comprehensive_business_context(stage2_result, unified_model)
             except Exception as e:
                 # Record error for rate limiting
                 self._record_pro_error(str(e))
@@ -377,6 +378,22 @@ class UnifiedProModelService:
             analysis_completed = stage3_result.get('stage3_processing_summary', {}).get('comprehensive_analysis_completed', False)
             
             log_stage_progress(logger, "3", "COMPLETED", f"Duration: {stage3_time:.2f}s | Method: {methodology_selected} | Analysis: {'Complete' if analysis_completed else 'Failed'} | Model: {unified_model}")
+
+            # STAGE 3.5: Strategic Enhancement
+            log_stage_progress(logger, "3.5", "STARTED", f"Strategic Enhancement Service | Model: {unified_model}")
+            stage3_5_start = time.time()
+
+            try:
+                await self._acquire_pro_model_with_optimized_delay("Stage 3.5")
+                stage3_5_result = await enhancement_service.enhance_analysis(stage3_result, unified_model)
+            except Exception as e:
+                self._record_pro_error(str(e))
+                raise
+            finally:
+                self._release_pro_model_semaphore("Stage 3.5")
+
+            stage3_5_time = time.time() - stage3_5_start
+            log_stage_progress(logger, "3.5", "COMPLETED", f"Duration: {stage3_5_time:.2f}s | Model: {unified_model}")
             
             # STAGE 4: Enhanced Projection Engine using UNIFIED PRO MODEL
             log_stage_progress(logger, "4", "STARTED", f"Enhanced Projection Service | Model: {unified_model}")
@@ -385,7 +402,7 @@ class UnifiedProModelService:
             # Use optimized rate limiting for Stage 4
             try:
                 await self._acquire_pro_model_with_optimized_delay("Stage 4")
-                stage4_result = await projection_service.generate_projections(stage3_result, unified_model)
+                stage4_result = await projection_service.generate_projections(stage3_5_result, unified_model, projection_start_date)
             except Exception as e:
                 # Record error for rate limiting
                 self._record_pro_error(str(e))
@@ -540,7 +557,7 @@ class UnifiedProModelService:
                 data_analysis_summary=None
             )
     
-    async def analyze_multiple_files(self, files_data: List[Tuple[str, bytes]], requested_model: str = "gemini-2.5-pro") -> MultiPDFAnalysisResponse:
+    async def analyze_multiple_files(self, files_data: List[Tuple[str, bytes]], requested_model: str = "gemini-2.5-pro", projection_start_date: str = "2026-01-01") -> MultiPDFAnalysisResponse:
         """
         Enhanced 4-stage multi-file analysis using UNIFIED PRO MODEL with optimized rate limiting
         Applies enhanced 20-minute timeout to the entire process
@@ -554,7 +571,7 @@ class UnifiedProModelService:
             
             # Apply enhanced overall timeout to the entire analysis process
             result = await asyncio.wait_for(
-                self._internal_analyze_multiple_files(files_data, requested_model),
+                self._internal_analyze_multiple_files(files_data, requested_model, projection_start_date),
                 timeout=self.overall_process_timeout
             )
             
@@ -654,4 +671,4 @@ class UnifiedProModelService:
             return []
 
 # Create unified service instance
-multi_pdf_service = UnifiedProModelService()
+orchestration_service = UnifiedProModelService()
