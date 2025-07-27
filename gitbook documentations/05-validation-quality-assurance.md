@@ -2,7 +2,7 @@
 
 ## Overview
 
-Our validation framework is a multi-stage process designed to ensure the integrity, consistency, and business logic of the financial analysis from start to finish. Each of the four stages in our architecture has a specific quality assurance role.
+Our validation framework is a multi-stage process designed to ensure the integrity, consistency, and business logic of the financial analysis from start to finish. Each of the five stages in our architecture has a specific quality assurance role.
 
 ## Why Validation Matters
 
@@ -10,10 +10,10 @@ Our validation framework is a multi-stage process designed to ensure the integri
 - **Building Confidence**: Provides clear quality indicators, allowing users to trust the final output.
 - **Data-Driven Integrity**: Ensures that the final projections are directly traceable to the validated historical data.
 
-## Our 4-Stage Validation System
+## Our 5-Stage Validation System
 
 ### Stage 1: Data Standardization Validation
-**Location**: `OCRService`
+**Location**: `extraction_service.py`
 
 **What it checks:**
 - **File Integrity**: Validates file format (PDF, CSV) and size.
@@ -23,7 +23,7 @@ Our validation framework is a multi-stage process designed to ensure the integri
 **Output**: A `data_quality_assessment` object for each file, with a strong focus on the standard field coverage score.
 
 ### Stage 2: Cash Flow Reconciliation
-**Location**: `BusinessAnalysisService`
+**Location**: `cash_flow_service.py`
 
 **What it checks:**
 - **The Fundamental Law of Cash Flow**: This is a critical mathematical reconciliation. The service ensures that the reconstructed cash flow statement is correct by verifying:
@@ -33,7 +33,7 @@ Our validation framework is a multi-stage process designed to ensure the integri
 **Output**: A `cash_flow_quality_assessment` that shows the validation status (Pass/Fail) for each historical period, ensuring the 3-statement historical model is mathematically sound.
 
 ### Stage 3: Business Logic & Strategy Validation
-**Location**: `AnalysisService`
+**Location**: `financial_analysis_service.py`
 
 **What it checks:**
 - **Holistic Reasonableness**: The AI acts as a senior financial analyst, reviewing the complete 3-statement historical data for logical consistency.
@@ -42,11 +42,20 @@ Our validation framework is a multi-stage process designed to ensure the integri
 
 **Output**: A validated forecasting strategy where every assumption is data-driven and defensible.
 
-### Stage 4: Projection Completeness Check
-**Location**: `ProjectionService` & `MultiPDFService`
+### Stage 3.5: Enhancement Rationale Check
+**Location**: `enhancement_service.py`
 
 **What it checks:**
-- **Completeness**: This final check verifies that the AI has successfully generated all required data points.
+- **Rationale Quality**: Ensures that the enhancement factors are well-reasoned and logically consistent with the business context.
+- **Factor Applicability**: Validates that the proposed adjustments are relevant to the business and its industry.
+
+**Output**: A set of well-reasoned enhancement factors to be used in Stage 4.
+
+### Stage 4: Projection Completeness Check
+**Location**: `projection_service.py` & `orchestration_service.py`
+
+**What it checks:**
+- **Completeness**: This final check verifies that the AI has successfully generated all required data points for both the Base and Enhanced cases.
 - **Mandatory Metrics**: It ensures projections for **Revenue, Expenses, Gross Profit, and Net Profit** are present.
 - **All Time Horizons**: It confirms that data for **1, 3, 5, 10, and 15-year** horizons has been generated.
 
@@ -60,10 +69,11 @@ To improve system stability and prevent timeouts caused by additional complex AP
 
 ## Quality Scoring
 
-The overall quality of the final output is a reflection of the success of the validation at each of the four stages. A high-quality result depends on:
+The overall quality of the final output is a reflection of the success of the validation at each of the five stages. A high-quality result depends on:
 - **High Standard Field Coverage** in Stage 1.
 - **Successful Cash Flow Reconciliation** in Stage 2.
 - **Logical and Data-Driven Strategy** in Stage 3.
+- **Well-Reasoned Enhancement Factors** in Stage 3.5.
 - **Complete Generation of Projections** in Stage 4.
 
-**Key Takeaway**: Our validation framework is integrated directly into the 4-stage processing pipeline. It builds a chain of trust, starting with standardized source data, reconciling it into a complete historical view, building a logical strategy upon it, and finally ensuring the final projections are complete. 
+**Key Takeaway**: Our validation framework is integrated directly into the 5-stage processing pipeline. It builds a chain of trust, starting with standardized source data, reconciling it into a complete historical view, building a logical strategy upon it, enriching it with external context, and finally ensuring the final projections are complete.

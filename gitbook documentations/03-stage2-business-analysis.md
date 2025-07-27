@@ -12,6 +12,7 @@ Stage 2 elevates the analysis from simple data extraction to true financial mode
 ### What Stage 2 Does
 
 #### 1. Cash Flow Generation
+- **Service**: `cash_flow_service.py`
 - **Method**: Uses the **indirect method** to reconstruct a historical Cash Flow statement from the standardized P&L and Balance Sheet data provided by Stage 1.
 - **Process**: It calculates cash flows from Operating, Investing, and Financing activities.
 - **Validation**: Critically, it validates the output by ensuring the calculated **Net Change in Cash** matches the change in the **Cash & Cash Equivalents** account on the Balance Sheet.
@@ -79,6 +80,7 @@ With a complete 3-statement history, Stage 3 acts as an expert financial strateg
 ### What Stage 3 Does
 
 #### 1. Integrated Financial Analysis
+- **Service**: `financial_analysis_service.py`
 - **Quality of Earnings**: It analyzes the relationship between Net Income and Operating Cash Flow. Are the company's profits backed by real cash?
 - **Growth Sustainability**: It assesses whether the company's historical growth was self-funded or reliant on external financing. This determines a realistic, **cash-constrained growth rate** for the future.
 - **Capital Efficiency**: It calculates metrics like Return on Invested Capital (ROIC) to understand how effectively the company uses its capital to generate profit and cash.
@@ -124,4 +126,4 @@ A definitive "handover package" for the projection engine, containing the comple
 }
 ```
 
-**Key Takeaway**: Stage 2 and 3 form the analytical heart of the system. They build a complete and validated historical financial reality for the business, and then use that reality to craft a sophisticated, data-driven, and defensible strategy for creating the final projections in Stage 4. 
+**Key Takeaway**: Stage 2 and 3 form the analytical heart of the system. They build a complete and validated historical financial reality for the business, and then use that reality to craft a sophisticated, data-driven, and defensible strategy for creating the final projections in Stage 4.

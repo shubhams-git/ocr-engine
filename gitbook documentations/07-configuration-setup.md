@@ -40,7 +40,7 @@ These settings control the performance and stability of the system. The defaults
 # --- TIMEOUTS ---
 # Max time for a single API call to Gemini
 GEMINI_API_TIMEOUT=720 # (12 minutes)
-# Max time for the entire 4-stage process for a single request
+# Max time for the entire 5-stage process for a single request
 OVERALL_PROCESS_TIMEOUT=1200 # (20 minutes)
 
 # --- RETRY LOGIC ---
@@ -75,7 +75,7 @@ FRONTEND_URL=http://localhost:5173
 
 ### 1. Unified Model Strategy
 The system uses a **unified model architecture**.
-- **`gemini-2.5-pro`** is used for all four stages of the analysis.
+- **`gemini-2.5-pro`** is used for all five stages of the analysis.
 - This ensures maximum analytical power and consistency throughout the process.
 - There is no need to configure separate models for different stages.
 
@@ -87,7 +87,7 @@ This is the most critical performance feature. Instead of simple, fixed delays, 
 
 ### 3. Concurrency Management
 - The system is configured to process **one Pro model call at a time** across the entire application, managed by a semaphore.
-- This sequential processing is essential for the 4-stage pipeline, as each stage's output is the input for the next, building a chain of context and analysis.
+- This sequential processing is essential for the 5-stage pipeline, as each stage's output is the input for the next, building a chain of context and analysis.
 
 ## Deployment
 
@@ -132,7 +132,7 @@ Set `LOG_LEVEL` in your `.env` file:
 - `DEBUG`: Very detailed logs, useful for troubleshooting specific issues.
 
 ### 3. Key Metrics to Monitor
-- **Processing Time**: The `data_analysis_summary` in the final response contains detailed timings for each of the four stages.
+- **Processing Time**: The `data_analysis_summary` in the final response contains detailed timings for each of the five stages.
 - **API Errors**: Monitor logs for any API call failures, especially overload warnings, though the smart rate-limiter aims to prevent these.
 - **Projection Completeness**: The logs and the final response indicate how many of the required projection metrics were successfully generated.
 
@@ -142,11 +142,11 @@ Set `LOG_LEVEL` in your `.env` file:
 - **Solution**: Ensure your `backend/.env` file exists and contains at least one `GEMINI_API_KEY_1`.
 
 **`504 Gateway Timeout` or `Process exceeded X seconds limit`**
-- **Cause**: The entire 4-stage process is taking longer than the `OVERALL_PROCESS_TIMEOUT`. This can happen with a large number of very complex, multi-page documents.
+- **Cause**: The entire 5-stage process is taking longer than the `OVERALL_PROCESS_TIMEOUT`. This can happen with a large number of very complex, multi-page documents.
 - **Solution**: Try reducing the number of files in a single request.
 
 **Poor Quality Projections or Errors in Analysis**
 - **Cause**: The quality of the input documents is low (blurry scans, non-standard formats, missing data).
 - **Solution**: Ensure you are providing clear, complete P&L and Balance Sheet documents covering at least 12-24 months. The quality of the output is directly dependent on the quality of the input.
 
-**Key Takeaway**: The system is highly optimized out-of-the-box. The most important configuration steps are providing your Gemini API keys and ensuring the `FRONTEND_URL` matches your setup. The smart rate-limiting and timeout settings are pre-tuned for stability. 
+**Key Takeaway**: The system is highly optimized out-of-the-box. The most important configuration steps are providing your Gemini API keys and ensuring the `FRONTEND_URL` matches your setup. The smart rate-limiting and timeout settings are pre-tuned for stability.

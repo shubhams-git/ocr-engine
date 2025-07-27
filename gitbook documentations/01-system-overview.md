@@ -2,57 +2,65 @@
 
 ## System Architecture
 
-The OCR-Based Financial Projection System is a sophisticated **4-stage modular architecture** designed to perform deep financial analysis and generate comprehensive financial forecasts. The system uses a **unified AI model strategy**, leveraging `gemini-2.5-pro` across all stages for maximum analytical depth and consistency.
+The OCR-Based Financial Projection System is a sophisticated **5-stage modular architecture** designed to perform deep financial analysis and generate comprehensive financial forecasts. The system uses a **unified AI model strategy**, leveraging `gemini-2.5-pro` across all stages for maximum analytical depth and consistency.
 
 ### Core Components
 
 ```mermaid
 graph TD
-    A[Document Upload] --> B[Stage 1: Data Standardization Service];
-    B --> C[Stage 2: Cash Flow Reconstruction Service];
-    C --> D[Stage 3: Deep Analysis & Strategy Service];
-    D --> E[Stage 4: Projection Generation Service];
-    E --> F[Financial Projections Output];
+    A[Document Upload] --> B[Stage 1: Extraction Service];
+    B --> C[Stage 2: Cash Flow Service];
+    C --> D[Stage 3: Financial Analysis Service];
+    D --> E[Stage 3.5: Enhancement Service];
+    E --> F[Stage 4: Projection Service];
+    F --> G[Financial Projections Output];
     
     subgraph "Unified AI Model: Gemini 2.5 Pro"
-        G[Gemini 2.5 Pro] --> B;
-        G --> C;
-        G --> D;
-        G --> E;
+        H[Gemini 2.5 Pro] --> B;
+        H --> C;
+        H --> D;
+        H --> E;
+        H --> F;
     end
 ```
 
-## Four-Stage Architecture
+## Five-Stage Architecture
 
 ### Stage 1: Data Extraction & Standardization
-- **Service**: `OCRService`
+- **Service**: `extraction_service.py`
 - **Model**: Gemini 2.5 Pro
 - **Purpose**: Extract all financial data and map it to **25 guaranteed standard fields** (P&L and Balance Sheet).
 - **Output**: A consistent, standardized financial dataset.
 
 ### Stage 2: Historical Cash Flow Reconstruction
-- **Service**: `BusinessAnalysisService`  
+- **Service**: `cash_flow_service.py`
 - **Model**: Gemini 2.5 Pro
 - **Purpose**: Generate a historical Cash Flow statement using the indirect method from Stage 1's data. Calculates **actual, data-driven working capital drivers** (DSO, DPO, etc.).
 - **Output**: A complete 3-statement historical financial view of the business.
 
 ### Stage 3: Deep Analysis & Forecasting Strategy
-- **Service**: `AnalysisService`
+- **Service**: `financial_analysis_service.py`
 - **Model**: Gemini 2.5 Pro
 - **Purpose**: Perform deep analysis on the complete 3-statement history to validate the business model, assess cash-constrained growth, and select the optimal, integrated forecasting methodology.
 - **Output**: A definitive forecasting strategy with validated, data-driven assumptions.
 
-### Stage 4: Projection Generation
-- **Service**: `ProjectionService`
+### Stage 3.5: Strategic Enhancement
+- **Service**: `enhancement_service.py`
 - **Model**: Gemini 2.5 Pro
-- **Purpose**: Generate final, multi-horizon financial projections for key metrics (Revenue, Expenses, Gross Profit, Net Profit).
-- **Output**: Multi-horizon projections with scenarios.
+- **Purpose**: Enhance the baseline analysis by incorporating strategic insights and external factors.
+- **Output**: A set of enhancement factors with detailed rationale.
+
+### Stage 4: Projection Generation
+- **Service**: `projection_service.py`
+- **Model**: Gemini 2.5 Pro
+- **Purpose**: Generate final, multi-horizon financial projections for key metrics, including a "Base Case" and an "Enhanced Case".
+- **Output**: Multi-horizon projections with scenarios and detailed commentary.
 
 ## Key Features
 
 ### 🎯 Unified Pro Model Architecture
 - **Consistent Power**: Uses `gemini-2.5-pro` for all stages, from extraction to projection, ensuring high-quality analysis throughout.
-- **Optimized Rate Limiting**: A smart, centralized service (`multi_pdf_service`) manages API calls to prevent overloads and ensure stability without excessive delays.
+- **Optimized Rate Limiting**: A smart, centralized service (`orchestration_service.py`) manages API calls to prevent overloads and ensure stability without excessive delays.
 - **Concurrency Control**: A semaphore system ensures that intensive Pro model calls are processed sequentially and efficiently.
 
 ### 📊 Multi-Format Support
@@ -68,17 +76,18 @@ graph TD
 - **Data-Driven Assumptions**: Projections are based on **actual historical working capital drivers**, not generic industry averages.
 - **Time Horizons**: 1, 3, 5, 10, and 15-year projections.
 - **Granularity**: Monthly → Quarterly → Yearly aggregation.
-- **Scenarios**: Optimistic, Base Case, Conservative.
+- **Scenarios**: Base Case, Enhanced Case, Optimistic, Conservative.
 
 ## Technical Architecture
 
 ### Service Layer
 ```typescript
 interface ServiceArchitecture {
-  stage1: OCRService;           // Data Standardization
-  stage2: BusinessAnalysisService; // Cash Flow Reconstruction
-  stage3: AnalysisService;         // Deep Analysis & Strategy
-  stage4: ProjectionService;    // Financial Projections
+  stage1: ExtractionService;
+  stage2: CashFlowService;
+  stage3: FinancialAnalysisService;
+  stage3_5: EnhancementService;
+  stage4: ProjectionService;
 }
 ```
 
@@ -100,22 +109,27 @@ files_data: List[Tuple[str, bytes]] → validation → type_detection
 
 ### 2. Stage 1: Standardization
 ```python
-documents → OCRService → standardized_pl_and_bs_data
+documents → ExtractionService → standardized_pl_and_bs_data
 ```
 
-### 3. Stage 2: Cash Flow Reconstruction  
+### 3. Stage 2: Cash Flow Reconstruction
 ```python
-standardized_data → BusinessAnalysisService → complete_3_statement_historicals
+standardized_data → CashFlowService → complete_3_statement_historicals
 ```
 
 ### 4. Stage 3: Deep Analysis
 ```python
-historical_3_statements → AnalysisService → forecasting_strategy_and_assumptions
+historical_3_statements → FinancialAnalysisService → forecasting_strategy_and_assumptions
 ```
 
-### 5. Stage 4: Projections
+### 5. Stage 3.5: Strategic Enhancement
 ```python
-strategy_and_assumptions → ProjectionService → final_financial_forecasts
+forecasting_strategy → EnhancementService → enhancement_factors
+```
+
+### 6. Stage 4: Projections
+```python
+enhancement_factors → ProjectionService → final_financial_forecasts
 ```
 
 ## Output Structure
@@ -141,11 +155,12 @@ strategy_and_assumptions → ProjectionService → final_financial_forecasts
 ## Quality Assurance
 
 ### Validation Layers
-1. **File Validation**: Size, format, content validation.
-2. **Data Quality (Stage 1)**: Completeness of standard field mapping, consistency, anomaly detection.
-3. **Cash Flow Reconciliation (Stage 2)**: Validates that the reconstructed cash flow matches the change in cash on the balance sheet.
-4. **Business Logic (Stage 3)**: AI-powered semantic validation of assumptions and strategy.
-5. **Projection Completeness (Stage 4)**: Ensures all required metrics and time horizons are generated.
+1.  **File Validation**: Size, format, content validation.
+2.  **Data Quality (Stage 1)**: Completeness of standard field mapping, consistency, anomaly detection.
+3.  **Cash Flow Reconciliation (Stage 2)**: Validates that the reconstructed cash flow matches the change in cash on the balance sheet.
+4.  **Business Logic (Stage 3)**: AI-powered semantic validation of assumptions and strategy.
+5.  **Enhancement Rationale (Stage 3.5)**: Ensures that enhancement factors are well-reasoned.
+6.  **Projection Completeness (Stage 4)**: Ensures all required metrics and time horizons are generated.
 
 ### Error Handling
 - **Graceful Degradation**: `SuperRobustJSONParser` and `IntelligentMethodologySelector` provide fallbacks for partial failures.
@@ -156,7 +171,7 @@ strategy_and_assumptions → ProjectionService → final_financial_forecasts
 ## Performance Characteristics
 
 ### Scalability
-- **Sequential Pro Model Calls**: The 4-stage process runs sequentially to build context, managed by the smart rate-limiter.
+- **Sequential Pro Model Calls**: The 5-stage process runs sequentially to build context, managed by the smart rate-limiter.
 - **Resource Management**: Intelligent API quota distribution and key rotation.
 - **Timeout Controls**: Configurable process timeouts (default: 20 minutes).
 
@@ -171,7 +186,7 @@ This overview provides the foundation for understanding the system. The followin
 
 - **Stage 1**: Data Extraction & Standardization
 - **Stage 2**: Cash Flow Reconstruction & Business Analysis
-- **Stage 3**: Deep Analysis & Forecasting Strategy
+- **Stage 3 & 3.5**: Deep Analysis & Strategic Enhancement
 - **Stage 4**: Projection Generation
 - **API Reference**: Usage examples and integration guide
-- **Configuration**: Setup and customization options 
+- **Configuration**: Setup and customization options

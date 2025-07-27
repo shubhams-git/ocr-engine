@@ -89,4 +89,4 @@ The standardized P&L and Balance Sheet data from Stage 1 is the direct and essen
 - **Calculate actual, data-driven working capital drivers** like DSO and DPO.
 - **Create a complete 3-statement view** of the company's historical performance.
 
-**Key Takeaway**: Stage 1 is a powerful data processing and standardization engine. It transforms messy, inconsistent financial documents into a clean, reliable, and universally structured dataset, making advanced analysis like historical cash flow reconstruction possible. 
+**Key Takeaway**: Stage 1 is a powerful data processing and standardization engine. It transforms messy, inconsistent financial documents into a clean, reliable, and universally structured dataset, making advanced analysis like historical cash flow reconstruction possible.
