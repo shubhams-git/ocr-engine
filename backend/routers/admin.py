@@ -13,6 +13,7 @@ from models import OCRResponse, MultiPDFAnalysisResponse
 from services.extraction_service import extraction_service
 from services.cash_flow_service import cash_flow_service
 from services.projection_service import projection_service
+from services.enhancement_service import enhancement_service
 from services.orchestration_service import orchestration_service
 from logging_config import get_logger
 
@@ -249,6 +250,38 @@ async def test_stage3_projections(
     except Exception as e:
         logger.error(f"Stage 3 test failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Stage 3 test failed: {str(e)}")
+
+@router.post("/test/stage3.5")
+async def test_stage3_5_enhancement(
+    stage3_result: Dict[str, Any] = Body(...),
+    model: str = Body(default="gemini-2.5-pro")
+):
+    """Test Stage 3.5 (Enhancement Service) independently"""
+    try:
+        start_time = time.time()
+        logger.info(f"Testing Stage 3.5 Enhancement Service | Model: {model}")
+
+        # Test enhancement service directly
+        result = await enhancement_service.enhance_analysis(stage3_result, model)
+
+        processing_time = time.time() - start_time
+
+        test_result = {
+            "stage": "stage3.5_enhancement",
+            "service": "enhancement_service",
+            "success": bool(result and result.get("enhancement_factors")),
+            "processing_time": processing_time,
+            "model_used": model,
+            "result": result,
+            "timestamp": time.time()
+        }
+
+        logger.info(f"Stage 3.5 test completed | Success: {test_result['success']} | Time: {processing_time:.2f}s")
+        return test_result
+
+    except Exception as e:
+        logger.error(f"Stage 3.5 test failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Stage 3.5 test failed: {str(e)}")
 
 @router.post("/test/full-process")
 async def test_full_process(

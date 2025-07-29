@@ -40,17 +40,14 @@ _key_lock = threading.Lock()
 _current_key_index = 0
 
 def get_next_key() -> str:
-    """Get the next API key in rotation with thread-safe operation"""
+    """Get the next API key in rotation with minimal logging"""
     global _current_key_index
-    
     with _key_lock:
         key = API_KEYS[_current_key_index]
         _current_key_index = (_current_key_index + 1) % len(API_KEYS)
-        
-        # Log which key we're using (last 4 chars for identification)
+        # Only log key rotation at debug level
         key_suffix = key[-4:] if len(key) > 4 else "****"
-        logger.debug(f"Using API key ending in ...{key_suffix} (position {_current_key_index}/{len(API_KEYS)})")
-        
+        logger.debug(f" Using key ...{key_suffix}")
         return key
 
 def get_current_key() -> str:
@@ -304,11 +301,11 @@ def get_configuration_summary() -> dict:
 # Only log during main server process, not during uvicorn reloads
 if os.getenv("OCR_SERVER_MAIN") == "true":
     config_summary = get_configuration_summary()
-    logger.info(f"SMART FALLBACK CONFIG: {config_summary['api_keys_count']} keys | Individual: {config_summary['api_timeout_seconds']}s | Overall: {config_summary['overall_timeout_seconds']}s | Max retries: {config_summary['max_retries']}")
-    logger.info(f"REDUCED DELAYS: Base: {config_summary['base_retry_delay_seconds']}s | Max: {config_summary['max_retry_delay_seconds']}s | Multiplier: {config_summary['exponential_multiplier']}x | Overload: {config_summary['overload_multiplier']}x")
-    logger.info(f"PRO MODEL SMART PROTECTION: Min: {config_summary['pro_model_min_delay_seconds']}s | Error: {config_summary['pro_model_error_delay_seconds']}s | Overload: {config_summary['pro_model_overload_delay_seconds']}s")
-    logger.info(f"FLASH FALLBACK: After attempt {config_summary['flash_fallback_threshold']} | Smart fallback enabled: {config_summary['smart_fallback_enabled']}")
-    logger.info(f"CORS: {config_summary['allowed_origins_count']} allowed origins configured")
+    # REPLACE the 5 verbose log lines with this single summary:
+    logger.info(f"⚙️ Configuration loaded | Keys: {config_summary['api_keys_count']} | "
+                f"Timeout: {config_summary['overall_timeout_seconds']}s | "
+                f"Retries: {config_summary['max_retries']} | "
+                f"Fallback: attempt {config_summary['flash_fallback_threshold']}")
 
 # LEGACY COMPATIBILITY (deprecated, use the specific getters above)
 def get_retry_delay() -> int:

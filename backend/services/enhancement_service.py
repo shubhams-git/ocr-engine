@@ -23,27 +23,34 @@ class EnhancementService:
         self.max_retries = MAX_RETRIES
         self.base_retry_delay = BASE_RETRY_DELAY
 
-    async def enhance_analysis(self, stage3_result: Dict, model: str = "gemini-2.5-pro") -> Dict[str, Any]:
+    async def enhance_analysis(self, stage3_result: Dict, model: str = "gemini-1.5-pro-latest") -> Dict[str, Any]:
         """
         Enhance the business analysis with strategic insights and external factors.
         """
         log_stage_progress(logger, "3.5", "Enhancing analysis", "Strategic Enhancement & External Factor Analysis")
-        
-        # Prepare the prompt
-        prompt = STAGE3_5_ENHANCEMENT_PROMPT.format(
-            stage3_comprehensive_analysis=json.dumps(stage3_result, indent=2)
-        )
-        
-        # Call the Gemini API
-        response_text = await self._call_gemini_api(prompt, model)
-        
-        # Parse the response
-        enhancement_factors = SuperRobustJSONParser.parse_gemini_response(response_text)
-        
-        if enhancement_factors is None:
-            logger.error("Failed to parse enhancement factors, returning empty dict.")
-            return {"enhancement_factors": []}
-        return enhancement_factors
+        default_return = {"enhancement_factors": []}
+
+        try:
+            # Prepare the prompt
+            prompt = STAGE3_5_ENHANCEMENT_PROMPT.replace(
+                '{stage3_comprehensive_analysis}', json.dumps(stage3_result, indent=2)
+            )
+
+            # Call the Gemini API
+            response_text = await self._call_gemini_api(prompt, model)
+
+            # Parse the response
+            enhancement_factors = SuperRobustJSONParser.parse_gemini_response(response_text)
+
+            if enhancement_factors and isinstance(enhancement_factors, dict):
+                return enhancement_factors
+            else:
+                logger.warning("Parsing of enhancement factors failed or returned empty. Returning default value.")
+                return default_return
+
+        except Exception as e:
+            logger.error(f"An unexpected error occurred in enhance_analysis: {e}", exc_info=True)
+            return default_return
 
     async def _call_gemini_api(self, prompt: str, model: str) -> str:
         """

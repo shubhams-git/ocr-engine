@@ -122,16 +122,8 @@ class ProjectionService:
         # Only log during main server process, not during uvicorn reloads
         import os
         if os.getenv("OCR_SERVER_MAIN") == "true":
-            logger.info("Enhanced Projection Service (Stage 4) initialized with SMART PRO MODEL FALLBACK")
-            logger.info(f"SMART FALLBACK: Max retries: {self.max_retries} | Base delay: {self.base_retry_delay}s | Max delay: {self.max_retry_delay}s")
-            logger.info(f"FALLBACK STRATEGY: Pro model attempts 1-{self.flash_fallback_threshold-1}, Flash fallback from attempt {self.flash_fallback_threshold}")
-            logger.info(f"PRO PROTECTION: Min: {PRO_MODEL_MIN_DELAY}s | Error: {PRO_MODEL_ERROR_DELAY}s | Overload: {PRO_MODEL_OVERLOAD_DELAY}s")
-            logger.info("UPDATED: Now using SuperRobustJSONParser and IntelligentMethodologySelector")
-            logger.info("ENHANCED: Added comprehensive projection validation and complete fallback generation")
-        
-        logger.debug(f"Enhanced API configuration | Timeout: {self.api_timeout}s | Max retries: {self.max_retries} | Base retry delay: {self.base_retry_delay}s")
-        logger.debug(f"Smart backoff | Max delay: {self.max_retry_delay}s | Multiplier: {self.exponential_multiplier}x | Overload multiplier: {self.overload_multiplier}x")
-        logger.debug(f"API key pool available | Count: {len(API_KEYS)}")
+            logger.info(" Projection Service (Stage 4) initialized")
+            logger.debug(" Enhanced projection validation enabled")
     
     def extract_response_text(self, response) -> str:
         """Extract text from Gemini response"""
@@ -173,7 +165,7 @@ class ProjectionService:
                 key_suffix = api_key[-4:] if len(api_key) > 4 else "****"
                 
                 if attempt == 0:
-                    log_api_call(logger, operation_name, current_model, key_suffix, success=True)
+                    log_api_call(logger, operation_name, current_model, success=True)
                 else:
                     fallback_info = " (FLASH FALLBACK)" if is_fallback else ""
                     logger.info(f"🔄 API call RETRY {attempt}/{self.max_retries}: {operation_name} | Model: {current_model}{fallback_info} | Key: ...{key_suffix}")
@@ -210,7 +202,7 @@ class ProjectionService:
                 
                 # Log success
                 success_info = " with FLASH FALLBACK" if is_fallback else ""
-                log_api_call(logger, operation_name, current_model, key_suffix, elapsed_time, success=True)
+                log_api_call(logger, operation_name, current_model, duration=elapsed_time, attempt=attempt + 1, success=True)
                 logger.info(f"✅ {operation_name} SUCCESS{success_info} after {attempt + 1} attempts in {elapsed_time:.2f}s")
                 return response_text
                 
@@ -289,7 +281,8 @@ class ProjectionService:
         # All attempts failed
         elapsed_time = time.time() - start_time
         final_error = str(last_exception) if last_exception else "Unknown error"
-        log_api_call(logger, operation_name, "FAILED", "FAILED", elapsed_time, success=False, error=final_error)
+        log_api_call(logger, operation_name, "FAILED", duration=elapsed_time, success=False)
+        logger.error(f"❌ Final error for {operation_name}: {final_error}")
         logger.error(f"❌ {operation_name} FAILED after {self.max_retries + 1} attempts in {elapsed_time:.2f}s")
         raise last_exception or Exception(f"All {self.max_retries + 1} retry attempts failed")
 
@@ -554,18 +547,58 @@ class ProjectionService:
                 '15_years_ahead': 'very_low'
             }
     
-    async def generate_projections(self, stage3_5_result: Dict, model: str = "gemini-2.5-pro", projection_start_date: str = "2026-01-01") -> Dict[str, Any]:
-        """
-        Stage 4: Enhanced projection engine with smart Pro model fallback and SUPER ROBUST JSON PARSING
-        UPDATED: Now uses SuperRobustJSONParser and IntelligentMethodologySelector
-        ENHANCED: Added comprehensive validation and complete fallback generation
-        """
+    def _validate_projections(self, result: Dict) -> bool:
+        """Validate that all required projection data is present"""
+        if not isinstance(result, dict):
+            logger.warning("❌ Result is not a dictionary")
+            return False
+        
+        base_projections = result.get('base_case_projections', {})
+        if not base_projections:
+            logger.warning("❌ Missing base_case_projections")
+            return False
+        
+        required_horizons = ['1_year_ahead', '3_years_ahead', '5_years_ahead', '10_years_ahead', '15_years_ahead']
+        required_metrics = ['revenue', 'expenses', 'gross_profit', 'net_profit']
+        
+        for horizon in required_horizons:
+            if horizon not in base_projections:
+                logger.warning(f"❌ Missing horizon: {horizon}")
+                return False
+                
+            horizon_data = base_projections[horizon]
+            if not isinstance(horizon_data, dict):
+                logger.warning(f"❌ Invalid horizon data for {horizon}")
+                return False
+            
+            for metric in required_metrics:
+                if metric not in horizon_data:
+                    logger.warning(f"❌ Missing metric {metric} in {horizon}")
+                    return False
+                
+                metric_data = horizon_data[metric]
+                if not isinstance(metric_data, list) or len(metric_data) == 0:
+                    logger.warning(f"❌ Empty or invalid metric data {metric} in {horizon}")
+                    return False
+        
+        logger.info("✅ All projection data validated successfully")
+        return True
+
+    def _count_projections(self, result: Dict) -> int:
+        """Count the number of projections"""
+        if not isinstance(result, dict):
+            return 0
+        
+        base_projections = result.get('base_case_projections', {})
+        if not base_projections:
+            return 0
+            
+        return len(base_projections)
+
+    async def generate_projections(self, stage3_5_result: Dict[str, Any], model: str, projection_start_date: str = "2026-01-01") -> Dict[str, Any]:
+        """Generate projections with optimized logging"""
         try:
-            logger.info(f"🚀 STAGE 4: Enhanced Projection Engine with SUPER ROBUST JSON PARSER")
-            logger.info(f"🎯 Model: {model} | Max retries: {self.max_retries} | Base delay: {self.base_retry_delay}s | Max delay: {self.max_retry_delay}s")
-            logger.info(f"🔄 SMART FALLBACK: Pro attempts 1-{self.flash_fallback_threshold-1}, Flash fallback from attempt {self.flash_fallback_threshold}")
-            logger.info("🔧 UPDATED: Using SuperRobustJSONParser with 8 parsing strategies")
-            logger.info("🔧 ENHANCED: Comprehensive projection validation and complete fallback generation")
+            logger.info(f" Stage 4 projections | Model: {model}")
             
             # UPDATED: Use safe_substitute instead of substitute to handle invalid placeholders
             try:
@@ -627,12 +660,12 @@ Return as valid JSON with complete base_case_projections structure.
                 
                 if result and isinstance(result, dict):
                     # ENHANCED: Validate projection completeness
-                    if self._validate_projection_completeness(result):
-                        projections_count = len(result.get('base_case_projections', {}))
-                        logger.info(f"✅ Stage 4 Success with SUPER ROBUST JSON PARSER: Generated {projections_count} complete projection horizons")
+                    if self._validate_projections(result):
+                        projection_count = self._count_projections(result)
+                        logger.info(f"✅ Stage 4 complete | Projections: {projection_count}/20")
                         return result
                     else:
-                        logger.warning("⚠️ Projection data incomplete, using complete fallback generation")
+                        logger.warning("⚠️ Stage 4 validation issues detected")
                 else:
                     logger.warning(f"⚠️ SuperRobustJSONParser returned invalid result: {result}")
                     logger.warning("⚠️ Using complete fallback generation")

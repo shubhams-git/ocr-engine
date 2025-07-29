@@ -76,69 +76,70 @@ class SuperRobustJSONParser:
         return None
 
     @staticmethod
-    def parse_gemini_response(response_text: str) -> Optional[Dict[str, Any]]:
+    def parse_gemini_response(response_text: str) -> Dict[str, Any]:
         """
-        Main parsing method with comprehensive strategy cascade
-        ENHANCED: Added projection-specific extraction as priority strategy
+        Ultra-robust JSON parser for Gemini responses.
+        Tries multiple strategies to find and parse JSON.
         """
-        if not response_text:
-            return None
-        
         logger = logging.getLogger(__name__)
-        logger.info(f"🔧 SuperRobustJSONParser: Processing {len(response_text)} chars")
+        logger.debug(f"--- Starting Robust JSON Parsing | Length: {len(response_text)} chars ---")
+
+        # First, try special projection extraction if relevant keywords are present
+        if 'base_case_projections' in response_text:
+            logger.debug("🔍 'base_case_projections' keyword found, attempting special extraction...")
+            projection_data = SuperRobustJSONParser._extract_projection_data(response_text)
+            if SuperRobustJSONParser._is_valid_result(projection_data) and projection_data is not None:
+                logger.info("✅ Special projection extraction successful.")
+                return projection_data
+
+        # Preprocess the text to remove common noise
+        processed_text = SuperRobustJSONParser._comprehensive_preprocessing(response_text)
         
-        # Enhanced debugging - log the actual content structure
-        logger.info(f"🔧 Response starts with: {repr(response_text[:200])}")
-        logger.info(f"🔧 Response ends with: {repr(response_text[-200:])}")
-        
-        # Enhanced preprocessing
-        cleaned_text = SuperRobustJSONParser._comprehensive_preprocessing(response_text)
-        logger.debug(f"🔧 After preprocessing: {len(cleaned_text)} chars")
-        
-        # Strategy cascade - ordered by likelihood of success
-        # ENHANCED: Added projection data extraction as high priority
         strategies = [
-            ("Direct JSON Parse", SuperRobustJSONParser._strategy_direct),
-            ("Projection Data Extraction", SuperRobustJSONParser._extract_projection_data),  # NEW - HIGH PRIORITY
-            ("Markdown Block Extraction - FIXED", SuperRobustJSONParser._strategy_markdown_fixed),
-            ("Content Boundary Detection", SuperRobustJSONParser._strategy_boundaries),
-            ("Brace Repair", SuperRobustJSONParser._strategy_brace_repair),
-            ("Pattern Extraction", SuperRobustJSONParser._strategy_pattern),
-            ("Aggressive Cleanup", SuperRobustJSONParser._strategy_aggressive),
-            ("JSON5 Fallback", SuperRobustJSONParser._strategy_json5),
-            ("Emergency Extraction", SuperRobustJSONParser._strategy_emergency)
+            ('Direct', SuperRobustJSONParser._strategy_direct),
+            ('Markdown Fixed', SuperRobustJSONParser._strategy_markdown_fixed),
+            ('Boundaries', SuperRobustJSONParser._strategy_boundaries),
+            ('JSON5', SuperRobustJSONParser._strategy_json5),
+            ('Pattern', SuperRobustJSONParser._strategy_pattern),
+            ('Brace Repair', SuperRobustJSONParser._strategy_brace_repair),
+            ('Aggressive', SuperRobustJSONParser._strategy_aggressive),
+            ('Emergency', SuperRobustJSONParser._strategy_emergency)
         ]
-        
-        for strategy_name, strategy_func in strategies:
+
+        parsed_json = None
+        for name, strategy_func in strategies:
             try:
-                logger.debug(f"🔧 Attempting: {strategy_name}")
-                result = strategy_func(cleaned_text)
+                logger.debug(f"Trying strategy: {name}")
+                # Most strategies benefit from preprocessing
+                text_to_use = processed_text
+                
+                result = strategy_func(text_to_use)
+                
                 if SuperRobustJSONParser._is_valid_result(result):
-                    logger.info(f"✅ SUCCESS: {strategy_name} extracted valid JSON with {len(result)} keys")
-                    logger.info(f"✅ Top-level keys: {list(result.keys())}")
-                    
-                    # Special validation for projection data
-                    if 'base_case_projections' in result:
-                        projection_count = len(result['base_case_projections'])
-                        logger.info(f"🎯 PROJECTION DATA FOUND: {projection_count} time horizons detected")
-                        
-                        # Validate projection completeness
-                        if SuperRobustJSONParser._validate_projection_data(result['base_case_projections']):
-                            logger.info("✅ Projection data validation PASSED")
-                        else:
-                            logger.warning("⚠️ Projection data validation FAILED - incomplete data")
-                    
-                    return result
-                else:
-                    logger.debug(f"⚠️ {strategy_name}: Invalid result {type(result)}")
+                    logger.info(f"✅ Success with strategy: {name}")
+                    parsed_json = result
+                    break
             except Exception as e:
-                logger.debug(f"❌ {strategy_name} failed: {str(e)}")
+                logger.debug(f"Strategy {name} failed: {str(e)}")
+                continue
         
-        # Log failure details for debugging
-        logger.error("❌ ALL PARSING STRATEGIES FAILED")
-        logger.error(f"❌ Response preview (first 300 chars): {repr(response_text[:300])}")
-        logger.error(f"❌ Response preview (last 300 chars): {repr(response_text[-300:])}")
-        return None
+        if parsed_json:
+            key_count = len(parsed_json.keys()) if isinstance(parsed_json, dict) else 0
+            logger.debug(f"✅ JSON parsed | Keys: {key_count}")
+            return parsed_json
+        else:
+            logger.error("❌ All JSON parsing strategies failed.")
+            # As a last resort, try emergency strategy on the original, unprocessed text
+            try:
+                logger.debug("Trying emergency strategy on original unprocessed text.")
+                emergency_result = SuperRobustJSONParser._strategy_emergency(response_text)
+                if SuperRobustJSONParser._is_valid_result(emergency_result) and emergency_result is not None:
+                    logger.warning("⚠️ Emergency strategy succeeded on raw text after all else failed.")
+                    return emergency_result
+            except Exception as e:
+                logger.error(f"Emergency strategy on raw text also failed: {e}")
+
+            raise ValueError("Failed to parse JSON response after all strategies")
     
     @staticmethod
     def _validate_projection_data(base_projections: Dict) -> bool:
@@ -233,6 +234,8 @@ class SuperRobustJSONParser:
             return None
             
         # Find content start (after the marker)
+        if not used_marker:
+            return None
         content_start = start_pos + len(used_marker)
         
         # Find the end marker
@@ -348,7 +351,10 @@ class SuperRobustJSONParser:
     @staticmethod
     def _strategy_json5(text: str) -> Optional[Dict]:
         """JSON5 parsing for more flexible syntax"""
-        return json5.loads(text)
+        result = json5.loads(text)
+        if isinstance(result, dict):
+            return result
+        return None
 
     @staticmethod
     def _strategy_emergency(text: str) -> Optional[Dict]:

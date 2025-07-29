@@ -302,15 +302,8 @@ class EnhancedOCRService:
         # Only log during main server process, not during uvicorn reloads
         import os
         if os.getenv("OCR_SERVER_MAIN") == "true":
-            logger.info("🚀 Enhanced OCR Service (Stage 1) initialized for GEMINI 2.5 PRO")
-            logger.info(f"⚡ OPTIMIZED RATE LIMITING | Pro delay: 12s | Error: 20s | Overload: 45s")
-            logger.info("✅ ENHANCED JSON PARSING | Optimized for Pro model responses")
-            logger.info("🎯 LARGE FILE SUPPORT | Enhanced handling for complex CSV files")
-        
-        logger.debug(f"Service configuration | PDF limit: {self.max_pdf_size//1024//1024}MB | CSV limit: {self.max_csv_size//1024//1024}MB | Image limit: {self.max_image_size//1024//1024}MB")
-        logger.debug(f"Enhanced API configuration | Timeout: {self.api_timeout}s | Max retries: {self.max_retries} | Base delay: {self.base_retry_delay}s")
-        logger.debug(f"Smart backoff | Max delay: {self.max_retry_delay}s | Multiplier: {self.exponential_multiplier}x | Overload multiplier: {self.overload_multiplier}x")
-        logger.debug(f"API key pool available | Count: {len(API_KEYS)}")
+            logger.info(" Enhanced OCR Service (Stage 1) initialized")
+            logger.debug("⚡ Optimized rate limiting configured")
     
     def get_file_type_and_mime(self, filename: str, content: bytes) -> Tuple[str, str]:
         """Determine file type and MIME type from filename and content"""
@@ -495,7 +488,7 @@ class EnhancedOCRService:
                 key_suffix = api_key[-4:] if len(api_key) > 4 else "****"
                 
                 if attempt == 0:
-                    log_api_call(logger, operation_name, model, key_suffix, success=True)
+                    log_api_call(logger, operation_name, model, success=True)
                 else:
                     logger.info(f"🔄 API call RETRY {attempt}/{self.max_retries}: {operation_name} | Model: {model} | Key: ...{key_suffix}")
                 
@@ -536,7 +529,7 @@ class EnhancedOCRService:
                 response_text = self.extract_response_text(response)
                 
                 # Log success
-                log_api_call(logger, operation_name, model, key_suffix, elapsed_time, success=True)
+                log_api_call(logger, operation_name, model, duration=elapsed_time, attempt=attempt + 1, success=True)
                 logger.info(f"✅ {operation_name} SUCCESS after {attempt + 1} attempts in {elapsed_time:.2f}s")
                 return response_text
                 
@@ -613,16 +606,15 @@ class EnhancedOCRService:
         # All attempts failed
         elapsed_time = time.time() - start_time
         final_error = str(last_exception) if last_exception else "Unknown error"
-        log_api_call(logger, operation_name, model, "FAILED", elapsed_time, success=False, error=final_error)
+        log_api_call(logger, operation_name, model, duration=elapsed_time, success=False)
+        logger.error(f"❌ Final error for {operation_name}: {final_error}")
         logger.error(f"❌ {operation_name} FAILED after {self.max_retries + 1} attempts in {elapsed_time:.2f}s")
         raise last_exception or Exception(f"All {self.max_retries + 1} retry attempts failed")
     
     async def process_extraction(self, content: bytes, filename: str, model: str = "gemini-2.5-pro") -> OCRResponse:
-        """
-        Enhanced OCR processing with Stage 1 logic optimized for Gemini 2.5 Pro
-        """
+        """Process extraction with optimized logging"""
         try:
-            log_stage_progress(logger, "1", f"Processing '{filename}'", "Extract, Normalize, Quality Assessment with PRO MODEL")
+            logger.info(f" Processing: {filename} | Model: {model}")
             
             # Validate file
             self.validate_file(filename, content)
@@ -676,9 +668,13 @@ class EnhancedOCRService:
                         logger.info(f"🔧 Corrected source filename from '{original_filename}' to '{filename}'")
                     
                     # Extract quality score for logging
-                    quality_score = result.get('data_quality_assessment', {}).get('completeness_score', 'N/A')
-                    doc_type = result.get('document_type', 'Unknown')
-                    log_stage_progress(logger, "1", "SUCCESS", f"File: {filename} | Type: {doc_type} | Quality Score: {quality_score}")
+                    quality_score_raw = result.get('data_quality_assessment', {}).get('completeness_score', 0.0)
+                    quality_score = 0.0
+                    try:
+                        quality_score = float(quality_score_raw)
+                    except (ValueError, TypeError):
+                        pass # Keep it 0.0
+                    logger.info(f"✅ Extraction complete | {filename} | Quality: {quality_score:.2f}")
                     
                     # Return enhanced OCR response with structured data
                     return OCRResponse(
@@ -776,7 +772,7 @@ class EnhancedOCRService:
         except HTTPException:
             raise
         except Exception as e:
-            logger.error(f"Stage 1 FAILED | File: {filename} | Error: {str(e)}")
+            logger.error(f"❌ Extraction failed | {filename} | Error: {str(e)}")
             return OCRResponse(
                 success=False,
                 data="",

@@ -172,7 +172,7 @@ export const processOCR = async (file, options = {}) => {
   }
 
   // Make API request
-  const response = await apiClient.post('/ocr', formData, {
+  const response = await apiClient.post('/extract', formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
     }
@@ -251,7 +251,7 @@ export const processMultiPDFAnalysis = async (files, model = 'gemini-2.5-pro') =
   console.log('processMultiPDFAnalysis - Sending request with model:', model)
   
   try {
-    const response = await apiClient.post('/multi-pdf/analyze', formData, {
+    const response = await apiClient.post('/analysis/analyze', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },

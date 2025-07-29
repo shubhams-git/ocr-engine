@@ -10,6 +10,7 @@ import Header from './components/Header'
 import LoadingSpinner from './components/LoadingSpinner'
 import { processOCR, processMultiPDFAnalysis, getHealthStatus, getAvailableModels } from './services/api'
 import ErrorBoundary from './components/ErrorBoundary'
+import EnhancedResultsDashboard from './components/EnhancedResultsDashboard'
 import './App.css'
 
 function App() {
@@ -87,7 +88,7 @@ function App() {
     setMultiPdfResults(null)
 
     try {
-      const results = await processMultiPDFAnalysis(files, { model: selectedModel })
+      const results = await processMultiPDFAnalysis(files, selectedModel)
       setMultiPdfResults(results)
     } catch (err) {
       console.error('Multi-PDF analysis error:', err)
@@ -260,12 +261,7 @@ function App() {
 
           {/* Multi-PDF Results */}
           {multiPdfResults && !isLoading && (
-            <MultiPDFResults
-              results={multiPdfResults}
-              fileNames={uploadedFiles?.map(file => file.name)}
-              selectedModel={selectedModel}
-              onReset={handleReset}
-            />
+            <EnhancedResultsDashboard data={multiPdfResults} />
           )}
         </motion.div>
       </main>

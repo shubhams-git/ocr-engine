@@ -120,15 +120,8 @@ class BusinessAnalysisService:
         
         # Only log during main server process, not during uvicorn reloads
         if os.getenv("OCR_SERVER_MAIN") == "true":
-            logger.info("Enhanced Business Analysis Service (Stage 2) initialized with SMART PRO MODEL FALLBACK")
-            logger.info(f"SMART FALLBACK: Max retries: {self.max_retries} | Base delay: {self.base_retry_delay}s | Max delay: {self.max_retry_delay}s")
-            logger.info(f"FALLBACK STRATEGY: Pro model attempts 1-{self.flash_fallback_threshold-1}, Flash fallback from attempt {self.flash_fallback_threshold}")
-            logger.info(f"PRO PROTECTION: Min: {PRO_MODEL_MIN_DELAY}s | Error: {PRO_MODEL_ERROR_DELAY}s | Overload: {PRO_MODEL_OVERLOAD_DELAY}s")
-            logger.info("UPDATED: Now using SuperRobustJSONParser and IntelligentMethodologySelector")
-        
-        logger.debug(f"Enhanced API configuration | Timeout: {self.api_timeout}s | Max retries: {self.max_retries}")
-        logger.debug(f"Smart backoff | Base: {self.base_retry_delay}s | Max: {self.max_retry_delay}s | Multiplier: {self.exponential_multiplier}x")
-        logger.debug(f"API key pool available | Count: {len(API_KEYS)}")
+            logger.info(" Cash Flow Service (Stage 2) initialized")
+            logger.debug(f" Fallback strategy: Pro → Flash after attempt {self.flash_fallback_threshold}")
     
     def extract_response_text(self, response) -> str:
         """Extract text from Gemini response"""
@@ -170,7 +163,7 @@ class BusinessAnalysisService:
                 key_suffix = api_key[-4:] if len(api_key) > 4 else "****"
                 
                 if attempt == 0:
-                    log_api_call(logger, operation_name, current_model, key_suffix, success=True)
+                    log_api_call(logger, operation_name, current_model, success=True)
                 else:
                     fallback_info = " (FLASH FALLBACK)" if is_fallback else ""
                     logger.info(f"🔄 API call RETRY {attempt}/{self.max_retries}: {operation_name} | Model: {current_model}{fallback_info} | Key: ...{key_suffix}")
@@ -207,7 +200,7 @@ class BusinessAnalysisService:
                 
                 # Log success
                 success_info = " with FLASH FALLBACK" if is_fallback else ""
-                log_api_call(logger, operation_name, current_model, key_suffix, elapsed_time, success=True)
+                log_api_call(logger, operation_name, current_model, duration=elapsed_time, attempt=attempt + 1, success=True)
                 logger.info(f"✅ {operation_name} SUCCESS{success_info} after {attempt + 1} attempts in {elapsed_time:.2f}s")
                 return response_text
                 
@@ -286,20 +279,15 @@ class BusinessAnalysisService:
         # All attempts failed
         elapsed_time = time.time() - start_time
         final_error = str(last_exception) if last_exception else "Unknown error"
-        log_api_call(logger, operation_name, "FAILED", "FAILED", elapsed_time, success=False, error=final_error)
+        log_api_call(logger, operation_name, "FAILED", duration=elapsed_time, success=False)
+        logger.error(f"❌ Final error for {operation_name}: {final_error}")
         logger.error(f"❌ {operation_name} FAILED after {self.max_retries + 1} attempts in {elapsed_time:.2f}s")
         raise last_exception or Exception(f"All {self.max_retries + 1} retry attempts failed")
     
-    async def generate_cash_flows_and_analyze(self, stage1_results: List[Dict], model: str = "gemini-2.5-pro") -> Dict[str, Any]:
-        """
-        Stage 2: Enhanced Cash Flow Generation & Business Analysis with Smart Pro Model Fallback
-        UPDATED: Now uses SuperRobustJSONParser and IntelligentMethodologySelector
-        """
+    async def generate_cash_flows_and_analyze(self, stage1_results: List[Dict], model: str) -> Dict[str, Any]:
+        """Generate cash flows with optimized logging"""
         try:
-            logger.info(f"💰 STAGE 2: Enhanced Cash Flow Generation & Business Analysis with SUPER ROBUST JSON PARSER ({len(stage1_results)} documents)")
-            logger.info(f"🎯 Model: {model} | Max retries: {self.max_retries} | Base delay: {self.base_retry_delay}s | Max delay: {self.max_retry_delay}s")
-            logger.info(f"🔄 SMART FALLBACK: Pro attempts 1-{self.flash_fallback_threshold-1}, Flash fallback from attempt {self.flash_fallback_threshold}")
-            logger.info("🔧 UPDATED: Using SuperRobustJSONParser with 8 parsing strategies")
+            logger.info(f" Stage 2 analysis | Documents: {len(stage1_results)} | Model: {model}")
             
             # Prepare stage1 standard field data for cash flow reconstruction
             stage1_standard_field_data = {
@@ -363,29 +351,20 @@ Please provide a JSON response with business context, methodology evaluation, an
             
             # UPDATED: Use SuperRobustJSONParser instead of old parser
             try:
-                if self.debug_responses:
-                    logger.info(f"🔍 STAGE 2 - Using SuperRobustJSONParser with 8 parsing strategies")
-                    logger.info(f"📝 Raw response length: {len(response)} characters")
-                    logger.info(f"📋 Raw response preview: {response[:500]}...")
-                
-                logger.info("🔧 Calling SuperRobustJSONParser.parse_gemini_response...")
+                logger.debug("Calling SuperRobustJSONParser.parse_gemini_response...")
                 result = SuperRobustJSONParser.parse_gemini_response(response)
-                logger.info(f"🔧 SuperRobustJSONParser returned: {type(result)}")
+                logger.debug(f"SuperRobustJSONParser returned: {type(result)}")
                 
                 if result and isinstance(result, dict):
-                    # Extract key information for logging
-                    business_stage = result.get('business_context', {}).get('business_stage', 'N/A')
-                    selected_method = result.get('methodology_evaluation', {}).get('selected_method', {}).get('primary_method', 'N/A')
-                    logger.info(f"✅ Stage 2 Success with SUPER ROBUST JSON PARSER: Business Stage: {business_stage}, Method: {selected_method}")
+                    logger.info(f"✅ Stage 2 complete | Method: {result.get('methodology_evaluation', {}).get('selected_method', 'Unknown')}")
                     return result
                 else:
                     logger.warning(f"⚠️ SuperRobustJSONParser returned invalid result: {result}")
-                    logger.warning("⚠️ Using intelligent fallback structure")
+                    raise ValueError("Parsing returned invalid result")
                     
-            except Exception as parse_error:
-                logger.error(f"❌ Exception in SuperRobustJSONParser: {str(parse_error)}")
-                import traceback
-                logger.error(f"❌ Parse error traceback: {traceback.format_exc()}")
+            except Exception as e:
+                logger.error(f"❌ Stage 2 parsing failed | {str(e)}")
+                raise
             
             # UPDATED: Enhanced fallback with intelligent methodology selection
             logger.warning("🔄 Generating intelligent fallback structure with SuperRobustJSONParser")

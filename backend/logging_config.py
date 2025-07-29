@@ -1,153 +1,191 @@
 """
-Centralized logging configuration for OCR Engine API
-
-Provides professional, consistent logging across all modules with:
-- Clean, readable formatting without emojis
-- Structured log messages for better parsing
-- Consistent formatting across all services
-- Proper log levels and hierarchy
+Optimized logging configuration for OCR Engine API
+Reduces log clutter while maintaining essential development information
 """
 import logging
 import sys
-from typing import Optional
+import os
+from typing import Optional, Any
 
+# Color codes for console output
+class LogColors:
+    GREY = '\x1b[38;20m'
+    YELLOW = '\x1b[33;20m'
+    RED = '\x1b[31;20m'
+    BOLD_RED = '\x1b[31;1m'
+    GREEN = '\x1b[32;20m'
+    BLUE = '\x1b[34;20m'
+    RESET = '\x1b[0m'
 
-class CustomFormatter(logging.Formatter):
-    """Custom formatter for clean, professional log output"""
+class ColoredFormatter(logging.Formatter):
+    """Enhanced formatter with colors and reduced verbosity"""
     
-    def __init__(self):
-        # Clean, professional format
-        self.fmt = "%(asctime)s | %(levelname)-5s | %(name)-25s | %(message)s"
-        super().__init__(fmt=self.fmt, datefmt='%Y-%m-%d %H:%M:%S')
+    FORMATS = {
+        logging.DEBUG: LogColors.GREY + "%(asctime)s | %(levelname)-5s | %(name)s | %(message)s" + LogColors.RESET,
+        logging.INFO: LogColors.GREEN + "%(asctime)s | %(levelname)-5s | %(name)s | %(message)s" + LogColors.RESET,
+        logging.WARNING: LogColors.YELLOW + "%(asctime)s | %(levelname)-5s | %(name)s | %(message)s" + LogColors.RESET,
+        logging.ERROR: LogColors.RED + "%(asctime)s | %(levelname)-5s | %(name)s | %(message)s" + LogColors.RESET,
+        logging.CRITICAL: LogColors.BOLD_RED + "%(asctime)s | %(levelname)-5s | %(name)s | %(message)s" + LogColors.RESET,
+    }
     
     def format(self, record):
-        # Truncate long module names for better alignment
-        if len(record.name) > 25:
-            record.name = "..." + record.name[-22:]
-        
-        return super().format(record)
+        log_fmt = self.FORMATS.get(record.levelno)
+        formatter = logging.Formatter(log_fmt, datefmt='%H:%M:%S')
+        return formatter.format(record)
 
-
-def setup_logging(log_level: str = "INFO") -> None:
-    """
-    Set up centralized logging configuration
-    
-    Args:
-        log_level: Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-    """
-    # Convert string level to logging constant
-    numeric_level = getattr(logging, log_level.upper(), logging.INFO)
-    
-    # Remove all existing handlers to avoid duplicates
-    for handler in logging.root.handlers[:]:
-        logging.root.removeHandler(handler)
+def setup_logging():
+    """Set up optimized logging configuration"""
+    # Get environment log level (default to INFO for development)
+    log_level = os.getenv("LOG_LEVEL", "INFO").upper()
     
     # Configure root logger
-    logging.root.setLevel(numeric_level)
+    logging.basicConfig(
+        level=getattr(logging, log_level, logging.INFO),
+        format='%(asctime)s | %(levelname)-5s | %(name)s | %(message)s',
+        datefmt='%H:%M:%S',
+        handlers=[]
+    )
     
-    # Create console handler
+    # Console handler with colors
     console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setLevel(numeric_level)
-    console_handler.setFormatter(CustomFormatter())
+    console_handler.setFormatter(ColoredFormatter())
     
-    # Add handler to root logger
-    logging.root.addHandler(console_handler)
+    # Get root logger and clear existing handlers
+    root_logger = logging.getLogger()
+    root_logger.handlers.clear()
+    root_logger.addHandler(console_handler)
     
-    # Set specific loggers to appropriate levels
-    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)  # Reduce HTTP request noise
-    logging.getLogger("uvicorn.error").setLevel(logging.INFO)
-    logging.getLogger("fastapi").setLevel(logging.INFO)
+    # Reduce verbosity for external libraries
+    _configure_external_loggers()
+    
+    # Only show startup message once
+    if os.getenv("OCR_SERVER_MAIN") == "true":
+        logger = logging.getLogger(__name__)
+        logger.info(f"🚀 Optimized logging initialized | Level: {log_level}")
 
+def _configure_external_loggers():
+    """Configure external library loggers to reduce noise"""
+    external_loggers = [
+        'uvicorn.access',
+        'uvicorn.error', 
+        'httpx',
+        'watchfiles.main',
+        'google_genai.models',
+        'google.generativeai'
+    ]
+    
+    for logger_name in external_loggers:
+        logging.getLogger(logger_name).setLevel(logging.WARNING)
 
 def get_logger(name: str) -> logging.Logger:
-    """
-    Get a logger instance with consistent configuration
-    
-    Args:
-        name: Logger name (typically __name__)
-        
-    Returns:
-        Configured logger instance
-    """
+    """Get logger with optimized configuration"""
     return logging.getLogger(name)
 
+# Simplified logging helper functions with reduced verbosity
+def log_request_start(logger: logging.Logger, request_type: str, **kwargs):
+    """Log request start with minimal info"""
+    details = []
+    if 'files' in kwargs:
+        details.append(f"files={kwargs['files']}")
+    if 'model' in kwargs:
+        details.append(f"model={kwargs['model']}")
+    if 'total_size_mb' in kwargs:
+        details.append(f"size={kwargs['total_size_mb']}MB")
+    
+    details_str = " | ".join(details)
+    logger.info(f"🚀 {request_type} started | {details_str}")
 
-# Utility functions for common logging patterns
-def log_request_start(logger: logging.Logger, endpoint: str, **kwargs) -> None:
-    """Log the start of a request with consistent formatting"""
-    details = " | ".join([f"{k}={v}" for k, v in kwargs.items() if v is not None])
+def log_request_end(logger: logging.Logger, request_type: str, success: bool, duration: float, **kwargs):
+    """Log request completion with essential info"""
+    status = "✅ SUCCESS" if success else "❌ FAILED"
+    logger.info(f"{status} {request_type} | Duration: {duration:.1f}s")
+
+def log_stage_progress(logger: logging.Logger, stage: str, status: str, details: str = ""):
+    """Log stage progress with reduced verbosity"""
+    if status == "STARTED":
+        emoji = "🔄"
+    elif status == "COMPLETED":
+        emoji = "✅"
+    elif "FAIL" in status.upper() or "ERROR" in status.upper():
+        emoji = "❌"
+    else:
+        # For descriptive statuses like "Enhancing analysis", default to the success icon
+        # as it's an informational log about an action, not a failure.
+        emoji = "✅"
+    
+    base_msg = f"{emoji} Stage {stage} {status.lower()}"
     if details:
-        logger.info(f"Request started: {endpoint} | {details}")
+        logger.info(f"{base_msg} | {details}")
     else:
-        logger.info(f"Request started: {endpoint}")
-
-
-def log_request_end(logger: logging.Logger, endpoint: str, success: bool, duration: float, **kwargs) -> None:
-    """Log the end of a request with consistent formatting"""
-    status = "SUCCESS" if success else "FAILED"
-    details = " | ".join([f"{k}={v}" for k, v in kwargs.items() if v is not None])
-    if details:
-        logger.info(f"Request {status}: {endpoint} | Duration: {duration:.2f}s | {details}")
-    else:
-        logger.info(f"Request {status}: {endpoint} | Duration: {duration:.2f}s")
-
-
-def log_api_call(logger: logging.Logger, operation: str, model: str, api_key_suffix: str, 
-                 duration: Optional[float] = None, success: bool = True, error: Optional[str] = None) -> None:
-    """Log API calls with consistent formatting"""
-    if success and duration is not None:
-        logger.info(f"API call SUCCESS: {operation} | Model: {model} | Key: ...{api_key_suffix} | Duration: {duration:.2f}s")
-    elif not success and error:
-        duration_str = f" | Duration: {duration:.2f}s" if duration else ""
-        logger.error(f"API call FAILED: {operation} | Model: {model} | Key: ...{api_key_suffix}{duration_str} | Error: {error}")
-    else:
-        logger.info(f"API call STARTED: {operation} | Model: {model} | Key: ...{api_key_suffix}")
-
+        logger.info(base_msg)
 
 def log_file_processing(logger: logging.Logger, action: str, filename: str, 
-                       file_size: Optional[int] = None, file_type: Optional[str] = None,
-                       duration: Optional[float] = None, success: bool = True) -> None:
-    """Log file processing with consistent formatting"""
-    details = []
-    if file_type:
-        details.append(f"Type: {file_type}")
-    if file_size is not None:
+                       file_size: Optional[int] = None, success: bool = True):
+    """Log file processing with minimal details"""
+    if action == "received" and file_size:
         size_mb = file_size / (1024 * 1024)
-        details.append(f"Size: {size_mb:.2f}MB")
-    if duration is not None:
-        details.append(f"Duration: {duration:.2f}s")
-    
-    detail_str = " | " + " | ".join(details) if details else ""
-    status = "SUCCESS" if success else "FAILED"
-    
-    logger.info(f"File {action} {status}: {filename}{detail_str}")
-
-
-def log_stage_progress(logger: logging.Logger, stage: str, action: str, details: Optional[str] = None) -> None:
-    """Log processing stage progress"""
-    if details:
-        logger.info(f"Stage {stage}: {action} | {details}")
+        logger.debug(f"📁 File {action}: {filename} | {size_mb:.2f}MB")
+    elif action == "read" and success:
+        logger.debug(f"📖 File read: {filename}")
     else:
-        logger.info(f"Stage {stage}: {action}")
+        logger.debug(f"📁 File {action}: {filename}")
 
+def log_validation_result(logger: logging.Logger, validation_type: str, 
+                         passed: bool, details: Optional[str] = None):
+    """Log validation results concisely"""
+    status = "✅ PASS" if passed else "❌ FAIL"
+    msg = f"{status} {validation_type}"
+    if details and not passed:  # Only show details for failures
+        msg += f" | {details}"
+    logger.info(msg)
 
-def log_validation_result(logger: logging.Logger, validation_type: str, passed: bool, 
-                         score: Optional[float] = None, issues: Optional[list] = None) -> None:
-    """Log validation results"""
-    status = "PASSED" if passed else "FAILED"
-    details = []
-    
-    if score is not None:
-        details.append(f"Score: {score:.2f}")
-    if issues and len(issues) > 0:
-        details.append(f"Issues: {len(issues)}")
-    
-    detail_str = " | " + " | ".join(details) if details else ""
-    logger.info(f"Validation {status}: {validation_type}{detail_str}")
-    
-    # Log specific issues if validation failed
-    if not passed and issues:
-        for issue in issues[:3]:  # Limit to first 3 issues to avoid spam
-            logger.warning(f"Validation issue: {issue}")
-        if len(issues) > 3:
-            logger.warning(f"Validation has {len(issues) - 3} additional issues") 
+def log_api_call(logger: logging.Logger, operation: str, model: str, 
+                duration: Optional[float] = None, attempt: int = 1, success: bool = True):
+    """Log API calls with reduced verbosity"""
+    if success and duration:
+        logger.debug(f"🔗 API call: {operation} | Model: {model} | {duration:.1f}s | Attempt: {attempt}")
+    elif not success:
+        logger.warning(f"⚠️ API call failed: {operation} | Model: {model} | Attempt: {attempt}")
+    else:
+        logger.debug(f"🔗 API call started: {operation} | Model: {model}")
+
+# Development mode helpers
+def log_semaphore_operation(logger: logging.Logger, operation: str, stage: str, available: int):
+    """Log semaphore operations only in debug mode"""
+    logger.debug(f"🔒 {operation} semaphore | Stage: {stage} | Available: {available}")
+
+def log_rate_limit_operation(logger: logging.Logger, operation: str, delay: float, reason: str = ""):
+    """Log rate limiting with reduced noise"""
+    if delay > 10:  # Only log significant delays
+        logger.info(f"⏱️ Rate limit: {operation} | Delay: {delay:.1f}s | {reason}")
+    else:
+        logger.debug(f"⏱️ Rate limit: {operation} | {delay:.1f}s")
+
+def log_model_operation(logger: logging.Logger, model: str, operation: str, 
+                       duration: Optional[float] = None, success: bool = True):
+    """Log model operations with essential info only"""
+    if success and duration:
+        if duration > 60:  # Only log long operations at INFO level
+            logger.info(f"🤖 {model} {operation} | {duration:.1f}s")
+        else:
+            logger.debug(f"🤖 {model} {operation} | {duration:.1f}s")
+    elif not success:
+        logger.warning(f"⚠️ {model} {operation} failed")
+
+def log_error_with_context(logger: logging.Logger, error: Exception, context: str = ""):
+    """Log errors with minimal context"""
+    error_msg = str(error)
+    if "503" in error_msg or "overload" in error_msg.lower():
+        logger.warning(f"🚨 API overload | {context} | {error_msg}")
+    else:
+        logger.error(f"❌ Error | {context} | {error_msg}")
+
+def log_config_summary(logger: logging.Logger, config: dict):
+    """Log configuration summary at startup only"""
+    if os.getenv("OCR_SERVER_MAIN") == "true":
+        key_configs = [
+            f"keys={config.get('api_keys_count', 0)}",
+            f"timeout={config.get('overall_timeout_seconds', 0)}s",
+            f"retries={config.get('max_retries', 0)}"
+        ]
+        logger.info(f"⚙️ Config loaded | {' | '.join(key_configs)}")

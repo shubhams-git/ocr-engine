@@ -817,7 +817,7 @@ You are a senior financial strategist with expertise in macroeconomic analysis a
 
 TASK: Enhance the baseline financial analysis by incorporating strategic insights and external factors.
 
-INPUT ANALYSIS: $stage3_comprehensive_analysis_data
+INPUT ANALYSIS: {stage3_comprehensive_analysis}
 
 STRATEGIC ENHANCEMENT FRAMEWORK:
 1.  **Analyze the Baseline:** Review the provided financial analysis to understand the business's historical performance and key drivers.
@@ -831,21 +831,21 @@ STRATEGIC ENHANCEMENT FRAMEWORK:
 OUTPUT REQUIREMENTS:
 Return ONLY valid JSON with this structure:
 
-{
+{{
   "enhancement_factors": [
-    {
+    {{
       "factor": "Increase Q1 COGS by 3%",
       "rationale": "Projected supply chain disruptions in the APAC region are expected to increase material costs in the first quarter.",
       "impact": "Negative impact on gross margin in Q1."
-    },
-    {
+    }},
+    {{
       "factor": "Decrease H2 Revenue by 5%",
       "rationale": "A projected slowdown in the construction sector is expected to reduce demand for plumbing services in the second half of the year.",
       "impact": "Negative impact on revenue and profitability in H2."
-    }
+    }}
   ]
-}
-"""
+}}
+""" + ENHANCED_JSON_OUTPUT_INSTRUCTIONS
 
 # STAGE 3: Comprehensive Business Analysis and Forecasting Methodology
 STAGE3_ANALYSIS_PROMPT = """
@@ -1188,24 +1188,94 @@ MANDATORY JSON STRUCTURE:
       "period_label": "FY2026",
       "granularity": "monthly",
       "data_points": 12,
-      "revenue": [...],
-      "expenses": [...],
-      "gross_profit": [...],
-      "net_profit": [...]
+      "revenue": [{"period": "YYYY-MM", "value": number, "confidence": "high|medium|low"}],
+      "expenses": [{"period": "YYYY-MM", "value": number, "confidence": "high|medium|low"}],
+      "gross_profit": [{"period": "YYYY-MM", "value": number, "confidence": "high|medium|low"}],
+      "net_profit": [{"period": "YYYY-MM", "value": number, "confidence": "high|medium|low"}]
     },
-    ... (3, 5, 10, 15-year horizons)
+    "3_years_ahead": {
+      "period_label": "FY2026-FY2028",
+      "granularity": "quarterly",
+      "data_points": 12,
+      "revenue": [{"period": "YYYY-Q#", "value": number, "confidence": "medium|low"}],
+      "expenses": [{"period": "YYYY-Q#", "value": number, "confidence": "medium|low"}],
+      "gross_profit": [{"period": "YYYY-Q#", "value": number, "confidence": "medium|low"}],
+      "net_profit": [{"period": "YYYY-Q#", "value": number, "confidence": "medium|low"}]
+    },
+    "5_years_ahead": {
+      "period_label": "FY2026-FY2030",
+      "granularity": "yearly",
+      "data_points": 5,
+      "revenue": [{"period": "YYYY", "value": number, "confidence": "low"}],
+      "expenses": [{"period": "YYYY", "value": number, "confidence": "low"}],
+      "gross_profit": [{"period": "YYYY", "value": number, "confidence": "low"}],
+      "net_profit": [{"period": "YYYY", "value": number, "confidence": "low"}]
+    },
+    "10_years_ahead": {
+      "period_label": "FY2026-FY2035",
+      "granularity": "yearly",
+      "data_points": 10,
+      "revenue": [{"period": "YYYY", "value": number, "confidence": "low|very_low"}],
+      "expenses": [{"period": "YYYY", "value": number, "confidence": "low|very_low"}],
+      "gross_profit": [{"period": "YYYY", "value": number, "confidence": "low|very_low"}],
+      "net_profit": [{"period": "YYYY", "value": number, "confidence": "low|very_low"}]
+    },
+    "15_years_ahead": {
+      "period_label": "FY2026-FY2040",
+      "granularity": "yearly",
+      "data_points": 15,
+      "revenue": [{"period": "YYYY", "value": number, "confidence": "very_low"}],
+      "expenses": [{"period": "YYYY", "value": number, "confidence": "very_low"}],
+      "gross_profit": [{"period": "YYYY", "value": number, "confidence": "very_low"}],
+      "net_profit": [{"period": "YYYY", "value": number, "confidence": "very_low"}]
+    }
   },
   "enhanced_case_projections": {
     "1_year_ahead": {
       "period_label": "FY2026",
       "granularity": "monthly",
       "data_points": 12,
-      "revenue": [...],
-      "expenses": [...],
-      "gross_profit": [...],
-      "net_profit": [...]
+      "revenue": [{"period": "YYYY-MM", "value": number, "confidence": "high|medium|low"}],
+      "expenses": [{"period": "YYYY-MM", "value": number, "confidence": "high|medium|low"}],
+      "gross_profit": [{"period": "YYYY-MM", "value": number, "confidence": "high|medium|low"}],
+      "net_profit": [{"period": "YYYY-MM", "value": number, "confidence": "high|medium|low"}]
     },
-    ... (3, 5, 10, 15-year horizons)
+    "3_years_ahead": {
+      "period_label": "FY2026-FY2028",
+      "granularity": "quarterly",
+      "data_points": 12,
+      "revenue": [{"period": "YYYY-Q#", "value": number, "confidence": "medium|low"}],
+      "expenses": [{"period": "YYYY-Q#", "value": number, "confidence": "medium|low"}],
+      "gross_profit": [{"period": "YYYY-Q#", "value": number, "confidence": "medium|low"}],
+      "net_profit": [{"period": "YYYY-Q#", "value": number, "confidence": "medium|low"}]
+    },
+    "5_years_ahead": {
+      "period_label": "FY2026-FY2030",
+      "granularity": "yearly",
+      "data_points": 5,
+      "revenue": [{"period": "YYYY", "value": number, "confidence": "low"}],
+      "expenses": [{"period": "YYYY", "value": number, "confidence": "low"}],
+      "gross_profit": [{"period": "YYYY", "value": number, "confidence": "low"}],
+      "net_profit": [{"period": "YYYY", "value": number, "confidence": "low"}]
+    },
+    "10_years_ahead": {
+      "period_label": "FY2026-FY2035",
+      "granularity": "yearly",
+      "data_points": 10,
+      "revenue": [{"period": "YYYY", "value": number, "confidence": "low|very_low"}],
+      "expenses": [{"period": "YYYY", "value": number, "confidence": "low|very_low"}],
+      "gross_profit": [{"period": "YYYY", "value": number, "confidence": "low|very_low"}],
+      "net_profit": [{"period": "YYYY", "value": number, "confidence": "low|very_low"}]
+    },
+    "15_years_ahead": {
+      "period_label": "FY2026-FY2040",
+      "granularity": "yearly",
+      "data_points": 15,
+      "revenue": [{"period": "YYYY", "value": number, "confidence": "very_low"}],
+      "expenses": [{"period": "YYYY", "value": number, "confidence": "very_low"}],
+      "gross_profit": [{"period": "YYYY", "value": number, "confidence": "very_low"}],
+      "net_profit": [{"period": "YYYY", "value": number, "confidence": "very_low"}]
+    }
   },
   "commentary_and_rationale": {
     "summary": "A brief overview of the key differences between the Base and Enhanced cases.",
