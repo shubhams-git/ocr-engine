@@ -192,7 +192,7 @@ async def test_stage2_business_analysis(
         logger.info(f"✅ Processed {len(processed_data)} documents for Stage 2 analysis")
         
         # Test business analysis service directly with processed data
-        result = await business_analysis_service.analyze_business_context(processed_data, model)
+        result = await business_analysis_service.generate_cash_flows_and_analyze(processed_data, model)
         
         processing_time = time.time() - start_time
         
@@ -341,10 +341,10 @@ async def validate_all_services():
         
         # Validate Business Analysis service
         try:
-            if hasattr(business_analysis_service, 'analyze_business_context'):
+            if hasattr(business_analysis_service, 'generate_cash_flows_and_analyze'):
                 validation_results["services"]["business_analysis_service"]["valid"] = True
             else:
-                validation_results["services"]["business_analysis_service"]["issues"].append("analyze_business_context method not found")
+                validation_results["services"]["business_analysis_service"]["issues"].append("generate_cash_flows_and_analyze method not found")
         except Exception as e:
             validation_results["services"]["business_analysis_service"]["issues"].append(str(e))
         

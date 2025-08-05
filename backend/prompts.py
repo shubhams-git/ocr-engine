@@ -837,9 +837,12 @@ CORE ANALYSIS MODULES:
    - Working Capital Optimization: Detailed CCC improvement opportunities
    - Capital Efficiency: ROIC, ROCE, and cash-based returns analysis
 
-3. **ADVANCED PATTERN RECOGNITION**
+3. **ADVANCED PATTERN RECOGNITION & SEASONALITY ANALYSIS**
    - Multi-dimensional Correlation Analysis: Revenue, Profit, Cash Flow relationships
-   - Seasonal Pattern Integration: Profit vs Cash Flow seasonality alignment
+   - Enhanced Seasonal Pattern Detection: Month-of-year analysis for Australian plumbing/HVAC patterns
+   - Q1 Variability Analysis: January holiday impacts, February recovery, March normalization
+   - Working Capital Seasonal Timing: DSO/DPO variations by month, holiday period impacts
+   - Australian Business Calendar Effects: Summer holidays, school holidays, weather patterns
    - Growth Sustainability Analysis: Cash-constrained vs Unconstrained growth
    - Volatility Assessment: Risk-adjusted performance evaluation
 
@@ -942,6 +945,50 @@ Return ONLY valid JSON with this enhanced structure:
       "seasonality_alignment": "do revenue and cash flow seasons align?",
       "working_capital_seasonality": "seasonal working capital requirements",
       "forecasting_implications": "how seasonality affects projections"
+    },
+    "australian_seasonality_analysis": {
+      "month_of_year_revenue_factors": [
+        {"month": "january", "factor": 0.75, "rationale": "Holiday period, emergency services only"},
+        {"month": "february", "factor": 0.95, "rationale": "Gradual recovery, short month"},
+        {"month": "march", "factor": 1.10, "rationale": "Full capacity, pre-winter preparation"},
+        {"month": "april", "factor": 1.05, "rationale": "Moderate activity level"},
+        {"month": "may", "factor": 1.00, "rationale": "Baseline normal operations"},
+        {"month": "june", "factor": 1.15, "rationale": "Winter peak, heating issues"},
+        {"month": "july", "factor": 1.20, "rationale": "Peak winter demand"},
+        {"month": "august", "factor": 1.10, "rationale": "Continued winter activity"},
+        {"month": "september", "factor": 1.05, "rationale": "Transition to spring"},
+        {"month": "october", "factor": 1.00, "rationale": "Baseline operations"},
+        {"month": "november", "factor": 1.05, "rationale": "Pre-summer maintenance"},
+        {"month": "december", "factor": 0.85, "rationale": "Holiday period slowdown"}
+      ],
+      "q1_specific_patterns": {
+        "january_holiday_impact": {
+          "revenue_reduction": "25% below baseline due to holiday period",
+          "expense_timing_delay": "3-5 days average delay in expense recognition",
+          "working_capital_impact": "DSO increases by 15-20% due to delayed collections",
+          "emergency_vs_planned_ratio": "90% emergency work, 10% planned maintenance"
+        },
+        "february_recovery": {
+          "revenue_pattern": "Gradual return to normal, affected by short month",
+          "booking_acceleration": "Maintenance bookings begin to resume",
+          "staffing_normalization": "Return from holiday leave patterns"
+        },
+        "march_normalization": {
+          "revenue_pattern": "Full operational capacity, catching up on deferred work",
+          "pre_winter_preparation": "Increased maintenance and preparation work",
+          "working_capital_recovery": "DSO normalizes to typical levels"
+        }
+      },
+      "working_capital_seasonal_timing": {
+        "dso_by_month": [18, 15, 12, 14, 14, 16, 18, 16, 14, 14, 15, 22],
+        "dpo_by_month": [30, 25, 22, 24, 24, 26, 28, 26, 24, 24, 25, 35],
+        "seasonal_cash_flow_timing": "Holiday periods show extended collection and payment cycles"
+      },
+      "projection_start_date_calibration": {
+        "calendar_year_anchor": "2026-01-01",
+        "rationale": "Calendar year basis provides clearer seasonality alignment",
+        "australian_fy_comparison": "Avoids mid-year seasonal disruption compared to 1/7 start"
+      }
     },
     "growth_sustainability_analysis": {
       "historical_growth_vs_cash_generation": "could historical growth be funded internally?",
@@ -1126,18 +1173,23 @@ INPUT ANALYSIS: $stage3_comprehensive_business_analysis
 
 CRITICAL REQUIREMENT: Generate complete financial projections for ALL time horizons with specific data points.
 
+PROJECTION TIMING REQUIREMENTS:
+- Start Date: Calendar year ${projection_base_year}-01 (January 1st basis, NOT Australian FY)
+- Q1 Variability: Monthly figures for Jan-Mar must show realistic variation (minimum 5% month-over-month variance)
+- Australian Seasonality: Apply plumbing/HVAC seasonal patterns with holiday period impacts
+
 YOU MUST GENERATE ALL FOUR FINANCIAL METRICS FOR ALL FIVE TIME HORIZONS:
-- Revenue data for all time periods
-- Expenses data for all time periods  
-- Gross Profit data for all time periods
-- Net Profit data for all time periods
+- Revenue data for all time periods (with Australian seasonality)
+- Expenses data for all time periods (with different seasonal patterns)
+- Gross Profit data for all time periods (derived from revenue-expenses)
+- Net Profit data for all time periods (with working capital timing impacts)
 
 TIME HORIZONS REQUIRED:
-1. 1 year ahead (monthly data - 12 data points)
-2. 3 years ahead (quarterly data - 12 data points) 
-3. 5 years ahead (yearly data - 5 data points)
-4. 10 years ahead (yearly data - 10 data points)
-5. 15 years ahead (yearly data - 15 data points)
+1. 1 year ahead (monthly data - 12 data points starting ${projection_base_year}-01)
+2. 3 years ahead (quarterly data - 12 data points starting ${projection_base_year}-Q1) 
+3. 5 years ahead (yearly data - 5 data points starting ${projection_base_year})
+4. 10 years ahead (yearly data - 10 data points starting ${projection_base_year})
+5. 15 years ahead (yearly data - 15 data points starting ${projection_base_year})
 
 MANDATORY JSON STRUCTURE - MUST INCLUDE ALL SECTIONS:
 
@@ -1150,27 +1202,27 @@ MANDATORY JSON STRUCTURE - MUST INCLUDE ALL SECTIONS:
   },
   "base_case_projections": {
     "1_year_ahead": {
-      "period_label": "FY2026",
+      "period_label": "CY${projection_base_year}",
       "granularity": "monthly", 
       "data_points": 12,
       "revenue": [
-        {"period": "2026-01", "value": 125000, "confidence": "high"},
-        {"period": "2026-02", "value": 127500, "confidence": "high"},
-        {"period": "2026-03", "value": 130000, "confidence": "high"},
-        {"period": "2026-04", "value": 132500, "confidence": "high"},
-        {"period": "2026-05", "value": 135000, "confidence": "high"},
-        {"period": "2026-06", "value": 137500, "confidence": "high"},
-        {"period": "2026-07", "value": 140000, "confidence": "high"},
-        {"period": "2026-08", "value": 142500, "confidence": "high"},
-        {"period": "2026-09", "value": 145000, "confidence": "high"},
-        {"period": "2026-10", "value": 147500, "confidence": "high"},
-        {"period": "2026-11", "value": 150000, "confidence": "high"},
-        {"period": "2026-12", "value": 152500, "confidence": "high"}
+        {"period": "${projection_base_year}-01", "value": "Apply 25% REDUCTION for January holiday period", "confidence": "high"},
+        {"period": "${projection_base_year}-02", "value": "Apply 5% REDUCTION for February recovery", "confidence": "high"},
+        {"period": "${projection_base_year}-03", "value": "Apply 10% INCREASE for March full capacity", "confidence": "high"},
+        {"period": "${projection_base_year}-04", "value": "Apply 5% INCREASE for moderate activity", "confidence": "high"},
+        {"period": "${projection_base_year}-05", "value": "BASELINE normal operations", "confidence": "high"},
+        {"period": "${projection_base_year}-06", "value": "Apply 15% INCREASE for winter peak", "confidence": "high"},
+        {"period": "${projection_base_year}-07", "value": "Apply 20% INCREASE for peak winter demand", "confidence": "high"},
+        {"period": "${projection_base_year}-08", "value": "Apply 10% INCREASE for continued winter", "confidence": "high"},
+        {"period": "${projection_base_year}-09", "value": "Apply 5% INCREASE for spring transition", "confidence": "high"},
+        {"period": "${projection_base_year}-10", "value": "BASELINE normal operations", "confidence": "high"},
+        {"period": "${projection_base_year}-11", "value": "Apply 5% INCREASE for pre-summer maintenance", "confidence": "high"},
+        {"period": "${projection_base_year}-12", "value": "Apply 15% REDUCTION for holiday slowdown", "confidence": "high"}
       ],
       "expenses": [
-        {"period": "2026-01", "value": 75000, "confidence": "high"},
-        {"period": "2026-02", "value": 76500, "confidence": "high"},
-        {"period": "2026-03", "value": 78000, "confidence": "high"},
+        {"period": "${projection_base_year}-01", "value": "Apply HIGHER per-unit costs due to holiday rates", "confidence": "high"},
+        {"period": "${projection_base_year}-02", "value": "Normalizing expense patterns", "confidence": "high"},
+        {"period": "${projection_base_year}-03", "value": "Lower per-unit costs due to efficiency gains", "confidence": "high"},
         {"period": "2026-04", "value": 79500, "confidence": "high"},
         {"period": "2026-05", "value": 81000, "confidence": "high"},
         {"period": "2026-06", "value": 82500, "confidence": "high"},
@@ -1474,7 +1526,19 @@ CRITICAL INSTRUCTIONS:
 3. Use ACTUAL data points as specified (12 monthly, 12 quarterly, 5/10/15 yearly)
 4. Ensure mathematical consistency (Revenue - Expenses = Gross Profit, etc.)
 5. Apply appropriate confidence levels (high/medium/low/very_low by horizon)
+6. START projections from ${projection_base_year}-01 (Calendar year basis)
+7. Apply AUSTRALIAN SEASONALITY PATTERNS from Stage 3 analysis
+8. Ensure Q1 REALISTIC VARIABILITY (minimum 5% month-over-month variance)
+9. Include HOLIDAY PERIOD IMPACTS (January -25%, December -15%)
+10. Apply WORKING CAPITAL TIMING EFFECTS (DSO/DPO seasonal variations)
 
-DO NOT generate only assumptions - you MUST generate the complete base_case_projections structure with all financial data.
+SEASONALITY APPLICATION REQUIREMENTS:
+- January: 25% revenue reduction, higher expense ratios, extended DSO
+- February: Gradual recovery, normalize expense patterns  
+- March: 10% revenue increase, efficiency gains in expenses
+- June-July: Peak winter demand (15-20% increase)
+- December: Holiday slowdown (15% reduction)
+
+DO NOT generate only assumptions - you MUST generate the complete base_case_projections structure with all financial data using realistic seasonal variations.
 
 """ + ENHANCED_JSON_OUTPUT_INSTRUCTIONS

@@ -308,7 +308,7 @@ class EnhancedOCRService:
             logger.info("🎯 LARGE FILE SUPPORT | Enhanced handling for complex CSV files")
         
         logger.debug(f"Service configuration | PDF limit: {self.max_pdf_size//1024//1024}MB | CSV limit: {self.max_csv_size//1024//1024}MB | Image limit: {self.max_image_size//1024//1024}MB")
-        logger.debug(f"Enhanced API configuration | Timeout: {self.api_timeout}s | Max retries: {self.max_retries} | Base delay: {self.base_retry_delay}s")
+        logger.debug(f"Enhanced API configuration | Timeout: DISABLED | Max retries: {self.max_retries} | Base delay: {self.base_retry_delay}s")
         logger.debug(f"Smart backoff | Max delay: {self.max_retry_delay}s | Multiplier: {self.exponential_multiplier}x | Overload multiplier: {self.overload_multiplier}x")
         logger.debug(f"API key pool available | Count: {len(API_KEYS)}")
     
@@ -522,18 +522,40 @@ class EnhancedOCRService:
                     contents = f"{str(content)}\n\n{prompt}"
                     logger.debug(f"Request type: custom + prompt | Prompt: {len(prompt)} chars")
                 
-                # Apply timeout to the API call
-                response = await asyncio.wait_for(
-                    asyncio.to_thread(
-                        client.models.generate_content,
+                # Count tokens before making the request
+                try:
+                    token_info = await asyncio.to_thread(
+                        client.models.count_tokens,
                         model=model,
                         contents=contents
-                    ),
-                    timeout=self.api_timeout
+                    )
+                    prompt_tokens = getattr(token_info, "total_tokens", None) or getattr(token_info, "usage_metadata", {}).get("total_tokens", None)
+                except Exception as _token_err:
+                    prompt_tokens = None
+                    logger.debug(f"Token count unavailable: {str(_token_err)}")
+                
+                # Make API call without timeout
+                response = await asyncio.to_thread(
+                    client.models.generate_content,
+                    model=model,
+                    contents=contents
                 )
                 
                 elapsed_time = time.time() - start_time
                 response_text = self.extract_response_text(response)
+                
+                # Attempt to read response usage if available
+                response_tokens = None
+                try:
+                    usage_meta = getattr(response, "usage_metadata", None)
+                    if usage_meta and hasattr(usage_meta, "candidates_token_count"):
+                        response_tokens = getattr(usage_meta, "candidates_token_count", None)
+                except Exception:
+                    response_tokens = None
+                
+                # Log token summary
+                if prompt_tokens is not None or response_tokens is not None:
+                    logger.info(f"🧮 Tokens | prompt={prompt_tokens if prompt_tokens is not None else 'n/a'} | response={response_tokens if response_tokens is not None else 'n/a'}")
                 
                 # Log success
                 log_api_call(logger, operation_name, model, key_suffix, elapsed_time, success=True)
@@ -541,21 +563,16 @@ class EnhancedOCRService:
                 return response_text
                 
             except asyncio.TimeoutError as e:
+                # Timeouts disabled; treat as generic error path
                 elapsed_time = time.time() - start_time
                 last_exception = e
                 had_previous_error = True
-                
-                # Record error for rate limiting
                 pro_model_rate_limiter.record_pro_error("timeout")
-                
-                logger.warning(f"⏰ API call TIMEOUT: {operation_name} | Attempt {attempt + 1}/{self.max_retries + 1} | Duration: {elapsed_time:.2f}s")
-                
+                logger.warning(f"⏰ Timeout encountered but timeouts are disabled | Duration: {elapsed_time:.2f}s")
                 if attempt >= self.max_retries:
                     break
-                    
-                # Smart backoff for timeout
                 delay = calculate_smart_backoff_delay(attempt, self.base_retry_delay, is_overload=False, had_previous_error=True)
-                logger.info(f"⏳ Timeout retry delay: {delay:.1f}s")
+                logger.info(f"⏳ Retry delay after pseudo-timeout: {delay:.1f}s")
                 await asyncio.sleep(delay)
                 
             except Exception as e:
@@ -631,6 +648,7 @@ class EnhancedOCRService:
             file_type, _ = self.get_file_type_and_mime(filename, content)
             
             # Prepare content for analysis
+            csv_text = None  # ensure defined for downstream references
             if file_type == 'csv':
                 csv_text = self.process_csv_content(content, filename)
                 content_for_analysis = f"CSV File: {filename}\n\n{csv_text}"
@@ -663,7 +681,7 @@ class EnhancedOCRService:
                     
                     # If Gemini failed to detect the document type correctly, use fallback detection
                     if original_doc_type == 'Other' or original_doc_type == 'Unknown' or not original_doc_type:
-                        if file_type == 'csv':
+                        if file_type == 'csv' and csv_text is not None:
                             corrected_doc_type = self.detect_document_type_fallback(filename, csv_text)
                             if corrected_doc_type != 'Other':
                                 result['document_type'] = corrected_doc_type
@@ -698,7 +716,7 @@ class EnhancedOCRService:
             logger.warning(f"🔄 Generating enhanced fallback structure for {filename}")
             
             # Use the comprehensive document type detection method
-            if file_type == 'csv':
+            if file_type == 'csv' and csv_text is not None:
                 doc_type = self.detect_document_type_fallback(filename, csv_text)
             else:
                 # For non-CSV files, fall back to basic filename detection

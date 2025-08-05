@@ -126,7 +126,7 @@ class BusinessAnalysisService:
             logger.info(f"PRO PROTECTION: Min: {PRO_MODEL_MIN_DELAY}s | Error: {PRO_MODEL_ERROR_DELAY}s | Overload: {PRO_MODEL_OVERLOAD_DELAY}s")
             logger.info("UPDATED: Now using SuperRobustJSONParser and IntelligentMethodologySelector")
         
-        logger.debug(f"Enhanced API configuration | Timeout: {self.api_timeout}s | Max retries: {self.max_retries}")
+        logger.debug(f"Enhanced API configuration | Timeout: DISABLED | Max retries: {self.max_retries}")
         logger.debug(f"Smart backoff | Base: {self.base_retry_delay}s | Max: {self.max_retry_delay}s | Multiplier: {self.exponential_multiplier}x")
         logger.debug(f"API key pool available | Count: {len(API_KEYS)}")
     
@@ -149,6 +149,10 @@ class BusinessAnalysisService:
         start_time = time.time()
         last_exception = None
         had_previous_error = False
+        # Initialize to safe defaults to satisfy static analysis and ensure logging safety
+        current_model = original_model
+        is_fallback = False
+        is_pro_model = "pro" in (current_model.lower() if isinstance(current_model, str) else "")
         
         for attempt in range(self.max_retries + 1):
             try:
@@ -171,7 +175,8 @@ class BusinessAnalysisService:
                     log_api_call(logger, operation_name, current_model, key_suffix, success=True)
                 else:
                     fallback_info = " (FLASH FALLBACK)" if is_fallback else ""
-                    logger.info(f"🔄 API call RETRY {attempt}/{self.max_retries}: {operation_name} | Model: {current_model}{fallback_info} | Key: ...{key_suffix}")
+                    safe_model = current_model if isinstance(current_model, str) else original_model
+                    logger.info(f"🔄 API call RETRY {attempt}/{self.max_retries}: {operation_name} | Model: {safe_model}{fallback_info} | Key: ...{key_suffix}")
                 
                 # ENHANCE PROMPT FOR FLASH FALLBACK
                 current_prompt = prompt
@@ -190,18 +195,40 @@ class BusinessAnalysisService:
                     contents = current_prompt
                     logger.debug(f"Request type: text-only | Prompt length: {len(current_prompt)} chars")
                 
-                # Apply timeout to the API call
-                response = await asyncio.wait_for(
-                    asyncio.to_thread(
-                        client.models.generate_content,
+                # Count tokens before making the request
+                try:
+                    token_info = await asyncio.to_thread(
+                        client.models.count_tokens,
                         model=current_model,
                         contents=contents
-                    ),
-                    timeout=self.api_timeout
+                    )
+                    prompt_tokens = getattr(token_info, "total_tokens", None) or getattr(token_info, "usage_metadata", {}).get("total_tokens", None)
+                except Exception as _token_err:
+                    prompt_tokens = None
+                    logger.debug(f"Token count unavailable: {str(_token_err)}")
+                
+                # Make API call without timeout
+                response = await asyncio.to_thread(
+                    client.models.generate_content,
+                    model=current_model,
+                    contents=contents
                 )
                 
                 elapsed_time = time.time() - start_time
                 response_text = self.extract_response_text(response)
+                
+                # Attempt to read response usage if available
+                response_tokens = None
+                try:
+                    usage_meta = getattr(response, "usage_metadata", None)
+                    if usage_meta and hasattr(usage_meta, "candidates_token_count"):
+                        response_tokens = getattr(usage_meta, "candidates_token_count", None)
+                except Exception:
+                    response_tokens = None
+                
+                # Log token summary
+                if prompt_tokens is not None or response_tokens is not None:
+                    logger.info(f"🧮 Tokens | prompt={prompt_tokens if prompt_tokens is not None else 'n/a'} | response={response_tokens if response_tokens is not None else 'n/a'}")
                 
                 # Log success
                 success_info = " with FLASH FALLBACK" if is_fallback else ""
@@ -210,22 +237,18 @@ class BusinessAnalysisService:
                 return response_text
                 
             except asyncio.TimeoutError as e:
+                # Timeouts disabled; treat as generic error path
                 elapsed_time = time.time() - start_time
                 last_exception = e
                 had_previous_error = True
-                
-                # Record error for Pro models
-                if is_pro_model:
+                is_pro = bool(isinstance(is_pro_model, bool) and is_pro_model)
+                if is_pro:
                     smart_global_rate_limiter.record_pro_error()
-                
-                logger.warning(f"⏰ API call TIMEOUT: {operation_name} | Attempt {attempt + 1}/{self.max_retries + 1} | Duration: {elapsed_time:.2f}s")
-                
+                logger.warning(f"⏰ Timeout encountered but timeouts are disabled | Duration: {elapsed_time:.2f}s")
                 if attempt >= self.max_retries:
                     break
-                    
-                # Smart backoff for timeout
                 delay = calculate_smart_backoff_delay(attempt, self.base_retry_delay, is_overload=False, had_previous_error=True)
-                logger.info(f"⏳ Timeout retry delay: {delay:.1f}s")
+                logger.info(f"⏳ Retry delay after pseudo-timeout: {delay:.1f}s")
                 await asyncio.sleep(delay)
                 
             except Exception as e:
@@ -267,7 +290,8 @@ class BusinessAnalysisService:
                         # Smart backoff with overload handling
                         delay = calculate_smart_backoff_delay(attempt, self.base_retry_delay, is_overload=True, had_previous_error=True)
                         logger.warning(f"🚨 503 OVERLOAD detected - using smart backoff: {delay:.1f}s")
-                        logger.warning(f"🔄 Overload retry {attempt + 1}/{self.max_retries}: {operation_name} | Model: {current_model} | Error: {error_str[:100]}...")
+                        safe_model = current_model if isinstance(current_model, str) else original_model
+                        logger.warning(f"🔄 Overload retry {attempt + 1}/{self.max_retries}: {operation_name} | Model: {safe_model} | Error: {error_str[:100]}...")
                     else:
                         # Standard smart backoff
                         delay = calculate_smart_backoff_delay(attempt, self.base_retry_delay, is_overload=False, had_previous_error=True)

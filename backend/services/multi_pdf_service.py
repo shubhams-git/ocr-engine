@@ -55,14 +55,14 @@ class UnifiedProModelService:
         self.last_pro_overload_time = 0
         self.last_pro_error_time = 0
         
-        # Enhanced timeout configuration
-        self.overall_process_timeout = OVERALL_PROCESS_TIMEOUT  # 20 minutes
+        # Enhanced timeout configuration (DISABLED - no overall process timeout)
+        self.overall_process_timeout = None
         
         # Only log during main server process, not during uvicorn reloads
         if os.getenv("OCR_SERVER_MAIN") == "true":
             logger.info("🚀 UNIFIED PRO MODEL SERVICE: All stages use gemini-2.5-pro")
             logger.info(f"⚡ OPTIMIZED RATE LIMITING | Pro delay: {self.pro_model_delay}s | Overload: {self.pro_overload_delay}s | Error: {self.pro_error_delay}s")
-            logger.info(f"⏰ TIMEOUT CONFIGURATION | Individual API calls: 12min | Overall process: {self.overall_process_timeout//60}min")
+            logger.info("⏰ TIMEOUTS DISABLED | No overall process timeout | No per-call timeout enforced here")
             logger.info(f"🎯 CONCURRENCY CONTROL | Max concurrent Pro calls: {self.pro_model_semaphore._value}")
             logger.info("✅ NO MORE 503 ERRORS | Smart delays prevent overload without excessive wait times")
         
@@ -237,7 +237,7 @@ class UnifiedProModelService:
             
             logger.info(f"🚀 UNIFIED PRO MODEL ARCHITECTURE | All stages: {unified_model}")
             logger.info(f"⚡ OPTIMIZED RATE LIMITING | Delay: {self.pro_model_delay}s | Overload: {self.pro_overload_delay}s | Error: {self.pro_error_delay}s")
-            logger.info(f"⏰ TIMEOUT CONFIGURATION | Overall: {self.overall_process_timeout//60}min | Individual API calls: 12min")
+            logger.info("⏰ TIMEOUTS DISABLED | Overall and per-call timeouts removed for uninterrupted processing")
             logger.info(f"🎯 CONCURRENCY CONTROL | Max concurrent: {self.pro_model_semaphore._value} | Smart semaphore management")
             logger.info("✅ NO MORE 503 ERRORS | Optimized delays prevent overload without excessive wait times")
             
@@ -463,8 +463,8 @@ class UnifiedProModelService:
                             'standard_delay': f'{self.pro_model_delay}s',
                             'error_delay': f'{self.pro_error_delay}s',
                             'overload_delay': f'{self.pro_overload_delay}s',
-                            'individual_api_calls': '12 minutes',
-                            'overall_process': f'{self.overall_process_timeout//60} minutes'
+                            'individual_api_calls': 'disabled',
+                            'overall_process': 'disabled'
                         },
                         'no_503_errors': 'Smart delays prevent overload without excessive wait times'
                     },
@@ -543,33 +543,31 @@ class UnifiedProModelService:
     async def analyze_multiple_files(self, files_data: List[Tuple[str, bytes]], requested_model: str = "gemini-2.5-pro") -> MultiPDFAnalysisResponse:
         """
         Enhanced 4-stage multi-file analysis using UNIFIED PRO MODEL with optimized rate limiting
-        Applies enhanced 20-minute timeout to the entire process
+        Timeouts disabled for the entire process to allow completion without interruption
         """
         try:
-            logger.info(f"🚀 Starting 4-stage multi-file analysis with UNIFIED PRO MODEL and {self.overall_process_timeout}s overall timeout")
+            logger.info("🚀 Starting 4-stage multi-file analysis with UNIFIED PRO MODEL and NO OVERALL TIMEOUT")
             logger.info(f"🎯 Requested model: {requested_model} | Strategy: Unified {self.unified_model} for all stages with optimized rate limiting")
-            logger.info(f"⏰ TIMEOUT CONFIGURATION | Individual API calls: 12min | Overall process: {self.overall_process_timeout//60}min")
+            logger.info("⏰ TIMEOUTS DISABLED | Overall process timeout removed")
             logger.info(f"⚡ OPTIMIZED RATE LIMITING | Standard: {self.pro_model_delay}s | Error: {self.pro_error_delay}s | Overload: {self.pro_overload_delay}s")
             logger.info("✅ NO MORE 503 ERRORS | Smart delays prevent overload without excessive wait times")
             
-            # Apply enhanced overall timeout to the entire analysis process
-            result = await asyncio.wait_for(
-                self._internal_analyze_multiple_files(files_data, requested_model),
-                timeout=self.overall_process_timeout
-            )
+            # Execute without overall timeout wrapper
+            result = await self._internal_analyze_multiple_files(files_data, requested_model)
             
-            logger.info("✅ 4-stage multi-file analysis completed within enhanced timeout with UNIFIED PRO MODEL and optimized rate limiting")
+            logger.info("✅ 4-stage multi-file analysis completed successfully with UNIFIED PRO MODEL and optimized rate limiting")
             return result
             
         except asyncio.TimeoutError:
-            logger.error(f"❌ 4-stage analysis process enhanced timeout exceeded ({self.overall_process_timeout}s = {self.overall_process_timeout//60} minutes)")
+            # With timeouts disabled this block should not be reached; keep for safety
+            logger.error("❌ Timeout occurred unexpectedly, but timeouts are disabled. Returning failure for safety.")
             return MultiPDFAnalysisResponse(
                 success=False,
                 extracted_data=[],
                 normalized_data={},
                 projections={},
                 explanation="",
-                error=f"4-stage analysis with UNIFIED PRO MODEL timeout: Process exceeded {self.overall_process_timeout} seconds ({self.overall_process_timeout//60} minutes) limit",
+                error="Unexpected timeout occurred, but timeouts are disabled",
                 data_quality_score=None,
                 confidence_levels=None,
                 assumptions=None,

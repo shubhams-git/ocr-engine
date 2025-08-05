@@ -281,6 +281,41 @@ ORIGINAL REQUEST:
     
     return fallback_context + original_prompt
 
+# PROJECTION TIMING CONFIGURATION
+def get_projection_base_year() -> int:
+    """Get projection base year from environment with default fallback"""
+    year_str = os.getenv("PROJECTION_BASE_YEAR", "2026")  # Default: Calendar year 2026
+    try:
+        return int(year_str)
+    except ValueError:
+        logger.warning(f"Invalid PROJECTION_BASE_YEAR value: {year_str}, using default 2026")
+        return 2026
+
+def get_use_calendar_year() -> bool:
+    """Get whether to use calendar year (True) vs Australian FY (False)"""
+    use_calendar = os.getenv("USE_CALENDAR_YEAR", "true").lower()
+    return use_calendar in ["true", "1", "yes", "on"]
+
+def get_enforce_q1_variability() -> bool:
+    """Get whether to enforce realistic Q1 month-to-month variability"""
+    enforce_var = os.getenv("ENFORCE_Q1_VARIABILITY", "true").lower()
+    return enforce_var in ["true", "1", "yes", "on"]
+
+def get_minimum_monthly_variance() -> float:
+    """Get minimum month-over-month variance threshold for Q1"""
+    variance_str = os.getenv("MINIMUM_MONTHLY_VARIANCE", "0.05")  # Default: 5% minimum variance
+    try:
+        return float(variance_str)
+    except ValueError:
+        logger.warning(f"Invalid MINIMUM_MONTHLY_VARIANCE value: {variance_str}, using default 0.05")
+        return 0.05
+
+# Load projection configuration
+PROJECTION_BASE_YEAR = get_projection_base_year()
+USE_CALENDAR_YEAR = get_use_calendar_year()
+ENFORCE_Q1_VARIABILITY = get_enforce_q1_variability()
+MINIMUM_MONTHLY_VARIANCE = get_minimum_monthly_variance()
+
 def get_configuration_summary() -> dict:
     """Get a summary of current configuration for logging/debugging"""
     return {
@@ -297,7 +332,12 @@ def get_configuration_summary() -> dict:
         'pro_model_overload_delay_seconds': PRO_MODEL_OVERLOAD_DELAY,
         'flash_fallback_threshold': FLASH_FALLBACK_THRESHOLD,
         'allowed_origins_count': len(ALLOWED_ORIGINS),
-        'smart_fallback_enabled': True
+        'smart_fallback_enabled': True,
+        # New projection configuration
+        'projection_base_year': PROJECTION_BASE_YEAR,
+        'use_calendar_year': USE_CALENDAR_YEAR,
+        'enforce_q1_variability': ENFORCE_Q1_VARIABILITY,
+        'minimum_monthly_variance': MINIMUM_MONTHLY_VARIANCE
     }
 
 # LOG CONFIGURATION ONLY ONCE AT STARTUP
@@ -309,6 +349,8 @@ if os.getenv("OCR_SERVER_MAIN") == "true":
     logger.info(f"PRO MODEL SMART PROTECTION: Min: {config_summary['pro_model_min_delay_seconds']}s | Error: {config_summary['pro_model_error_delay_seconds']}s | Overload: {config_summary['pro_model_overload_delay_seconds']}s")
     logger.info(f"FLASH FALLBACK: After attempt {config_summary['flash_fallback_threshold']} | Smart fallback enabled: {config_summary['smart_fallback_enabled']}")
     logger.info(f"CORS: {config_summary['allowed_origins_count']} allowed origins configured")
+    # New projection configuration logging
+    logger.info(f"PROJECTION TIMING: Base year: {config_summary['projection_base_year']} | Calendar year: {config_summary['use_calendar_year']} | Q1 variability: {config_summary['enforce_q1_variability']} | Min variance: {config_summary['minimum_monthly_variance']:.1%}")
 
 # LEGACY COMPATIBILITY (deprecated, use the specific getters above)
 def get_retry_delay() -> int:

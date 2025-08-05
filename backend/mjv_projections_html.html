@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MJV Plumbing Services - Financial Projections Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f9fafb;
+            color: #111827;
+            line-height: 1.5;
+        }
+        
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+        
+        .header {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+        
+        .header h1 {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #1f2937;
+            margin-bottom: 8px;
+        }
+        
+        .header h2 {
+            font-size: 1.25rem;
+            color: #6b7280;
+            margin-bottom: 24px;
+        }
+        
+        .view-toggle {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 24px;
+        }
+        
+        .view-btn {
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: none;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .view-btn.active {
+            background: #2563eb;
+            color: white;
+        }
+        
+        .view-btn:not(.active) {
+            background: #e5e7eb;
+            color: #374151;
+        }
+        
+        .view-btn:not(.active):hover {
+            background: #d1d5db;
+        }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        
+        .metric-card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            padding: 24px;
+        }
+        
+        .metric-card h3 {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #6b7280;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        .metric-card .value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+        
+        .metric-card .subtitle {
+            font-size: 0.875rem;
+            color: #6b7280;
+        }
+        
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+        
+        .chart-card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            padding: 24px;
+        }
+        
+        .chart-card h3 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+        
+        .table-card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .table-header {
+            padding: 16px 24px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .table-header h3 {
+            font-size: 1.125rem;
+            font-weight: 600;
+        }
+        
+        .table-container {
+            overflow-x: auto;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th {
+            background: #f9fafb;
+            padding: 12px 24px;
+            text-align: left;
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        td {
+            padding: 16px 24px;
+            border-bottom: 1px solid #f3f4f6;
+            font-size: 0.875rem;
+        }
+        
+        tbody tr:nth-child(even) {
+            background: #f9fafb;
+        }
+        
+        .text-green { color: #059669; }
+        .text-blue { color: #2563eb; }
+        .text-purple { color: #7c3aed; }
+        .text-gray { color: #1f2937; }
+        
+        .seasonality-card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            padding: 24px;
+            margin-top: 24px;
+        }
+        
+        .seasonality-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+        }
+        
+        .quarter-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+        }
+        
+        .quarter-item:nth-child(even) {
+            background: #dbeafe;
+        }
+        
+        .quarter-item:nth-child(odd) {
+            background: #f3f4f6;
+        }
+        
+        .observation {
+            padding: 12px;
+            border-radius: 6px;
+            border-left: 4px solid;
+            margin-bottom: 12px;
+        }
+        
+        .observation.warning {
+            background: #fef3c7;
+            border-color: #f59e0b;
+        }
+        
+        .observation.info {
+            background: #dbeafe;
+            border-color: #3b82f6;
+        }
+        
+        .observation.error {
+            background: #fee2e2;
+            border-color: #ef4444;
+        }
+        
+        .observation-title {
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+        
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>MJV Plumbing Services</h1>
+            <h2>Financial Projections Dashboard</h2>
+            
+            <div class="view-toggle">
+                <button class="view-btn active" onclick="switchView('monthly')">Monthly (CY2026)</button>
+                <button class="view-btn" onclick="switchView('quarterly')">Quarterly (3 Years)</button>
+                <button class="view-btn" onclick="switchView('annual')">Annual (5 Years)</button>
+            </div>
+        </div>
+
+        <!-- Key Metrics -->
+        <div class="metrics-grid" id="metrics-monthly">
+            <div class="metric-card">
+                <h3>CY2026 Revenue</h3>
+                <p id="metric-monthly-revenue" class="value text-gray">-</p>
+                <p class="subtitle">Calendar year projection</p>
+            </div>
+            <div class="metric-card">
+                <h3>Net Profit</h3>
+                <p id="metric-monthly-net-profit" class="value text-green">-</p>
+                <p id="metric-monthly-net-margin" class="subtitle">-</p>
+            </div>
+            <div class="metric-card">
+                <h3>Gross Profit</h3>
+                <p id="metric-monthly-gross-profit" class="value text-blue">-</p>
+                <p id="metric-monthly-gross-margin" class="subtitle">-</p>
+            </div>
+            <div class="metric-card">
+                <h3>Highest Month</h3>
+                <p id="metric-monthly-highest" class="value text-purple">-</p>
+                <p id="metric-monthly-highest-periods" class="subtitle">-</p>
+            </div>
+        </div>
+
+        <div class="metrics-grid hidden" id="metrics-annual">
+            <div class="metric-card">
+                <h3>2030 Revenue</h3>
+                <p id="metric-2030-revenue" class="value text-gray">-</p>
+                <p id="metric-2030-revenue-cagr" class="subtitle text-green"></p>
+            </div>
+            <div class="metric-card">
+                <h3>2030 Net Profit</h3>
+                <p id="metric-2030-net-profit" class="value text-green">-</p>
+                <p id="metric-2030-net-cagr" class="subtitle text-green"></p>
+            </div>
+            <div class="metric-card">
+                <h3>Total 5-Year Revenue</h3>
+                <p id="metric-5y-rev-total" class="value text-blue">-</p>
+                <p class="subtitle">Cumulative</p>
+            </div>
+            <div class="metric-card">
+                <h3>Total 5-Year Profit</h3>
+                <p id="metric-5y-net-total" class="value text-purple">-</p>
+                <p class="subtitle">Cumulative net</p>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="charts-grid">
+            <div class="chart-card">
+                <h3 id="chart1-title">Monthly Revenue & Profit (CY2026)</h3>
+                <div class="chart-container">
+                    <canvas id="revenueChart"></canvas>
+                </div>
+            </div>
+            <div class="chart-card">
+                <h3>Profit Structure</h3>
+                <div class="chart-container">
+                    <canvas id="profitChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Table -->
+        <div class="table-card">
+            <div class="table-header">
+                <h3 id="table-title">Monthly Projections - CY2026</h3>
+            </div>
+            <div class="table-container">
+                <table id="dataTable">
+                    <thead>
+                        <tr>
+                            <th>Period</th>
+                            <th>Revenue</th>
+                            <th>Expenses</th>
+                            <th>Gross Profit</th>
+                            <th>Net Profit</th>
+                            <th>Net Margin</th>
+                            <th id="growth-header" class="hidden">Growth %</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Seasonality Analysis -->
+        <div class="seasonality-card" id="seasonality-analysis">
+            <h3 style="font-size: 1.125rem; font-weight: 600; margin-bottom: 16px;">Seasonality Analysis - CY2026</h3>
+            <div class="seasonality-grid">
+                <div>
+                    <h4 style="font-weight: 500; margin-bottom: 12px;">Quarterly Performance</h4>
+                    <div id="seasonality-quarterly"></div>
+                </div>
+                <div>
+                    <h4 style="font-weight: 500; margin-bottom: 12px;">Key Observations</h4>
+                    <div id="seasonality-observations"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Data placeholders, will be populated after fetch
+        let monthlyData = [];
+        let quarterlyData = [];
+        let annualData = [];
+
+        let currentView = 'monthly';
+        let revenueChart, profitChart;
+
+        function formatCurrency(value) {
+            if (value === null || value === undefined || isNaN(value)) return '-';
+            if (value >= 1000000) {
+                return `$${(value / 1000000).toFixed(1)}M`;
+            } else if (value >= 1000) {
+                return `$${(value / 1000).toFixed(0)}k`;
+            }
+            return `$${Number(value).toLocaleString()}`;
+        }
+
+        function formatMonth(yyyyMm) {
+            const [y, m] = yyyyMm.split('-').map(Number);
+            const dt = new Date(y, m - 1, 1);
+            return dt.toLocaleString('en-US', { month: 'short', year: 'numeric' });
+        }
+
+        function computeSums(rows) {
+            const sum = (k) => rows.reduce((a, r) => a + (Number(r[k]) || 0), 0);
+            return {
+                revenue: sum('revenue'),
+                expenses: sum('expenses'),
+                gross_profit: sum('gross_profit'),
+                net_profit: sum('net_profit')
+            };
+        }
+
+        function calculateGrowth(current, previous) {
+            if (!previous) return 0;
+            return ((current - previous) / previous * 100);
+        }
+
+        function switchView(view, evt) {
+            currentView = view;
+
+            // Update button states
+            document.querySelectorAll('.view-btn').forEach(btn => btn.classList.remove('active'));
+            if (evt && evt.target) {
+                evt.target.classList.add('active');
+            } else {
+                // fallback: activate matching button by text
+                const idx = { monthly: 0, quarterly: 1, annual: 2 }[view];
+                const btn = document.querySelectorAll('.view-btn')[idx];
+                if (btn) btn.classList.add('active');
+            }
+
+            // Update metrics
+            document.getElementById('metrics-monthly').classList.toggle('hidden', view !== 'monthly');
+            document.getElementById('metrics-annual').classList.toggle('hidden', view !== 'annual');
+
+            // Update seasonality analysis
+            document.getElementById('seasonality-analysis').classList.toggle('hidden', view !== 'monthly');
+
+            // Update growth header
+            document.getElementById('growth-header').classList.toggle('hidden', view !== 'annual');
+
+            // Update titles
+            const titles = {
+                monthly: 'Monthly Revenue & Profit (CY2026)',
+                quarterly: 'Quarterly Revenue & Profit (3 Years)',
+                annual: 'Annual Revenue & Profit (5 Years)'
+            };
+
+            const tableTitles = {
+                monthly: 'Monthly Projections - CY2026',
+                quarterly: 'Quarterly Projections - 2026-2028',
+                annual: 'Annual Projections - 2026-2030'
+            };
+
+            document.getElementById('chart1-title').textContent = titles[view];
+            document.getElementById('table-title').textContent = tableTitles[view];
+
+            if ((view === 'monthly' && monthlyData.length === 0) ||
+                (view === 'quarterly' && quarterlyData.length === 0) ||
+                (view === 'annual' && annualData.length === 0)) {
+                return; // wait until data loads
+            }
+
+            updateMetrics();
+            updateSeasonality();
+            updateCharts();
+            updateTable();
+        }
+
+        function getData() {
+            switch(currentView) {
+                case 'monthly': return monthlyData;
+                case 'quarterly': return quarterlyData;
+                case 'annual': return annualData;
+                default: return monthlyData;
+            }
+        }
+
+        function updateCharts() {
+            const data = getData();
+            
+            // Revenue Chart
+            if (revenueChart) revenueChart.destroy();
+            
+            const ctx1 = document.getElementById('revenueChart').getContext('2d');
+            revenueChart = new Chart(ctx1, {
+                type: 'line',
+                data: {
+                    labels: data.map(d => d.period),
+                    datasets: [{
+                        label: 'Revenue',
+                        data: data.map(d => d.revenue),
+                        borderColor: '#3B82F6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        borderWidth: 3,
+                        fill: false
+                    }, {
+                        label: 'Net Profit',
+                        data: data.map(d => d.net_profit),
+                        borderColor: '#10B981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        borderWidth: 3,
+                        fill: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return formatCurrency(value);
+                                }
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                maxRotation: 45,
+                                minRotation: 45
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': ' + formatCurrency(context.parsed.y);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Profit Chart
+            if (profitChart) profitChart.destroy();
+            
+            const ctx2 = document.getElementById('profitChart').getContext('2d');
+            profitChart = new Chart(ctx2, {
+                type: 'bar',
+                data: {
+                    labels: data.map(d => d.period),
+                    datasets: [{
+                        label: 'Expenses',
+                        data: data.map(d => d.expenses),
+                        backgroundColor: 'rgba(239, 68, 68, 0.3)',
+                        borderColor: '#EF4444',
+                        borderWidth: 1
+                    }, {
+                        label: 'Gross Profit',
+                        data: data.map(d => d.gross_profit),
+                        backgroundColor: 'rgba(59, 130, 246, 0.3)',
+                        borderColor: '#3B82F6',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            stacked: true,
+                            ticks: {
+                                maxRotation: 45,
+                                minRotation: 45
+                            }
+                        },
+                        y: {
+                            stacked: true,
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return formatCurrency(value);
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': ' + formatCurrency(context.parsed.y);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateTable() {
+            const data = getData();
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+            
+            data.forEach((row, index) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td style="font-weight: 500;">${row.period}</td>
+                    <td>${formatCurrency(row.revenue)}</td>
+                    <td>${formatCurrency(row.expenses)}</td>
+                    <td>${formatCurrency(row.gross_profit)}</td>
+                    <td style="font-weight: 500; color: #059669;">${formatCurrency(row.net_profit)}</td>
+                    <td>${((row.net_profit / row.revenue) * 100).toFixed(1)}%</td>
+                    <td class="${currentView !== 'annual' ? 'hidden' : ''}">
+                        ${index === 0 ? '-' : `${calculateGrowth(row.revenue, data[index-1].revenue).toFixed(1)}%`}
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function updateMetrics() {
+            if (!monthlyData.length) return;
+            const sums = computeSums(monthlyData);
+            const revenue = sums.revenue;
+            const gross = sums.gross_profit;
+            const net = sums.net_profit;
+            const grossMargin = revenue ? (gross / revenue) * 100 : 0;
+            const netMargin = revenue ? (net / revenue) * 100 : 0;
+
+            // highest month by revenue
+            const maxRev = Math.max(...monthlyData.map(d => d.revenue));
+            const maxRows = monthlyData.filter(d => d.revenue === maxRev);
+            const periods = maxRows.map(d => d.period).join(', ');
+
+            document.getElementById('metric-monthly-revenue').textContent = formatCurrency(revenue);
+            document.getElementById('metric-monthly-gross-profit').textContent = formatCurrency(gross);
+            document.getElementById('metric-monthly-net-profit').textContent = formatCurrency(net);
+            document.getElementById('metric-monthly-gross-margin').textContent = `${grossMargin.toFixed(1)}% margin`;
+            document.getElementById('metric-monthly-net-margin').textContent = `${netMargin.toFixed(1)}% margin`;
+            document.getElementById('metric-monthly-highest').textContent = formatCurrency(maxRev);
+            document.getElementById('metric-monthly-highest-periods').textContent = periods || '-';
+
+            // Annual metrics from annualData if available
+            if (annualData.length >= 5) {
+                const y2030 = annualData.find(x => x.period === '2030');
+                const y2026 = annualData.find(x => x.period === '2026');
+                const y2029 = annualData.find(x => x.period === '2029');
+                const net2030 = y2030 ? y2030.net_profit : null;
+                const rev2030 = y2030 ? y2030.revenue : null;
+                document.getElementById('metric-2030-revenue').textContent = rev2030 ? formatCurrency(rev2030) : '-';
+                document.getElementById('metric-2030-net-profit').textContent = net2030 ? formatCurrency(net2030) : '-';
+
+                // naive CAGR calc 2026->2030 for revenue and net if available
+                const rev2026 = y2026 ? y2026.revenue : null;
+                const revCagr = (rev2026 && rev2030) ? (Math.pow(rev2030 / rev2026, 1 / 4) - 1) * 100 : null;
+                const net2029 = y2029 ? y2029.net_profit : null; // fallback if 2026 net differs structurally
+                const net2026 = annualData.find(x => x.period === '2026')?.net_profit ?? null;
+                const netCagr = (net2026 && net2030) ? (Math.pow(net2030 / net2026, 1 / 4) - 1) * 100 : null;
+                document.getElementById('metric-2030-revenue-cagr').textContent = revCagr ? `+${revCagr.toFixed(1)}% CAGR` : '';
+                document.getElementById('metric-2030-net-cagr').textContent = netCagr ? `+${netCagr.toFixed(1)}% CAGR` : '';
+
+                // cumulative 5y totals
+                const fiveYears = ['2026', '2027', '2028', '2029', '2030'];
+                const revTotal = annualData.filter(x => fiveYears.includes(x.period)).reduce((a, r) => a + (r.revenue || 0), 0);
+                const netTotal = annualData.filter(x => fiveYears.includes(x.period)).reduce((a, r) => a + (r.net_profit || 0), 0);
+                document.getElementById('metric-5y-rev-total').textContent = formatCurrency(revTotal);
+                document.getElementById('metric-5y-net-total').textContent = formatCurrency(netTotal);
+            }
+        }
+
+        function updateSeasonality() {
+            // Build quarterly summary from monthlyData
+            if (!monthlyData.length) return;
+            const monthToQ = (label) => {
+                const [mon, yr] = label.split(' ');
+                const monthIndex = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].indexOf(mon);
+                const q = Math.floor(monthIndex / 3) + 1;
+                return { year: yr, q };
+            };
+
+            const quarters = {};
+            monthlyData.forEach(row => {
+                const { year, q } = monthToQ(row.period);
+                const key = `Q${q} (${['Jan-Mar','Apr-Jun','Jul-Sep','Oct-Dec'][q-1]})`;
+                if (!quarters[key]) quarters[key] = { revenue: 0, net: 0 };
+                quarters[key].revenue += row.revenue || 0;
+                quarters[key].net += row.net_profit || 0;
+            });
+
+            const container = document.getElementById('seasonality-quarterly');
+            container.innerHTML = '';
+            Object.entries(quarters).forEach(([label, vals]) => {
+                const div = document.createElement('div');
+                div.className = 'quarter-item';
+                div.innerHTML = `
+                    <span>${label}</span>
+                    <div style="text-align: right;">
+                        <div style="font-weight: 500;">${formatCurrency(vals.revenue)} revenue</div>
+                        <div style="font-size: 0.875rem; color: #059669;">${formatCurrency(vals.net)} profit</div>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+
+            // Observations
+            const obs = document.getElementById('seasonality-observations');
+            obs.innerHTML = '';
+            // Detect variability
+            const revs = monthlyData.map(d => d.revenue);
+            const avg = revs.reduce((a, b) => a + b, 0) / revs.length;
+            const stdev = Math.sqrt(revs.reduce((a, b) => a + Math.pow(b - avg, 2), 0) / revs.length);
+            const coeffVar = avg ? stdev / avg : 0;
+
+            const uniform = coeffVar < 0.02; // threshold for "too uniform"
+            const addObs = (cls, title, text) => {
+                const d = document.createElement('div');
+                d.className = `observation ${cls}`;
+                d.innerHTML = `
+                    <p class="observation-title">${title}</p>
+                    <p style="font-size: 0.875rem;">${text}</p>
+                `;
+                obs.appendChild(d);
+            };
+
+            // Use seasonality flag from JSON if available
+            if (window.__seasonalityDetected === true) {
+                addObs('info', 'Seasonality Detected', 'The model identified seasonal patterns and variability across months. Values reflect non-uniform seasonality.');
+            }
+
+            if (uniform) {
+                addObs('warning', 'Low Variability', 'Monthly revenue appears nearly uniform. Consider reviewing seasonality drivers.');
+            } else {
+                // Peak months
+                const maxRev = Math.max(...revs);
+                const peaks = monthlyData.filter(d => d.revenue === maxRev).map(d => d.period);
+                addObs('info', 'Peak Seasons', `Highest activity in: ${peaks.join(', ')}.`);
+            }
+
+            // Address prior concern explicitly
+            addObs('error', "Tas' Prior Concern Addressed", uniform
+                ? 'Monthly figures still appear very similar; deeper seasonality modelling may be needed.'
+                : 'Monthly figures display variability; prior uniformity concern has been addressed in the projections.');
+        }
+
+        async function loadData() {
+            try {
+                // Path is relative to this HTML file
+                const res = await fetch('response.json', { cache: 'no-cache' });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const json = await res.json();
+
+                window.__seasonalityDetected = !!json.seasonality_detected;
+
+                const base = json.projections?.base_case_projections;
+                if (!base) throw new Error('Missing base_case_projections');
+
+                // Monthly
+                const m = base['1_year_ahead'];
+                if (m && m.revenue && m.expenses && m.gross_profit && m.net_profit) {
+                    monthlyData = m.revenue.map((r, i) => ({
+                        period: formatMonth(r.period),
+                        revenue: Number(r.value),
+                        expenses: Number(m.expenses[i]?.value ?? 0),
+                        gross_profit: Number(m.gross_profit[i]?.value ?? 0),
+                        net_profit: Number(m.net_profit[i]?.value ?? 0)
+                    }));
+                }
+
+                // Quarterly
+                const q = base['3_years_ahead'];
+                if (q && q.revenue && q.expenses && q.gross_profit && q.net_profit) {
+                    quarterlyData = q.revenue.map((r, i) => ({
+                        period: r.period.replace('-', ' '), // "2026-Q1" -> "2026 Q1"
+                        revenue: Number(r.value),
+                        expenses: Number(q.expenses[i]?.value ?? 0),
+                        gross_profit: Number(q.gross_profit[i]?.value ?? 0),
+                        net_profit: Number(q.net_profit[i]?.value ?? 0)
+                    }));
+                }
+
+                // Annual
+                const a = base['5_years_ahead'];
+                if (a && a.revenue && a.expenses && a.gross_profit && a.net_profit) {
+                    annualData = a.revenue.map((r, i) => ({
+                        period: String(r.period),
+                        revenue: Number(r.value),
+                        expenses: Number(a.expenses[i]?.value ?? 0),
+                        gross_profit: Number(a.gross_profit[i]?.value ?? 0),
+                        net_profit: Number(a.net_profit[i]?.value ?? 0)
+                    }));
+                }
+
+                // Initialize default view
+                updateMetrics();
+                updateSeasonality();
+                updateCharts();
+                updateTable();
+            } catch (e) {
+                console.error('Failed to load projections:', e);
+                // Render a simple error message in table
+                const tbody = document.getElementById('tableBody');
+                tbody.innerHTML = `<tr><td colspan="7" style="color:#b91c1c">Failed to load projections: ${e.message}</td></tr>`;
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            // attach click handlers to pass event to switchView
+            const btns = document.querySelectorAll('.view-btn');
+            if (btns[0]) btns[0].onclick = (ev) => switchView('monthly', ev);
+            if (btns[1]) btns[1].onclick = (ev) => switchView('quarterly', ev);
+            if (btns[2]) btns[2].onclick = (ev) => switchView('annual', ev);
+
+            loadData();
+        });
+    </script>
+</body>
+</html>
