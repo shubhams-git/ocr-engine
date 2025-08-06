@@ -350,10 +350,16 @@ class EnhancedMultiPDFService:
             
             stage2_time = time.time() - stage2_start
             
+            # Extract CF cache key prepared in Stage 2
+            cf_cache_key = stage2_result.get("cache_key", "cache_failed_cf")
+            if isinstance(cf_cache_key, str) and not cf_cache_key:
+                cf_cache_key = "cache_failed_cf"
+            logger.info(f"📦 Stage 2 CF cache ready: {cf_cache_key}")
+            
             business_stage = stage2_result.get('business_context', {}).get('business_stage', 'Unknown')
             selected_method = stage2_result.get('methodology_evaluation', {}).get('selected_method', {}).get('primary_method', 'Unknown')
             
-            log_stage_progress(logger, "2", "COMPLETED", f"Duration: {stage2_time:.2f}s | Business Stage: {business_stage} | Method: {selected_method} | Model: {analysis_model}")
+            log_stage_progress(logger, "2", "COMPLETED", f"Duration: {stage2_time:.2f}s | Business Stage: {business_stage} | Method: {selected_method} | Model: {analysis_model} | CF Cache: {cf_cache_key}")
             
             # STAGE 3: Projection Engine using Pro Model with Semaphore
             log_stage_progress(logger, "3", "STARTED", f"Projection Service | Model: {analysis_model} | Semaphore: {self.pro_model_semaphore._value}")
@@ -447,11 +453,17 @@ class EnhancedMultiPDFService:
                         'quota_optimization',
                         'modular_service_architecture',
                         'business_context_analysis',
-                        'pattern_recognition', 
+                        'pattern_recognition',
                         'methodology_experimentation',
                         'scenario_planning',
                         'financial_reconciliation'
-                    ]
+                    ],
+                    # New: cache handover bundle for Stage 3 consumers
+                    'stage_cache_keys': {
+                        'pnl': pnl_cache_key,
+                        'balance_sheet': bs_cache_key,
+                        'cash_flow': stage2_result.get('cache_key', 'cache_failed_cf')
+                    }
                 }
             )
             
@@ -526,6 +538,12 @@ class EnhancedMultiPDFService:
             )
         except Exception as e:
             logger.error(f"❌ Unexpected error in multi-file analysis: {str(e)}")
+            # Safely derive cache keys if available
+            stage_cache_keys = {
+                'pnl': locals().get('pnl_cache_key', None),
+                'balance_sheet': locals().get('bs_cache_key', None),
+                'cash_flow': None
+            }
             return MultiPDFAnalysisResponse(
                 success=False,
                 extracted_data=[],
@@ -543,7 +561,9 @@ class EnhancedMultiPDFService:
                 total_data_points=None,
                 time_span=None,
                 seasonality_detected=None,
-                data_analysis_summary=None
+                data_analysis_summary={
+                    'stage_cache_keys': stage_cache_keys
+                }
             )
 
     # Backward compatibility

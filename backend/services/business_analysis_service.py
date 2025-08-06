@@ -21,6 +21,7 @@ from logging_config import (get_logger, log_api_call, log_stage_progress, log_to
 import os
 from services.enhanced_depreciation import EnhancedDepreciationEstimator, DepreciationEstimate
 from services.cash_flow_validator import EnhancedCashFlowValidator, ValidationResult
+from services.multi_pdf_service import GeminiCacheManager
 
 # Set up logger
 logger = get_logger(__name__)
@@ -149,6 +150,9 @@ class BusinessAnalysisService:
             base_tolerance_aud=ENHANCED_CASH_FLOW_CONFIG["quality_validation"]["base_tolerance_aud"],
             base_tolerance_pct=ENHANCED_CASH_FLOW_CONFIG["quality_validation"]["base_tolerance_pct"]
         )
+
+        # Stage 2 cache manager (reuse Gemini explicit caching)
+        self.cache_manager = GeminiCacheManager()
         
         # Configuration
         self.enhanced_config = ENHANCED_CASH_FLOW_CONFIG
@@ -664,14 +668,54 @@ If you use different amounts, provide clear justification for the variance.
                     
                     # Apply enhanced depreciation and validation
                     enhanced_result = self._enhance_cash_flow_with_advanced_depreciation(result, pnl_data, bs_data, expected_periods)
-                    
+
+                    # Persist CF to Gemini cache so Stage 3 can consume it
+                    try:
+                        api_key_for_cache = self.get_next_api_key()
+                        # Ensure minimal required metadata exists before caching
+                        if not isinstance(enhanced_result, dict):
+                            enhanced_result = {}
+                        parent_keys = {
+                            "pnl_cache_key": pnl_cache_key,
+                            "bs_cache_key": bs_cache_key
+                        }
+                        enhanced_result.setdefault("parent_keys", parent_keys)
+                        enhanced_result.setdefault("version", "1.0")
+                        enhanced_result.setdefault("currency", (pnl_data or {}).get("currency") if isinstance(pnl_data, dict) else "AUD")
+                        enhanced_result.setdefault("method_version", "enhanced_indirect_method_v2.1")
+
+                        cache_payload = enhanced_result
+
+                        # Create explicit cache using same manager as Stage 1
+                        cache_display_name = "stage2_cash_flow_data"
+                        # GeminiCacheManager.create_cache_for_stage1_result expects (dict, api_key, document_type)
+                        cf_cache_key = await self.cache_manager.create_cache_for_stage1_result(cache_payload, api_key_for_cache, "Cash Flow")
+
+                        # Attach cf cache key into result
+                        enhanced_result["cache_key"] = cf_cache_key
+                        enhanced_result["parent_keys"] = parent_keys
+
+                        if cf_cache_key and not str(cf_cache_key).startswith("cache_creation_failed"):
+                            logger.info(f"✅ CF cache created for Stage 2: {cf_cache_key}")
+                        else:
+                            logger.warning(f"⚠️ CF cache creation failed, key={cf_cache_key}")
+                            enhanced_result["cache_key"] = f"cache_failed_cf"
+
+                    except Exception as cache_ex:
+                        logger.warning(f"⚠️ Failed to create CF cache for Stage 2: {str(cache_ex)}")
+                        # Ensure a marker so Stage 3 can detect absence
+                        if isinstance(enhanced_result, dict):
+                            enhanced_result["cache_key"] = "cache_failed_cf"
+
                     # Extract key information for logging
                     quality_score = enhanced_result.get('quality', {}).get('global_score', 0)
                     periods_count = len(enhanced_result.get('periods', []))
                     pass_count = enhanced_result.get('quality', {}).get('period_counts', {}).get('pass', 0) if isinstance(enhanced_result.get('quality'), dict) else 0
-                    
+
+                    # Log CF cache availability to confirm readiness for Stage 3
+                    cf_cache_key_log = enhanced_result.get("cache_key", "none")
                     logger.info(f"✅ Enhanced Stage 2 Success: Quality Score: {quality_score:.2f}, "
-                               f"Periods: {periods_count}/{expected_periods}, Passed: {pass_count}")
+                               f"Periods: {periods_count}/{expected_periods}, Passed: {pass_count} | CF Cache: {cf_cache_key_log}")
                     
                     return enhanced_result
                 else:
@@ -718,7 +762,19 @@ If you use different amounts, provide clear justification for the variance.
             }
             
             # Try to enhance even the fallback
-            return self._enhance_cash_flow_with_advanced_depreciation(fallback_result, pnl_data, bs_data, expected_periods)
+            enhanced_fallback_cf = self._enhance_cash_flow_with_advanced_depreciation(fallback_result, pnl_data, bs_data, expected_periods)
+
+            # Attempt to cache even the fallback so Stage 3 still receives a CF cache reference
+            try:
+                api_key_for_cache = self.get_next_api_key()
+                cf_cache_key_fb = await self.cache_manager.create_cache_for_stage1_result(enhanced_fallback_cf, api_key_for_cache, "Cash Flow")
+                enhanced_fallback_cf["cache_key"] = cf_cache_key_fb if cf_cache_key_fb else "cache_failed_cf"
+                logger.info(f"🛟 Fallback CF cache persisted: {enhanced_fallback_cf['cache_key']}")
+            except Exception as fb_ex:
+                logger.warning(f"⚠️ Failed to cache fallback CF: {str(fb_ex)}")
+                enhanced_fallback_cf["cache_key"] = "cache_failed_cf"
+
+            return enhanced_fallback_cf
                 
         except Exception as e:
             logger.error(f"❌ Enhanced Stage 2 analysis failed: {str(e)}")
@@ -757,6 +813,14 @@ If you use different amounts, provide clear justification for the variance.
                 "enhancement_attempted": True,
                 "data_loss_critical": True
             }
+
+            # Best-effort cache for exception fallback
+            try:
+                api_key_for_cache = self.get_next_api_key()
+                cf_cache_key_exc = await self.cache_manager.create_cache_for_stage1_result(enhanced_fallback, api_key_for_cache, "Cash Flow")
+                enhanced_fallback["cache_key"] = cf_cache_key_exc if cf_cache_key_exc else "cache_failed_cf"
+            except Exception:
+                enhanced_fallback["cache_key"] = "cache_failed_cf"
             
             return enhanced_fallback
 

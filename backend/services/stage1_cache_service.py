@@ -267,8 +267,24 @@ class Stage1CacheService:
                 logger.error(f"Stage 2 JSON parsing failed: {str(e)} | First 200 chars: {text[:200]}")
                 raise HTTPException(status_code=502, detail="Failed to parse Stage 2 model JSON response")
 
-            log_stage_progress(logger, "2", "COMPLETED", 
+            log_stage_progress(logger, "2", "COMPLETED",
                              f"Cash Flow Reconstruction complete | Periods: {generated_periods}/{expected_periods}")
+
+            # Create CF cache so /test/stage2 can hand over three caches to Stage 3 later
+            try:
+                from services.multi_pdf_service import GeminiCacheManager
+                cache_manager = GeminiCacheManager()
+                cache_api_key = get_next_key()
+                # Persist the full Stage 2 CF JSON; tag as "Cash Flow" for display consistency
+                cf_cache_key = await cache_manager.create_cache_for_stage1_result(result, cache_api_key, "Cash Flow")
+                if isinstance(result, dict):
+                    result["cache_key"] = cf_cache_key if cf_cache_key else "cache_failed_cf"
+                logger.info(f"📦 Test Stage 2 CF cache created: {result.get('cache_key', 'cache_failed_cf')}")
+            except Exception as cache_ex:
+                logger.warning(f"⚠️ Test Stage 2 CF caching failed: {str(cache_ex)}")
+                if isinstance(result, dict):
+                    result["cache_key"] = "cache_failed_cf"
+
             return result
 
         except HTTPException:
@@ -324,6 +340,7 @@ async def stage2_from_two_csvs(files_data: List[Tuple[str, bytes]], requested_mo
         "cache_keys": {
             "pnl": pnl_cache_key,
             "balance_sheet": bs_cache_key,
+            "cash_flow": (cash_flow.get("cache_key") if isinstance(cash_flow, dict) else None) or "cache_failed_cf",
         },
         "cash_flow": cash_flow,
     }
