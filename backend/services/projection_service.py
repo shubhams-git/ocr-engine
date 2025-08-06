@@ -13,7 +13,7 @@ from fastapi import HTTPException
 from google import genai
 from config import get_next_key, API_KEYS, API_TIMEOUT, MAX_RETRIES, RETRY_DELAY
 from prompts import STAGE3_PROJECTION_PROMPT
-from logging_config import (get_logger, log_api_call, log_stage_progress)
+from logging_config import (get_logger, log_api_call, log_stage_progress, log_token_usage)
 
 # Set up logger
 logger = get_logger(__name__)
@@ -100,6 +100,16 @@ class ProjectionService:
                 
                 elapsed_time = time.time() - start_time
                 response_text = self.extract_response_text(response)
+
+                # Token usage logging per Gemini token docs
+                try:
+                    usage = getattr(response, "usage_metadata", None)
+                    in_tok = getattr(usage, "input_token_count", None) if usage else None
+                    out_tok = getattr(usage, "output_token_count", None) if usage else None
+                    total_tok = getattr(usage, "total_token_count", None) if usage else None
+                    log_token_usage(logger, operation_name, model, in_tok, out_tok, total_tok)
+                except Exception:
+                    pass
                 
                 # Log the full raw response for debugging (controlled by debug flag)
                 if self.debug_responses:

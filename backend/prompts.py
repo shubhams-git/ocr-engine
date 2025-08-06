@@ -37,326 +37,477 @@ CRITICAL OUTPUT REQUIREMENTS:
 
 Output only valid JSON that can be parsed directly."""
 
-# STAGE 1: Enhanced Data Extraction, Normalization, and Quality Assessment
+# STAGE 1: Financial Data Extraction and Standardization
 STAGE1_EXTRACTION_PROMPT = """
-You are a financial data expert specializing in document processing and data quality assessment.
+You are a financial data extraction expert specializing in document processing and standardization.
 
-TASK: Process this single financial document for comprehensive analysis preparation.
+TASK: Extract and normalize financial data from this document into standardized schemas for downstream cash flow reconstruction and analysis. The output will be used to generate cash flow data and later for the finance projections, so high accuracy in data extraction is a must.
 
-REQUIREMENTS:
-1. **Document Classification**: Identify document type (Profit & Loss, Balance Sheet, Cash Flow, Other)
-2. **Data Extraction**: Extract ALL key financial metrics with time periods
-3. **Quality Assessment**: Evaluate data completeness, identify gaps and anomalies
-4. **Normalization**: Align to Australian Financial Year (July-June), standardize formats
-5. **Anomaly Detection**: Flag unusual values, inconsistencies, data quality issues
+CRITICAL BUSINESS CONTEXT:
+Different businesses use varying chart of accounts, but certain high-level categories are universally present. There could be multiple sub-fields that maybe the sub-part of the fields given below and when these subfields get added they give the sum of the following fields. Your task is to extract ALL available data and map it to these GUARANTEED STANDARD FIELDS that exist across all businesses:
 
-AUSTRALIAN CONTEXT:
-- Financial Year runs July 1 to June 30 (FY2025 = July 1, 2024 to June 30, 2025)
-- Consider Australian business cycles and patterns
-- Detect seasonal patterns typical to Australian markets
+GUARANTEED P&L STANDARD FIELDS ( 1-10 fields given below - only include if document contains P&L data):
+1. Revenue (Sales, Turnover, Income, Total Revenue)
+2. Cost of Sales (COGS, Cost of Goods Sold, Direct Costs)
+3. Gross Profit (Gross Margin, Gross Income)
+4. Operating Expenses (Total Expenses, Total OpEx, Overhead, Admin Expenses)
+5. Operating Profit (EBIT, Operating Income, EBITDA before D&A)
+6. Interest Expenses (Finance Costs, Interest Paid, Borrowing Costs)
+7. Earnings Before Tax (EBT, Profit Before Tax, Pre-tax Income)
+8. Tax Expenses (Income Tax, Tax Provision, Corporate Tax)
+9. Earnings After Tax (EAT, Profit After Tax, After-tax Income)
+10. Net Income (Net Profit, Bottom Line, Final Profit)
 
-OUTPUT REQUIREMENTS:
-Return ONLY valid JSON with this exact structure:
+GUARANTEED BALANCE SHEET STANDARD FIELDS (11-25 fields given below - only include if document contains BS data):
+ASSETS:
+11. Cash & Cash Equivalents (Cash, Bank, Liquid Assets, Short-term Investments)
+12. Accounts Receivable (Trade Debtors, AR, Customer Receivables)
+13. Inventory (Stock, Work in Progress, Finished Goods)
+14. Total Current Assets (Current Assets, Short-term Assets)
+15. Fixed Assets Net (PPE Net, Property Plant Equipment, Non-current Assets)
+16. Total Assets
 
+LIABILITIES:
+17. Accounts Payable (Trade Creditors, AP, Supplier Payables)
+18. Short Term Debt (Current Portion Debt, Bank Overdraft, Current Borrowings)
+19. Total Current Liabilities (Current Liabilities, Short-term Liabilities)
+20. Long Term Debt (Long-term Borrowings, Non-current Debt)
+21. Total Liabilities
+
+EQUITY:
+22. Share Capital (Paid-in Capital, Issued Capital, Owner's Capital)
+23. Retained Earnings (Accumulated Profits, Reserves, Undistributed Profits)
+24. Total Equity (Shareholders' Equity, Owner's Equity, Net Worth)
+25. Total Liabilities and Equity
+
+EXTRACTION METHODOLOGY:
+1. **COMPREHENSIVE EXTRACTION**: Extract ALL line items, sub-accounts, and detailed breakdowns from the document
+2. **STANDARD FIELD MAPPING**: Map extracted items to the 25 guaranteed standard fields above
+3. **ANOMALY DETECTION**: Identify and flag data quality issues, inconsistencies, and unusual values
+4. **DATA CLEANING**: Clean and standardize numeric formats, handle negatives in parentheses, resolve data type issues
+5. **CONSISTENCY VALIDATION**: Ensure mathematical relationships hold (e.g., for Balance sheet: Assets = Liabilities + Equity)
+
+CSV PARSING INSTRUCTIONS:
+For CSV files, pay special attention to:
+- **Row Headers**: Look for account names in the first column (eg. Revenue, COGS, Cash, etc.)
+- **Column Headers**: Identify date columns (eg. Jan-19, Feb-19, etc.) 
+- **Quoted Currency Values**: Strip quotes and dollar signs from values like "$1,234.56" → 1234.56
+- **Negative Parentheses**: Convert (1,234) to -1234
+- **Empty Cells**: Treat as null, don't assume zero
+- **Account Mapping**: Map CSV row names to standard fields using the guaranteed fields list
+
+DATA QUALITY AND ANOMALY DETECTION:
+Actively look for and flag these common issues:
+- Make sure the extraction happens for all the data points. No datapoint should be skipped (an entry for each date column)
+- Negative values in unexpected fields (flag as "negative_value")
+- Missing critical standard fields (flag as "missing_data")
+- Mathematical inconsistencies (e.g., for P&L statements: Gross Profit ≠ Revenue - COGS)
+- Outlier values that deviate significantly from typical ranges
+- Sign convention issues (expenses as negative vs positive)
+- Formatting inconsistencies in numbers (commas, decimals, currency symbols)
+- Suspense accounts or unclassified balances
+- (Only valid for BS, not for P&L) Balance sheet imbalances (Assets ≠ Liabilities + Equity)
+- **CSV-specific**: Row/column mapping failures, date parsing issues
+
+DOCUMENT TYPE DETECTION:
+🎯 FIRST, determine if this document contains:
+- "Profit and Loss" data (Revenue, Expenses, Profit/Loss items)
+- "Balance Sheet" data (Assets, Liabilities, Equity items)
+
+CRITICAL JSON OUTPUT REQUIREMENTS:
+🚨 BEFORE YOU RESPOND, VERIFY YOUR OUTPUT IS VALID JSON 🚨
+
+Return ONLY valid JSON conforming to this CONDITIONAL structure based on document type:
+
+**FOR PROFIT & LOSS DOCUMENTS:**
 {
-  "document_type": "Profit and Loss|Balance Sheet|Cash Flow|Other",
-  "source_filename": "detected filename or identifier",
-  "data_quality_assessment": {
-    "completeness_score": 0.0-1.0,
-    "total_periods": number,
-    "period_range": "YYYY-MM to YYYY-MM",
-    "data_gaps": ["list of missing periods"],
-    "anomalies_detected": [
-      {"type": "negative_value|outlier|inconsistency", "field": "field_name", "value": value, "description": "explanation"}
-    ],
-    "consistency_issues": ["list of cross-field inconsistencies"],
-    "quality_flags": ["insufficient_data|high_volatility|seasonal_patterns|other"]
+  "version": "1.0",
+  "company_id": "detected_from_document_or_unknown",
+  "currency": "AUD|USD|other_detected_currency", 
+  "generated_at": "current_timestamp_iso8601",
+  "document_type": "Profit and Loss",
+  "meta": {
+    "source_manifest_hash": "document_identifier_or_filename",
+    "coverage_score": 0.0_to_1.0_representing_data_completeness
   },
-  "normalized_time_series": {
-    "revenue": [{"period": "YYYY-MM", "value": number, "source": "extracted|interpolated"}],
-    "gross_profit": [{"period": "YYYY-MM", "value": number, "source": "extracted|calculated"}],
-    "expenses": [{"period": "YYYY-MM", "value": number, "source": "extracted|interpolated"}],
-    "net_profit": [{"period": "YYYY-MM", "value": number, "source": "extracted|calculated"}],
-    "assets": [{"period": "YYYY-MM", "value": number, "source": "extracted"}],
-    "liabilities": [{"period": "YYYY-MM", "value": number, "source": "extracted"}],
-    "equity": [{"period": "YYYY-MM", "value": number, "source": "extracted|calculated"}],
-    "cash_flow": [{"period": "YYYY-MM", "value": number, "source": "extracted"}]
-  },
-  "basic_context": {
-    "currency_detected": "AUD|USD|other",
-    "business_indicators": ["industry clues from document"],
-    "reporting_frequency": "monthly|quarterly|yearly",
-    "latest_period": "YYYY-MM"
-  },
-  "processing_notes": "Brief explanation of normalization steps, gap filling, or data adjustments made"
-}
-
-CRITICAL VALIDATION:
-- Ensure all monetary values are numbers (not strings)
-- Fill gaps conservatively using interpolation or trend analysis
-- Flag any concerning anomalies for downstream analysis
-- Maintain data integrity while standardizing formats
-"""
-
-# STAGE 2: Comprehensive Business Analysis and Methodology Selection
-STAGE2_ANALYSIS_PROMPT = """
-You are a senior financial analyst and data scientist with expertise in business intelligence, trend analysis, and forecasting methodology selection.
-
-TASK: Perform comprehensive analysis of aggregated financial data to prepare for accurate projections.
-
-INPUT: $aggregated_stage1_json
-
-ANALYSIS FRAMEWORK:
-Reason step-by-step through these components:
-
-1. **BUSINESS CONTEXT MODULE**
-   - Industry Classification: Analyze metrics, account names, patterns to classify industry
-   - Business Stage Assessment: Determine if startup/growth/mature based on financial patterns
-   - Geographic Market: Confirm Australian market characteristics
-   - Competitive Landscape: Infer market position from financial performance
-
-2. **CONTEXTUAL ANALYSIS LAYER**
-   - Business Maturity: Growth patterns, financial stability indicators
-   - Seasonality Detection: Identify recurring patterns, peak/trough periods
-   - Anomaly Identification: Significant deviations, one-time events, data quality issues
-   - Economic Cycle Position: Where business sits in economic/industry cycles
-
-3. **PATTERN RECOGNITION & TREND ANALYSIS**
-   - Growth Rate Calculations: CAGR, period-over-period, trend analysis
-   - Financial Ratio Analysis: Profit margins, efficiency ratios, leverage ratios
-   - Working Capital Trends: Cash conversion, liquidity patterns
-   - Correlation Analysis: Relationships between key metrics
-   - Volatility Assessment: Stability of key financial metrics
-
-4. **METHODOLOGY EXPERIMENTATION**
-   - Test Multiple Forecasting Methods:
-     * Time Series Analysis (ARIMA, SARIMA, Prophet) - for sufficient data
-     * Industry Benchmark-Based - for limited data
-     * Driver-Based Modeling - for correlated metrics
-     * Exponential Smoothing - for trend-based projections
-   - Model Evaluation: Compare MAPE, RMSE, AIC, cross-validation scores
-   - Method Selection: Choose optimal approach with clear justification
-
-5. **DRIVER DEFINITION AND FINANCIAL STRUCTURE ANALYSIS**
-   - Define Specific Revenue Drivers: Identify key factors driving revenue growth
-   - Analyze Cost Structure: Determine fixed vs variable costs and their drivers
-   - Calculate Working Capital Ratios: DSO, DPO, DIO from historical data
-   - Assess Capital Requirements: Maintenance and growth capex needs
-   - Document Relationships: How each driver impacts financial projections
-
-**CRITICAL ASSUMPTION REQUIREMENTS:**
-For each forecast driver, you MUST provide specific, concrete assumptions rather than vague statements:
-- INSTEAD OF: "Requires assumption on market growth"
-- PROVIDE: "Assume 5% annual revenue growth based on Australian professional services sector trends"
-- INSTEAD OF: "Cost escalation needed"
-- PROVIDE: "Assume 3.5% annual cost inflation based on Australian CPI forecasts"
-- INSTEAD OF: "Working capital optimization possible"
-- PROVIDE: "Target DSO reduction from 45 days to 35 days over 3 years through process improvements"
-
-You must justify each assumption with available data, industry benchmarks, or reasonable business logic.
-
-6. **EXTERNAL DATA INTEGRATION ASSESSMENT**
-   - Data Sufficiency: Determine if external benchmarks needed
-   - Industry Benchmarks: Identify relevant comparison metrics
-   - Economic Indicators: Australian GDP growth, inflation, industry trends
-   - Competitive Intelligence: Market growth rates, industry performance
-
-7. **CONFIDENCE FACTORS ANALYSIS**
-   - Data Availability: Volume, completeness, recency of data
-   - Historical Consistency: Stability of patterns and trends
-   - Industry Volatility: Sector-specific risk factors
-   - Projection Horizon: Confidence degradation over time
-
-OUTPUT REQUIREMENTS:
-Return ONLY valid JSON with this structure:
-
-{
-  "business_context": {
-    "industry_classification": "detected industry",
-    "business_stage": "startup|growth|mature|decline",
-    "market_geography": "Australian",
-    "competitive_position": "market_leader|established|emerging|struggling",
-    "business_model_type": "service|product|mixed|other"
-  },
-  "contextual_analysis": {
-    "maturity_assessment": {
-      "revenue_stability": "high|medium|low",
-      "growth_consistency": "stable|volatile|declining",
-      "financial_health": "strong|moderate|weak"
-    },
-    "seasonality_patterns": {
-      "seasonal_detected": true|false,
-      "peak_periods": ["list of peak months/quarters"],
-      "trough_periods": ["list of low months/quarters"],
-      "seasonal_amplitude": 0.0-1.0,
-      "australian_fy_alignment": "strong|moderate|weak"
-    },
-    "anomaly_identification": [
-      {"period": "YYYY-MM", "metric": "field", "anomaly_type": "spike|drop|inconsistency", "impact": "high|medium|low", "explanation": "rationale"}
-    ]
-  },
-  "pattern_analysis": {
-    "growth_rates": {
-      "revenue_cagr": number,
-      "profit_cagr": number,
-      "recent_growth_trend": "accelerating|stable|decelerating|declining"
-    },
-    "financial_ratios": {
-      "profit_margin_trend": "improving|stable|declining",
-      "roa_trend": "improving|stable|declining",
-      "efficiency_indicators": {"trend": "improving|stable|declining", "current_level": "high|medium|low"}
-    },
-    "working_capital": {
-      "trend": "improving|stable|deteriorating",
-      "cash_conversion_cycle": "shortening|stable|lengthening"
-    },
-    "correlation_insights": [
-      {"metrics": ["metric1", "metric2"], "correlation": number, "strength": "strong|moderate|weak", "business_meaning": "explanation"}
-    ],
-    "volatility_assessment": {
-      "revenue_volatility": "low|medium|high",
-      "profit_volatility": "low|medium|high",
-      "overall_stability": "stable|moderate|volatile"
+  "periods": [
+    {
+      "period": "YYYY_or_YYYY-MM_format",
+      "revenue": numeric_value_REQUIRED,
+      "cogs": numeric_value_or_null,
+      "gross_profit": numeric_value_or_calculated,
+      "opex": {
+        "total": numeric_value_or_null,
+        "breakdown": {
+          "salaries": numeric_value_or_null,
+          "rent": numeric_value_or_null,
+          "utilities": numeric_value_or_null,
+          "marketing": numeric_value_or_null,
+          "professional_fees": numeric_value_or_null,
+          "other": numeric_value_or_null
+        }
+      },
+      "ebitda": numeric_value_or_calculated,
+      "depreciation": numeric_value_or_null,
+      "amortization": numeric_value_or_null,
+      "interest": numeric_value_or_null,
+      "taxes": numeric_value_or_null,
+      "net_income": numeric_value_REQUIRED,
+      "notes": "string_description_of_notable_items",
+      "flags": ["array_of_enum_codes"],
+      "confidence": 0.0_to_1.0_confidence_score,
     }
-  },
-  "methodology_evaluation": {
-    "methods_tested": [
-      {
-        "method": "ARIMA|Prophet|LinearRegression|ExponentialSmoothing|BenchmarkBased",
-        "evaluation_metrics": {"mape": number, "rmse": number, "r_squared": number},
-        "suitability_score": 0.0-1.0,
-        "strengths": ["list of advantages"],
-        "limitations": ["list of constraints"]
-      }
-    ],
-    "selected_method": {
-      "primary_method": "method name",
-      "rationale": "detailed explanation of selection",
-      "confidence_level": "high|medium|low",
-      "fallback_method": "backup approach if primary fails"
-    },
-    "data_requirements": {
-      "minimum_data_points": number,
-      "data_quality_threshold": 0.0-1.0,
-      "external_data_needed": true|false
-    }
-  },
-  "external_integration": {
-    "benchmark_requirements": {
-      "industry_benchmarks_needed": true|false,
-      "economic_indicators_required": ["list of indicators"],
-      "peer_comparison_value": "high|medium|low|none"
-    },
-    "data_sufficiency": {
-      "internal_data_adequate": true|false,
-      "external_supplementation": "critical|helpful|unnecessary",
-      "risk_of_external_bias": "high|medium|low"
-    }
-  },
-  "confidence_assessment": {
-    "overall_confidence": "high|medium|low",
-    "confidence_factors": {
-      "data_volume": "sufficient|limited|insufficient",
-      "data_consistency": "high|medium|low",
-      "pattern_clarity": "clear|moderate|unclear",
-      "industry_stability": "stable|moderate|volatile"
-    },
-    "projection_confidence_by_horizon": {
-      "1_year": "high|medium|low|very_low",
-      "3_years": "high|medium|low|very_low",
-      "5_years": "high|medium|low|very_low",
-      "10_years": "high|medium|low|very_low",
-      "15_years": "high|medium|low|very_low"
-    }
-  },
-  "forecast_drivers": {
-    "revenue_drivers": [
-      {
-        "driver_name": "Primary revenue driver (e.g., contract volume, customer growth)",
-        "driver_type": "volume|price|mix|market_share",
-        "baseline_value": "SPECIFIC NUMERIC VALUE with units (e.g., $$50,000/month, 120 customers)",
-        "growth_assumptions": "SPECIFIC RATE AND PATTERN (e.g., 5% annual growth, 2% monthly compound)",
-        "seasonality_factors": "SPECIFIC SEASONAL ADJUSTMENTS (e.g., +15% in Q2, -10% in Q4)",
-        "justification": "DATA-BASED RATIONALE for this assumption"
-      }
-    ],
-    "cost_drivers": [
-      {
-        "driver_name": "Cost of goods sold driver",
-        "driver_type": "percentage_of_revenue|fixed_cost|variable_cost",
-        "baseline_value": "SPECIFIC BASELINE (e.g., 65% of revenue, $$25,000/month fixed)",
-        "escalation_rate": "SPECIFIC ANNUAL INCREASE (e.g., 3.5% annual inflation)",
-        "relationship_to_revenue": "SPECIFIC SCALING RELATIONSHIP (e.g., 1:1 with revenue, fixed regardless of revenue)",
-        "justification": "DATA-BASED RATIONALE for this assumption"
-      }
-    ],
-    "opex_drivers": [
-      {
-        "driver_name": "Operating expense driver",
-        "driver_type": "fixed|variable|stepped",
-        "baseline_value": "SPECIFIC MONTHLY/ANNUAL BASELINE (e.g., $$15,000/month, $$180,000/year)",
-        "inflation_rate": "SPECIFIC INFLATION ADJUSTMENT (e.g., 3.2% annual based on Australian CPI)",
-        "scalability": "SPECIFIC SCALING PATTERN (e.g., +$$5,000 per additional $$100k revenue)",
-        "justification": "DATA-BASED RATIONALE for this assumption"
-      }
-    ]
-  },
-  "working_capital_assumptions": {
-    "accounts_receivable": {
-      "days_sales_outstanding": "SPECIFIC DSO VALUE (e.g., 45 days from historical average)",
-      "collection_pattern": "SPECIFIC TIMING (e.g., 60% within 30 days, 30% within 60 days, 10% within 90 days)",
-      "bad_debt_provision": "SPECIFIC PERCENTAGE (e.g., 2.5% of revenue based on historical losses)",
-      "justification": "DATA-BASED RATIONALE for DSO assumption"
-    },
-    "accounts_payable": {
-      "days_payables_outstanding": "SPECIFIC DPO VALUE (e.g., 30 days from historical average)",
-      "payment_pattern": "SPECIFIC TIMING (e.g., pay within 28 days to capture 2% discount)",
-      "supplier_terms": "SPECIFIC TERMS (e.g., Net 30 with 2/10 discount available)",
-      "justification": "DATA-BASED RATIONALE for DPO assumption"
-    },
-    "inventory": {
-      "days_inventory_outstanding": "SPECIFIC DIO VALUE (e.g., 60 days or N/A for service business)",
-      "inventory_turnover": "SPECIFIC TURNOVER RATE (e.g., 6x annually or N/A for service business)",
-      "seasonal_variations": "SPECIFIC SEASONAL CHANGES (e.g., +20% in Q4, -15% in Q1)",
-      "justification": "DATA-BASED RATIONALE for inventory assumption"
-    },
-    "cash_conversion_cycle": {
-      "current_cycle_days": "SPECIFIC CALCULATION (e.g., DSO 45 + DIO 60 - DPO 30 = 75 days)",
-      "target_optimization": "SPECIFIC IMPROVEMENTS (e.g., reduce to 60 days by Year 3)",
-      "working_capital_intensity": "SPECIFIC PERCENTAGE (e.g., 12% of revenue based on historical analysis)",
-      "justification": "DATA-BASED RATIONALE for working capital assumptions"
-    }
-  },
-  "capital_expenditure_assumptions": {
-    "maintenance_capex": {
-      "annual_rate": "% of revenue or fixed amount",
-      "asset_categories": ["types of assets requiring maintenance"],
-      "depreciation_method": "straight_line|declining_balance"
-    },
-    "growth_capex": {
-      "expansion_requirements": "capex needed for growth initiatives",
-      "timing": "when capex will be required",
-      "financing_approach": "debt|equity|cash_flow"
-    }
-  },
-  "handover_recommendations": {
-    "primary_recommendations": ["key guidance for projection stage"],
-    "risk_adjustments": ["adjustments needed due to identified risks"],
-    "scenario_considerations": ["factors for optimistic/conservative scenarios"],
-    "validation_priorities": ["key areas requiring validation in projections"],
-    "assumption_constraints": ["limitations to document in assumptions"]
-  },
-  "key_assumptions": [
-    "list of critical assumptions identified in analysis"
   ]
 }
 
-REASONING REQUIREMENTS:
-- Provide clear chain-of-thought reasoning in all assessment fields
-- Justify methodology selection with quantitative metrics where possible
-- Consider Australian business environment and FY cycles throughout
-- Balance internal data insights with external market realities
-- Prioritize accuracy and transparency in all evaluations
+**FOR BALANCE SHEET DOCUMENTS:**
+{
+  "version": "1.0",
+  "company_id": "detected_from_document_or_unknown",
+  "currency": "AUD|USD|other_detected_currency",
+  "generated_at": "current_timestamp_iso8601", 
+  "document_type": "Balance Sheet",
+  "meta": {
+    "source_manifest_hash": "document_identifier_or_filename",
+    "coverage_score": 0.0_to_1.0_representing_data_completeness
+  },
+  "periods": [
+    {
+      "period": "YYYY_or_YYYY-MM_format",
+      "cash": numeric_value_REQUIRED,
+      "ar": numeric_value_or_null,
+      "inventory": numeric_value_or_null,
+      "other_current_assets": numeric_value_or_null,
+      "current_assets_total": numeric_value_or_calculated,
+      "fixed_assets_gross": numeric_value_or_null,
+      "accumulated_depreciation": numeric_value_or_null,
+      "fixed_assets_net": numeric_value_or_calculated,
+      "total_assets": numeric_value_REQUIRED,
+      "ap": numeric_value_or_null,
+      "short_term_debt": numeric_value_or_null,
+      "other_current_liabilities": numeric_value_or_null,
+      "current_liabilities_total": numeric_value_or_calculated,
+      "long_term_debt": numeric_value_or_null,
+      "equity": numeric_value_REQUIRED,
+      "retained_earnings": numeric_value_or_null,
+      "total_liabilities_equity": numeric_value_REQUIRED,
+      "suspense": numeric_value_or_null,
+      "notes": "string_description_of_notable_items",
+      "flags": ["array_of_enum_codes"],
+      "confidence": 0.0_to_1.0_confidence_score,
+    }
+  ]
+}
+
+**FOR MIXED OR OTHER DOCUMENTS:**
+Include only the fields that are actually present in the document. Use null for missing fields but focus your extraction effort on the fields that exist.
+
+ENUMERATED FLAG CODES (use these exact strings):
+- "PNL_INCOMPLETE": Critical P&L fields missing
+- "BS_INCOMPLETE": Critical Balance Sheet fields missing  
+- "ESTIMATED_DEP": Depreciation estimated or inferred
+- "ANOMALOUS_MARGIN": Unusual profit margins detected
+- "NEG_CURR_LIAB": Negative current liabilities anomaly
+- "SUSPENSE_PRESENT": Suspense or unclassified accounts detected
+- "SIGN_CONVENTION_FLIPPED": Sign corrections applied
+
+CRITICAL VALIDATIONS BEFORE OUTPUT:
+✅ All monetary values must be numbers (not strings)
+✅ All required fields present per schema
+✅ Extraction done for all data points (each date column that exists in the file)
+✅ All flags use exact enum codes listed above
+✅ JSON structure exactly matches specification
+✅ No markdown code blocks or extra text
+
+EXTRACTION PERFORMANCE OPTIMIZATION:
+🎯 **Focus on Primary Fields**: Prioritize extracting these key fields accurately:
+- P&L Documents: Revenue, COGS, Gross Profit, Total Expenses, Net Income
+- Balance Sheet Documents: Cash, Total Assets, Total Liabilities, Total Equity
+- **Aim for 80%+ coverage** of available data in the document
+
+💡 **CSV Row Mapping Examples**:
+- "Sales", "Revenue", "Income", "Turnover" → revenue
+- "Cost of Sales", "COGS", "Direct Costs" → cogs  
+- "Cash at Bank", "Cash", "Bank Account" → cash
+- "Total Assets", "Assets", "Total Current + Fixed Assets" → total_assets
+- "Owner's Equity", "Shareholders Equity", "Net Worth" → equity
+
+🔍 **Quality Checks Before Output**:
+1. Did I extract the primary fields for this document type?
+2. Are all numeric values properly converted (no strings, quotes, or currency symbols)?
+3. Does the document_type match the actual content?
+4. Did I generate data points for all the given dates?
+4. Is the coverage_score realistic (0.7+ for good extraction)?
+
+🚨 FINAL REMINDER: OUTPUT ONLY THE JSON OBJECT - NO OTHER TEXT 🚨
+Your response must start with { and end with } - nothing else.
+"""
+
+# STAGE 2: Enhanced Cash Flow Reconstruction (Indirect Method) with Advanced Depreciation
+STAGE2_CASH_FLOW_RECONSTRUCTION_PROMPT = """
+You are a financial cash flow reconstruction specialist with expertise in the indirect method, depreciation estimation, and financial statement validation.
+
+TASK: Produce validated historical Cash Flow Statement (Operating, Investing, Financing) using Stage 1 P&L and Balance Sheet standard data with enhanced depreciation analysis. The output will be used (along with Balance Sheet and P&L Income statements data) to generate the finance projections, so high accuracy in cash flow data generation is a must.
+
+INPUT CONTEXT: You will receive cached P&L and Balance Sheet data from Stage 1. This data has been explicitly cached using Gemini caching and validated against standard schemas.
+
+CRITICAL REQUIREMENT: Process ALL periods from the input data, regardless of dataset size (1 month to 10+ years).
+
+INPUT: 
+- P&L Standard JSON (cache_key: $pnl_cache_key)
+- Balance Sheet Standard JSON (cache_key: $bs_cache_key)
+
+ENHANCED CASH FLOW RECONSTRUCTION METHODOLOGY:
+Use the INDIRECT METHOD with ENHANCED DEPRECIATION ESTIMATION to reconstruct historical cash flows:
+
+**Operating Cash Flow** = Net Income + Enhanced Depreciation Estimate ± Working Capital Changes
+**Investing Cash Flow** = Capital Expenditures - Asset Disposals  
+**Financing Cash Flow** = ΔLong-Term Debt + ΔEquity - Dividends/Distributions
+
+ENHANCED DEPRECIATION ESTIMATION (CRITICAL IMPROVEMENT):
+Instead of using flat rates like $850/month, apply INTELLIGENT DEPRECIATION ESTIMATION:
+
+1. **PRIMARY METHOD - Asset Roll-Forward Analysis**:
+   - Analyze Fixed Assets Net movements period-to-period
+   - Calculate: Depreciation = Beginning FA + Capex - Ending FA - Disposals
+   - Validate against accumulated depreciation changes (if available)
+
+2. **SECONDARY METHOD - Progressive Asset-Based Rates**:
+   - Small Equipment (<$100k): 15% annual rate (high depreciation)
+   - Medium Equipment ($100k-$300k): 10% annual rate (moderate depreciation)  
+   - Large Equipment ($300k-$600k): 7% annual rate (standard depreciation)
+   - Infrastructure (>$600k): 4% annual rate (conservative depreciation)
+
+3. **VALIDATION CHECKS**:
+   - Ensure annual depreciation rate is between 2%-25%
+   - Cross-check against typical industry depreciation patterns
+   - Flag unrealistic depreciation amounts for review
+
+DETAILED CALCULATION FRAMEWORK:
+
+1. **OPERATING ACTIVITIES RECONSTRUCTION**:
+   - Start with Net Income from P&L
+   - Add back ENHANCED depreciation estimate (not flat $850)
+   - Calculate Working Capital Changes:
+     * ΔAccounts Receivable (negative impact on cash)
+     * ΔInventory (negative impact on cash)
+     * ΔAccounts Payable (positive impact on cash)
+     * ΔOther Current Assets/Liabilities
+
+2. **INVESTING ACTIVITIES RECONSTRUCTION**:
+   - Calculate Capital Expenditures using enhanced method:
+     * Basic: ΔFixed Assets + Enhanced Depreciation
+     * Advanced: Analyze asset additions/disposals patterns
+   - Identify Asset Disposals from negative capex periods
+   - Include other investment activities
+
+3. **FINANCING ACTIVITIES RECONSTRUCTION**:
+   - Debt Changes: ΔShort-Term Debt + ΔLong-Term Debt
+   - Equity Changes: ΔEquity - ΔRetained Earnings from operations
+   - Dividend/Distribution Estimation with ENHANCED LOGIC:
+     * If large financing outflows without debt reduction → likely owner drawings
+     * Cross-validate against profitability patterns
+     * Consider business lifecycle stage
+
+4. **VALIDATION & RECONCILIATION**:
+   The primary invariant: **Operating + Investing + Financing = ΔCash** (from Balance Sheet)
+   
+   Apply VARIANCE CLASSIFICATION instead of defaulting to "RECLASS_DRAWINGS":
+   
+   **TOLERANCE FRAMEWORK**:
+   - Base tolerance: $1,000 AUD or 2% of |ΔCash|, whichever is greater
+   - Adjust tolerance based on depreciation estimation confidence:
+     * High confidence depreciation (80%+): Standard tolerance
+     * Medium confidence (60-80%): 2x tolerance  
+     * Low confidence (<60%): 3x tolerance
+   
+   **VARIANCE CLASSIFICATION**:
+   - **PASS** (within tolerance): Mark as reconciled, high quality
+   - **WARN** (within 2x tolerance): Apply intelligent classification:
+     * Owner drawings pattern: Large FCF outflows with positive NI
+     * Data quality issues: Poor depreciation confidence + moderate variance
+     * Working capital anomalies: Large WC movements explain variance
+     * Calculation errors: Residual classification for other warnings
+   - **FAIL** (>2x tolerance): Investigation required, mark for review
+
+ENHANCED ANOMALY DETECTION AND FLAGS:
+Look for and intelligently classify these patterns:
+- **RECLASS_DRAWINGS**: Only when clear owner drawing patterns exist
+- **DATA_QUALITY_ISSUE**: When poor estimation confidence affects results
+- **WC_ANOMALY**: When working capital movements are irregular
+- **DEPR_ESTIMATED**: When using estimated vs actual depreciation
+- **INVESTIGATION_REQUIRED**: For large unexplained variances
+
+CRITICAL JSON OUTPUT REQUIREMENTS:
+🚨 Return ONLY valid JSON conforming to the Enhanced Cash Flow Standard Schema 🚨
+- NO markdown code blocks or backticks
+- NO additional text, explanations, or comments
+- Must match enhanced schema exactly
+- All monetary values as numbers (not strings)
+- All required fields present per schema
+- Cash flow data generated for all data points/periods (each date column that exists in the input data)
+- Use exact enum codes for flags and reasons
+- Include enhanced depreciation metadata
+
+OUTPUT REQUIREMENTS:
+Return ONLY valid JSON with this EXACT enhanced structure:
+
+{
+  "version": "1.0",
+  "company_id": "detected_from_stage1_or_unknown",
+  "currency": "AUD|USD|other_detected_currency",
+  "generated_at": "current_timestamp_iso8601",
+  "cache_key": "generated_enhanced_cf_cache_resource_name",
+  "parent_keys": {
+    "pnl_cache_key": "stage1_pnl_cache_key",
+    "bs_cache_key": "stage1_bs_cache_key"
+  },
+  "method_version": "enhanced_indirect_method_v2.0",
+  "remediation_policy_version": "enhanced_standard_v2.0",
+  "periods": [
+    {
+      "period": "YYYY-MM",
+      "ni": number,
+      "depreciation": enhanced_depreciation_amount,
+      "depreciation_metadata": {
+        "method": "asset_rollforward|progressive_rates|revenue_fallback",
+        "confidence": 0.0_to_1.0_confidence_score,
+        "annual_rate": calculated_annual_rate,
+        "justification": "explanation_of_calculation"
+      },
+      "amortization": number,
+      "delta_ar": number,
+      "delta_inventory": number,
+      "delta_ap": number,
+      "other_delta_current_assets": number,
+      "other_delta_current_liabilities": number,
+      "ocf": enhanced_operating_cash_flow,
+      "capex": enhanced_capex_calculation,
+      "disposals": number,
+      "icf": number,
+      "delta_short_term_debt": number,
+      "delta_long_term_debt": number,
+      "equity_injections": number,
+      "dividends_distributions": enhanced_distribution_estimate,
+      "fcf": number,
+      "delta_cash": number,
+      "recon_delta": number,
+      "flags": ["PASS|WARN|FAIL", "intelligent_classification_flags"],
+      "reasons": [
+        {
+          "code": "enhanced_reason_codes",
+          "message": "detailed_explanation_with_context",
+          "impact": number,
+          "confidence": 0.0_to_1.0_confidence_in_classification
+        }
+      ],
+      "validation_quality_score": 0.0_to_1.0_period_quality_score,
+      "audit_notes": "enhanced_description_of_adjustments_and_reasoning"
+    }
+  ],
+  "quality": {
+    "global_score": enhanced_quality_score,
+    "summary": {
+      "period_counts": {
+        "pass": number,
+        "warn": number,
+        "fail": number
+      },
+      "reconciliation_pass_rate": number,
+      "avg_recon_delta_abs": number
+    },
+    "depreciation_analysis": {
+      "primary_method_used": "method_name",
+      "average_monthly_amount": number,
+      "average_annual_rate": number,
+      "confidence_distribution": {
+        "high": number_of_high_confidence_periods,
+        "medium": number_of_medium_confidence_periods,
+        "low": number_of_low_confidence_periods
+      }
+    },
+    "enhancement_metadata": {
+      "features_applied": ["enhanced_depreciation", "intelligent_classification", "progressive_validation"],
+      "improvement_over_baseline": "description_of_improvements"
+    }
+  }
+}
+
+RECONCILIATION TOLERANCES:
+- **Primary tolerance**: $1,000 AUD absolute or 2% of |ΔCash|, whichever is greater
+- **Confidence-adjusted tolerance**: Multiply by confidence factor (1x, 2x, or 3x)
+- **PASS**: Within adjusted tolerance, high quality score (0.8-1.0)
+- **WARN**: Within 2x adjusted tolerance, medium quality score (0.3-0.7)  
+- **FAIL**: Exceeds 2x adjusted tolerance, low quality score (0.0-0.3)
+
+ENUMERATED FLAG CODES (use exact strings):
+- "PASS": Reconciliation within tolerance with high confidence
+- "WARN": Within relaxed tolerance, requires attention
+- "FAIL": Outside acceptable tolerance, investigation required
+- "RECLASS_DRAWINGS": Owner drawings pattern identified (not default)
+- "DATA_QUALITY_ISSUE": Poor data quality affects accuracy
+- "WC_ANOMALY": Working capital movements irregular
+- "DEPR_ESTIMATED": Depreciation estimated vs actual
+- "INVESTIGATION_REQUIRED": Large variance needs investigation
+
+REASON CODES (use exact strings):
+- "RECLASS_DRAWINGS": Clear owner drawing pattern identified
+- "DATA_QUALITY_ISSUE": Poor depreciation/data confidence
+- "WC_ANOMALY": Working capital movements explain variance
+- "DEPR_ESTIMATED": Enhanced depreciation estimation applied
+- "ASSET_ROLLFORWARD": Fixed asset roll-forward method used
+- "PROGRESSIVE_RATES": Progressive depreciation rates applied
+- "INTELLIGENT_CLASSIFICATION": variance classification
+
+VALIDATION SEQUENCE:
+1. Extract all required data from Stage 1 P&L and Balance Sheet
+2. Apply DEPRECIATION ESTIMATION for each period
+3. Calculate cash flows using enhanced depreciation amounts
+4. Validate: OCF + ICF + FCF = ΔCash for each period with confidence-adjusted tolerances
+5. Apply VARIANCE CLASSIFICATION (not default RECLASS_DRAWINGS)
+6. Calculate enhanced quality metrics including depreciation analysis
+7. Output valid JSON with enhanced metadata
+
+CRITICAL REMINDERS:
+🚨 BEFORE RESPONDING:
+✅ Apply DEPRECIATION ESTIMATION (not flat $850)
+✅ Use VARIANCE CLASSIFICATION
+✅ Apply confidence-adjusted validation tolerances
+✅ Include depreciation metadata and analysis
+✅ Ensure Cash flow data generated for all data points/periods (each date column that exists in the input data)
+✅ Ensure JSON structure matches enhanced schema precisely
+✅ Use exact enhanced enum codes
+✅ Validate all numbers are numeric types, not strings
+✅ Calculate enhanced quality scores
+
+🚨 OUTPUT ONLY THE JSON - NO OTHER TEXT 🚨
+
+CRITICAL JSON OUTPUT REQUIREMENTS - FOLLOW EXACTLY:
+
+1. OUTPUT FORMAT: Return ONLY the JSON object - no markdown code blocks, no backticks, no explanations
+2. START AND END: Begin with { and end with }
+3. SYNTAX: Use proper JSON syntax with double quotes for all strings
+4. NO EXTRAS: No trailing commas, no comments, no additional text
+5. COMPLETENESS: Ensure all opening braces { have matching closing braces }
+6. ENHANCEMENT: Include all enhanced fields and metadata
+
+CORRECT ENHANCED FORMAT EXAMPLE:
+{
+  "version": "1.0",
+  "method_version": "enhanced_indirect_method_v2.0",
+  "depreciation_analysis": {...},
+  "periods": [...]
+}
+
+AVOID THESE COMMON ERRORS:
+- ❌ ```json { ... } ```  (markdown blocks)
+- ❌ { "key": value, }    (trailing commas)  
+- ❌ { key: "value" }     (unquoted keys)
+- ❌ Missing enhanced metadata
+- ❌ Using flat $850 depreciation
+- ❌ Default RECLASS_DRAWINGS classification
+
+REMEMBER: Output ONLY the enhanced JSON - no other text whatsoever.
 """
 
 # STAGE 3: Integrated Projection Engine with Scenario Planning

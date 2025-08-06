@@ -19,6 +19,7 @@ logger = get_logger(__name__)
 
 from config import ALLOWED_ORIGINS
 from routers import health, admin, ocr, multi_pdf
+from routers.stage2_test import router as stage2_test_router
 from middleware import error_handler
 
 # Create FastAPI app
@@ -41,6 +42,7 @@ app.include_router(health.router)
 app.include_router(admin.router)
 app.include_router(ocr.router)
 app.include_router(multi_pdf.router)
+app.include_router(stage2_test_router, prefix="")
 
 if __name__ == "__main__":
     import uvicorn

@@ -1,5 +1,6 @@
 """
 Simple configuration for OCR API with basic API key rotation
+Enhanced with cash flow configuration
 """
 import os
 from logging_config import get_logger
@@ -99,3 +100,156 @@ ALLOWED_ORIGINS = [
     "http://127.0.0.1:3000",
     "http://127.0.0.1:5173",
 ] 
+
+# Enhanced Cash Flow Configuration
+# Phase 1 default feature flags (authoritative defaults for enhanced cash flow rollout)
+_PHASE1_FEATURE_FLAGS = {
+    "enhanced_depreciation": True,   # Phase 1 enabled
+    "enhanced_validation": False,    # Phase 1 disabled
+    "strict_quality_gates": False    # Phase 1 disabled
+}
+
+ENHANCED_CASH_FLOW_CONFIG = {
+    "depreciation_estimation": {
+        "progressive_rates": {
+            "small_equipment": {"threshold": 100000, "rate": 0.15, "description": "Tools, small equipment, software"},
+            "medium_equipment": {"threshold": 300000, "rate": 0.10, "description": "Vehicles, machinery, computers"},
+            "large_equipment": {"threshold": 600000, "rate": 0.07, "description": "Major equipment, plant"},
+            "infrastructure": {"threshold": float('inf'), "rate": 0.04, "description": "Buildings, major infrastructure"}
+        },
+        "min_annual_rate": 0.02,
+        "max_annual_rate": 0.25,
+        "confidence_thresholds": {
+            "high": 0.8,
+            "medium": 0.6,
+            "low": 0.4
+        },
+        "fallback_monthly_amount": 1200.0,
+        "fallback_annual_rate": 0.05
+    },
+    "quality_validation": {
+        "min_acceptable_global_score": 0.4,
+        "base_tolerance_aud": 1000,
+        "base_tolerance_pct": 0.02,
+        "max_reclass_rate": 0.3,
+        "large_variance_threshold": 5000,
+        "quality_gate_enabled": True,
+        "confidence_multipliers": {
+            "high_confidence": 1.0,
+            "medium_confidence": 2.0,
+            "low_confidence": 3.0
+        }
+    },
+    # Align existing feature flags to Phase 1 defaults while preserving only the three keys required by scope
+    "feature_flags": {
+        "enhanced_depreciation": _PHASE1_FEATURE_FLAGS["enhanced_depreciation"],
+        "enhanced_validation": _PHASE1_FEATURE_FLAGS["enhanced_validation"],
+        "strict_quality_gates": _PHASE1_FEATURE_FLAGS["strict_quality_gates"],
+        # Added logging flag to prevent KeyError in BusinessAnalysisService
+        "enhanced_logging": False
+    },
+    "monitoring": {
+        "track_quality_improvements": True,
+        "log_depreciation_analysis": True,
+        "alert_on_quality_degradation": True,
+        "performance_benchmarking": True
+    },
+    "classification_rules": {
+        "owner_drawings": {
+            "min_fcf_threshold": -5000,
+            "ni_fcf_ratio_threshold": 0.5
+        },
+        "data_quality_issues": {
+            "confidence_threshold": 0.6,
+            "variance_range": [1000, 5000]
+        },
+        "working_capital_anomalies": {
+            "wc_variance_ratio": 0.8
+        }
+    },
+    "australian_business_standards": {
+        "financial_year": "july_to_june",
+        "depreciation_methods": [
+            "diminishing_value",
+            "prime_cost",
+            "simplified_depreciation"
+        ],
+        "small_business_thresholds": {
+            "turnover_threshold": 10000000,
+            "instant_asset_writeoff": 20000
+        }
+    }
+}
+
+# Backward-compatible boolean validation retained but renamed internally
+def _validate_enhanced_config_boolean() -> bool:
+    """Validate the enhanced configuration (legacy boolean-based validator)."""
+    try:
+        required_sections = ["depreciation_estimation", "quality_validation", "feature_flags"]
+        for section in required_sections:
+            if section not in ENHANCED_CASH_FLOW_CONFIG:
+                raise ValueError(f"Missing required config section: {section}")
+
+        rates = ENHANCED_CASH_FLOW_CONFIG["depreciation_estimation"]["progressive_rates"]
+        for category, info in rates.items():
+            if "threshold" not in info or "rate" not in info:
+                raise ValueError(f"Invalid depreciation rate config for {category}")
+
+        validation_config = ENHANCED_CASH_FLOW_CONFIG["quality_validation"]
+        if validation_config["base_tolerance_aud"] <= 0:
+            raise ValueError("Base tolerance AUD must be positive")
+
+        if not (0 < validation_config["base_tolerance_pct"] < 1):
+            raise ValueError("Base tolerance percentage must be between 0 and 1")
+
+        logger.debug("Enhanced configuration validation passed")
+        return True
+    except Exception as e:
+        logger.error(f"Enhanced configuration validation failed: {str(e)}")
+        return False
+
+
+# Lightweight dict-level validator for enhanced feature flags (non-throwing)
+def validate_enhanced_config(cfg: dict) -> dict:
+    """
+    Validates enhanced cash flow config and applies safe defaults.
+    Returns a sanitized config dict without raising exceptions.
+
+    Behavior:
+    - Ensures cfg is a dict and contains a 'feature_flags' dict.
+    - Ensures the three Phase 1 keys exist and are booleans.
+    - Any missing or invalid entries are replaced with Phase 1 defaults.
+    - Extra keys are preserved untouched to avoid breaking existing consumers.
+    """
+    try:
+        sanitized = {} if not isinstance(cfg, dict) else dict(cfg)  # shallow copy
+        ff = sanitized.get("feature_flags")
+        if not isinstance(ff, dict):
+            ff = {}
+        ff_out = dict(ff)  # preserve extra keys
+
+        # Ensure Phase 1 keys exist and are booleans; otherwise set defaults
+        for k, v in _PHASE1_FEATURE_FLAGS.items():
+            cur = ff_out.get(k, v)
+            # Coerce to bool only if value is truthy/falsey but not bool, else use default
+            if isinstance(cur, bool):
+                ff_out[k] = cur
+            else:
+                try:
+                    ff_out[k] = bool(cur)
+                except Exception:
+                    ff_out[k] = v
+
+        sanitized["feature_flags"] = ff_out
+        return sanitized
+    except Exception:
+        # On any unexpected issue, return just Phase 1 defaults to be safe
+        return {"feature_flags": dict(_PHASE1_FEATURE_FLAGS)}
+
+# Validate configuration on import
+if os.getenv("OCR_SERVER_MAIN") == "true":
+    if _validate_enhanced_config_boolean():
+        logger.info("Enhanced Cash Flow Configuration loaded successfully")
+        logger.info(f"🔧 Feature flags enabled: {sum(1 for k, v in ENHANCED_CASH_FLOW_CONFIG['feature_flags'].items() if v)}/{len(ENHANCED_CASH_FLOW_CONFIG['feature_flags'])}")
+    else:
+        logger.warning("Enhanced configuration validation failed - using defaults")

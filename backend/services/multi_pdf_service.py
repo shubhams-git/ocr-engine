@@ -22,8 +22,11 @@ import base64
 from typing import List, Tuple, Dict, Any, Optional, Union, cast
 from fastapi import HTTPException
 
+from google import genai
+from google.genai import types
 from config import API_KEYS, OVERALL_PROCESS_TIMEOUT
 from models import MultiPDFAnalysisResponse, OCRResponse
+from utils import DataStructureParser, JSONValidator
 from logging_config import (get_logger, log_request_start, log_request_end, 
                           log_stage_progress, log_validation_result)
 
@@ -34,6 +37,70 @@ from services.projection_service import projection_service
 
 # Set up logger
 logger = get_logger(__name__)
+
+class GeminiCacheManager:
+    """Manager for Gemini explicit caching functionality"""
+    
+    def __init__(self):
+        self.client = None
+        # Per Gemini caching docs, set TTL to 30 minutes max as requested
+        # Duration string format is accepted, e.g., "1800s"
+        self.cache_ttl = "1800s"  # 30 minutes
+        
+    def get_client(self, api_key: str) -> genai.Client:
+        """Get or create Gemini client with API key"""
+        if not self.client:
+            self.client = genai.Client(api_key=api_key)
+        return self.client
+    
+    async def create_cache_for_stage1_result(self, stage1_data: Dict[str, Any], api_key: str, document_type: str) -> str:
+        """
+        Create explicit cache for Stage 1 result (P&L or BS data)
+        Returns the cache resource name for later reference
+        """
+        try:
+            client = self.get_client(api_key)
+            
+            # Convert stage1 data to JSON string for caching
+            content_to_cache = json.dumps(stage1_data, indent=2)
+            
+            # Create cache with appropriate display name
+            cache_display_name = f"stage1_{document_type.lower().replace(' ', '_')}_data"
+            
+            logger.info(f"🔄 Creating Gemini cache for {document_type} data ({len(content_to_cache)} chars) | ttl={self.cache_ttl}")
+            
+            # Create cache using explicit caching API
+            cache = await asyncio.to_thread(
+                client.caches.create,
+                model="gemini-2.5-pro",
+                config=types.CreateCachedContentConfig(
+                    display_name=cache_display_name,
+                    system_instruction=f"This cached content contains normalized {document_type} financial data from Stage 1 extraction.",
+                    contents=[content_to_cache],
+                    ttl=self.cache_ttl
+                )
+            )
+            
+            logger.info(f"✅ Cache created successfully: {cache.name} for {document_type}")
+            return cache.name or f"cache_creation_failed_{document_type}"
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to create cache for {document_type}: {str(e)}")
+            return f"cache_creation_failed_{document_type}"
+    
+    async def get_cached_content(self, cache_name: str, api_key: str) -> Optional[str]:
+        """Retrieve cached content by cache name"""
+        try:
+            client = self.get_client(api_key)
+            cache = await asyncio.to_thread(client.caches.get, name=cache_name)
+            logger.debug(f"📋 Retrieved cache metadata: {cache_name}")
+            return cache_name  # Return cache name for use in subsequent API calls
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to retrieve cache {cache_name}: {str(e)}")
+            return None
+
+# Initialize cache manager
+cache_manager = GeminiCacheManager()
 
 class EnhancedMultiPDFService:
     """Enhanced service for orchestrating multi-document financial analysis using separate stage services"""
@@ -48,7 +115,7 @@ class EnhancedMultiPDFService:
         
         # TIERED MODEL SELECTION & CONCURRENCY CONTROL
         # Stage 1: Use Flash for data extraction (higher quotas, simpler task)
-        self.stage1_model = "gemini-2.5-flash"
+        self.stage1_model = "gemini-2.5-pro"
         
         # Stages 2-3: Use Pro for complex analysis (lower quotas, complex reasoning)
         # Semaphore to limit concurrent Pro model calls to prevent quota exhaustion
@@ -171,23 +238,59 @@ class EnhancedMultiPDFService:
                 
                 try:
                     if ocr_response.success:
-                        if isinstance(ocr_response.data, str):
-                            parsed_data = json.loads(ocr_response.data)
-                        else:
-                            parsed_data = ocr_response.data
-                        
-                        extraction_result = {
-                            "filename": parsed_data.get('source_filename', 'Unknown'),
-                            "success": True,
-                            "data": parsed_data,
-                            "raw_response": ocr_response.data
+                        # Convert OCRResponse to dict for robust parsing
+                        ocr_result_dict = {
+                            "success": ocr_response.success,
+                            "data": ocr_response.data,
+                            "error": ocr_response.error
                         }
-                        successful_extractions.append(extraction_result)
                         
-                        filename = extraction_result.get('filename', 'Unknown')
-                        doc_type = parsed_data.get('document_type', 'Other')
-                        doc_types[filename] = doc_type
-                        logger.info(f"Stage 1 SUCCESS | File: {filename} | Type: {doc_type} | Model: {extraction_model}")
+                        # Use robust parsing to handle data structure
+                        normalized_result = DataStructureParser.normalize_stage1_result(ocr_result_dict)
+                        
+                        # Validate the financial data
+                        data_valid = False
+                        if normalized_result["data"]:
+                            data_valid = JSONValidator.validate_financial_data(normalized_result["data"])
+                        
+                        if data_valid:
+                            extraction_result = {
+                                "filename": normalized_result["data"].get('source_filename', 'Unknown'),
+                                "success": True,
+                                "data": normalized_result["data"],
+                                "raw_response": ocr_response.data
+                            }
+                            
+                            filename = extraction_result.get('filename', 'Unknown')
+                            doc_type = normalized_result["data"].get('document_type', 'Other')
+                            doc_types[filename] = doc_type
+                            
+                            # Create Gemini cache for P&L and Balance Sheet documents
+                            cache_key = None
+                            if doc_type in ['Profit and Loss', 'Balance Sheet']:
+                                try:
+                                    # Get API key for cache creation (from config)
+                                    from config import get_next_key
+                                    cache_api_key = get_next_key()
+                                    
+                                    cache_key = await cache_manager.create_cache_for_stage1_result(
+                                        normalized_result["data"], 
+                                        cache_api_key, 
+                                        doc_type
+                                    )
+                                    logger.info(f"🔄 Cache created for {doc_type}: {cache_key}")
+                                except Exception as cache_error:
+                                    logger.warning(f"⚠️ Cache creation failed for {doc_type}: {str(cache_error)}")
+                                    cache_key = f"cache_failed_{doc_type.lower().replace(' ', '_')}"
+                            
+                            # Add cache key to extraction result
+                            extraction_result["cache_key"] = cache_key
+                            successful_extractions.append(extraction_result)
+                            
+                            logger.info(f"Stage 1 SUCCESS | File: {filename} | Type: {doc_type} | Cache: {cache_key} | Model: {extraction_model}")
+                        else:
+                            logger.warning(f"❌ OCR result failed financial data validation")
+                            failed_extractions.append("Financial data validation failed")
                     else:
                         error_msg = ocr_response.error or 'Unknown error'
                         failed_extractions.append(error_msg)
@@ -215,14 +318,34 @@ class EnhancedMultiPDFService:
             log_stage_progress(logger, "1", "COMPLETED", f"Duration: {stage1_time:.2f}s | Success: {len(successful_extractions)}/{len(files_data)} | Model: {extraction_model}")
             logger.debug(f"Document types extracted | {doc_types}")
             
-            # STAGE 2: Business Analysis & Methodology Selection using Pro Model with Semaphore
-            log_stage_progress(logger, "2", "STARTED", f"Business Analysis Service | Model: {analysis_model} | Semaphore: {self.pro_model_semaphore._value}")
+            # Extract cache keys for Stage 2 (Cash Flow Reconstruction)
+            pnl_cache_key = None
+            bs_cache_key = None
+            
+            for extraction in successful_extractions:
+                doc_type = doc_types.get(extraction.get('filename', ''), 'Other')
+                cache_key = extraction.get('cache_key')
+                
+                if doc_type == 'Profit and Loss' and cache_key:
+                    pnl_cache_key = cache_key
+                    logger.info(f"📋 P&L cache key identified: {pnl_cache_key}")
+                elif doc_type == 'Balance Sheet' and cache_key:
+                    bs_cache_key = cache_key
+                    logger.info(f"📋 BS cache key identified: {bs_cache_key}")
+            
+            # STAGE 2: Cash Flow Reconstruction using Pro Model with Semaphore
+            log_stage_progress(logger, "2", "STARTED", f"Cash Flow Reconstruction Service | Model: {analysis_model} | Semaphore: {self.pro_model_semaphore._value}")
             stage2_start = time.time()
             
             # Use semaphore to control Pro model concurrency
             async with self.pro_model_semaphore:
                 logger.debug(f"🔒 Acquired Pro model semaphore for Stage 2 | Available: {self.pro_model_semaphore._value}")
-                stage2_result = await business_analysis_service.analyze_business_context(successful_extractions, analysis_model)
+                stage2_result = await business_analysis_service.analyze_business_context(
+                    successful_extractions, 
+                    analysis_model, 
+                    pnl_cache_key=pnl_cache_key,
+                    bs_cache_key=bs_cache_key
+                )
                 logger.debug(f"🔓 Released Pro model semaphore from Stage 2 | Available: {self.pro_model_semaphore._value + 1}")
             
             stage2_time = time.time() - stage2_start

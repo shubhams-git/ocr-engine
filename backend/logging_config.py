@@ -131,7 +131,7 @@ def log_stage_progress(logger: logging.Logger, stage: str, action: str, details:
         logger.info(f"Stage {stage}: {action}")
 
 
-def log_validation_result(logger: logging.Logger, validation_type: str, passed: bool, 
+def log_validation_result(logger: logging.Logger, validation_type: str, passed: bool,
                          score: Optional[float] = None, issues: Optional[list] = None) -> None:
     """Log validation results"""
     status = "PASSED" if passed else "FAILED"
@@ -150,4 +150,21 @@ def log_validation_result(logger: logging.Logger, validation_type: str, passed: 
         for issue in issues[:3]:  # Limit to first 3 issues to avoid spam
             logger.warning(f"Validation issue: {issue}")
         if len(issues) > 3:
-            logger.warning(f"Validation has {len(issues) - 3} additional issues") 
+            logger.warning(f"Validation has {len(issues) - 3} additional issues")
+
+# New token usage logging helpers aligned with Gemini token docs
+def log_token_usage(logger: logging.Logger,
+                    operation: str,
+                    model: str,
+                    input_token_count: Optional[int],
+                    output_token_count: Optional[int],
+                    total_token_count: Optional[int]) -> None:
+    """Log concise token usage for a Gemini API call"""
+    parts = [f"API tokens: op={operation}", f"model={model}"]
+    if input_token_count is not None:
+        parts.append(f"in={input_token_count}")
+    if output_token_count is not None:
+        parts.append(f"out={output_token_count}")
+    if total_token_count is not None:
+        parts.append(f"total={total_token_count}")
+    logger.info(" | ".join(parts))

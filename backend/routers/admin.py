@@ -5,16 +5,45 @@ Provides individual service testing and system monitoring capabilities
 import logging
 import time
 import json
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Body
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field, validator
 
 from models import OCRResponse, MultiPDFAnalysisResponse
 from services.ocr_service import ocr_service
 from services.business_analysis_service import business_analysis_service
 from services.projection_service import projection_service
 from services.multi_pdf_service import multi_pdf_service
+from services.stage1_cache_service import stage1_cache_service
+from utils import DataStructureParser, JSONValidator
 from logging_config import get_logger
+
+# Pydantic models for stage outputs
+class Stage1Output(BaseModel):
+    filename: str
+    success: bool
+    data: Dict[str, Any]
+    raw_text: Optional[str] = None
+
+class Stage2Output(BaseModel):
+    filename: str
+    success: bool
+    analysis: Dict[str, Any]
+    financial_metrics: Dict[str, float]
+    raw_response: Optional[str] = None
+
+class Stage3Output(BaseModel):
+    filename: str
+    success: bool
+    projections: Dict[str, Any]
+    confidence_score: float = Field(ge=0, le=1)
+
+class ErrorResponse(BaseModel):
+    error: str
+    stage: str
+    timestamp: float
+    details: Optional[Dict[str, Any]] = None
 
 # Set up logger and router
 logger = get_logger(__name__)
@@ -102,45 +131,187 @@ async def get_detailed_health():
 
 @router.post("/test/stage1")
 async def test_stage1_ocr(
-    file: UploadFile = File(...),
-    model: str = Form("gemini-2.5-flash")
+    files: List[UploadFile] = File(...),
+    model: str = Form("gemini-2.5-pro")
 ):
-    """Test Stage 1 (OCR Service) independently"""
+    """Test Stage 1 (OCR Service) independently - now supports multiple files."""
     try:
-        start_time = time.time()
-        logger.info(f"Testing Stage 1 OCR Service | File: {file.filename} | Model: {model}")
-        
-        # Read file content
-        content = await file.read()
-        
-        # Test OCR service directly
-        filename = file.filename or "uploaded_file"
-        result = await ocr_service.process_ocr(content, filename, model)
-        
-        processing_time = time.time() - start_time
-        
-        # Enhance result with testing metadata
-        test_result = {
+        total_start = time.time()
+        logger.info(f"Testing Stage 1 OCR Service | Files: {len(files)} | Model: {model}")
+
+        # Special branch: exactly two CSVs -> run Stage 1 caching path and return cache payloads
+        if len(files) == 2:
+            fn1 = (files[0].filename or "").lower()
+            fn2 = (files[1].filename or "").lower()
+            if fn1.endswith(".csv") and fn2.endswith(".csv"):
+                file_start_1 = time.time()
+                content1 = await files[0].read()
+                t1 = time.time() - file_start_1
+
+                file_start_2 = time.time()
+                content2 = await files[1].read()
+                t2 = time.time() - file_start_2
+
+                files_data: List[Tuple[str, bytes]] = [
+                    (files[0].filename or "file1.csv", content1),
+                    (files[1].filename or "file2.csv", content2),
+                ]
+
+                # Validate and run stage1 cache (uses OCR service under the hood)
+                stage1_cache_service.validate_two_csv(files_data)
+                pnl_cache_key, bs_cache_key, pnl_data, bs_data = await stage1_cache_service.run_stage1_and_cache(
+                    files_data, extraction_model=model
+                )
+
+                # Determine detected document types if data present
+                pnl_doc_type = (pnl_data or {}).get("document_type") if pnl_data else None
+                bs_doc_type = (bs_data or {}).get("document_type") if bs_data else None
+
+                total_time = time.time() - total_start
+                files_info = [
+                    {"filename": files[0].filename, "size": len(content1), "content_type": getattr(files[0], "content_type", None)},
+                    {"filename": files[1].filename, "size": len(content2), "content_type": getattr(files[1], "content_type", None)},
+                ]
+                per_file_timings = [
+                    {"filename": files[0].filename or "file1.csv", "processing_time": t1},
+                    {"filename": files[1].filename or "file2.csv", "processing_time": t2},
+                ]
+
+                response_body = {
+                    "stage": "stage1_ocr",
+                    "service": "ocr_service",
+                    "success": bool(pnl_data),
+                    "processing_time": total_time,
+                    "files_info": files_info,
+                    "per_file_timings": per_file_timings,
+                    "model_used": model,
+                    "pnl_cache_key": pnl_cache_key,
+                    "bs_cache_key": bs_cache_key,
+                    "stage1_cached_data": {
+                        "pnl": pnl_data,
+                        "balance_sheet": bs_data
+                    },
+                    "document_types": {
+                        "pnl": "Profit and Loss" if pnl_doc_type == "Profit and Loss" else None,
+                        "balance_sheet": "Balance Sheet" if bs_doc_type == "Balance Sheet" else None
+                    },
+                    "timestamp": time.time()
+                }
+                return response_body
+
+        normalized_docs: List[Stage1Output] = []
+        files_info: List[Dict[str, Any]] = []
+        per_file_timings: List[Dict[str, Any]] = []
+
+        # Default behavior: Process each file independently; do not fail the whole batch for individual errors
+        for file in files:
+            file_start = time.time()
+            fname = getattr(file, "filename", None) or "uploaded_file"
+            ctype = getattr(file, "content_type", None)
+
+            try:
+                logger.info(f"[Stage1] Processing file: {fname} | Content-Type: {ctype}")
+                content = await file.read()
+                size = len(content) if content is not None else 0
+                files_info.append({"filename": fname, "size": size, "content_type": ctype})
+
+                # OCR per file
+                result = await ocr_service.process_ocr(content, fname, model)
+
+                # Convert OCRResponse to dict for processing
+                result_dict = {
+                    "filename": fname,
+                    "success": getattr(result, "success", False),
+                    "data": getattr(result, "data", None),
+                    "error": getattr(result, "error", None),
+                    "raw_text": getattr(result, "text", None)
+                }
+
+                # Use robust parsing to handle data.data structure
+                normalized_result = DataStructureParser.normalize_stage1_result(result_dict)
+                
+                # Validate the parsed financial data
+                data_valid = False
+                if normalized_result["data"]:
+                    data_valid = JSONValidator.validate_financial_data(normalized_result["data"])
+                
+                # Create normalized document
+                normalized_doc = Stage1Output(
+                    filename=fname,
+                    success=normalized_result["success"] and data_valid,
+                    data=normalized_result["data"],
+                    raw_text=normalized_result.get("raw_text")
+                )
+                normalized_docs.append(normalized_doc)
+
+                file_time = time.time() - file_start
+                per_file_timings.append({"filename": fname, "processing_time": file_time})
+                logger.debug(f"[Stage1] Output shape for {fname}: {len(normalized_doc.data.keys())} fields | Time: {file_time:.3f}s")
+
+            except Exception as fe:
+                # Capture per-file failure but continue
+                logger.error(f"[Stage1] File failed: {fname} | Error: {str(fe)}")
+                normalized_docs.append(
+                    Stage1Output(
+                        filename=fname,
+                        success=False,
+                        data={"error": "File-level failure during OCR"},
+                        raw_text=None
+                    )
+                )
+                size_fallback = 0
+                if not any(fi.get("filename") == fname for fi in files_info):
+                    files_info.append({"filename": fname, "size": size_fallback, "content_type": ctype})
+                per_file_timings.append({"filename": fname, "processing_time": time.time() - file_start})
+
+        total_time = time.time() - total_start
+
+        # Aggregate success: true if at least one succeeded
+        aggregate_success = any(doc.success for doc in normalized_docs)
+        logger.info(f"[Stage1] Completed processing {len(files)} files | Model: {model} | Aggregate success: {aggregate_success} | Total time: {total_time:.2f}s")
+        logger.debug(f"[Stage1] Chain-ready docs emitted: {len(normalized_docs)}")
+
+        # Build response
+        response_body = {
             "stage": "stage1_ocr",
             "service": "ocr_service",
-            "success": result.success,
-            "processing_time": processing_time,
-            "file_info": {
-                "filename": file.filename,
-                "size": len(content),
-                "content_type": file.content_type
-            },
+            "success": aggregate_success,
+            "processing_time": total_time,
+            "files_info": files_info,
+            "per_file_timings": per_file_timings,
             "model_used": model,
-            "result": result.dict() if result else None,
+            "result": [doc.dict() for doc in normalized_docs],
+            "chain_ready": [doc.dict() for doc in normalized_docs],
             "timestamp": time.time()
         }
-        
-        logger.info(f"Stage 1 test completed | Success: {result.success} | Time: {processing_time:.2f}s")
-        return test_result
-        
+
+        # If all files failed, indicate failure via standardized error while still returning detail
+        if not aggregate_success:
+            error = ErrorResponse(
+                error="Stage 1 processing failed for all files",
+                stage="stage1_ocr",
+                timestamp=time.time(),
+                details={"files": [fi.get("filename") for fi in files_info]}
+            )
+            logger.error(f"[Stage1] Batch failed: {error.json()}")
+            # Return 500 to signal complete failure
+            raise HTTPException(status_code=500, detail=error.dict())
+
+        return response_body
+
+    except HTTPException:
+        # Already standardized
+        raise
     except Exception as e:
-        logger.error(f"Stage 1 test failed: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Stage 1 test failed: {str(e)}")
+        # Critical exception: standardize using ErrorResponse
+        error = ErrorResponse(
+            error="Stage 1 processing encountered a critical exception",
+            stage="stage1_ocr",
+            timestamp=time.time(),
+            details={"exception": str(e)}
+        )
+        logger.error(f"[Stage1] Critical failure: {error.json()}")
+        raise HTTPException(status_code=500, detail=error.dict())
 
 @router.post("/test/stage2")
 async def test_stage2_business_analysis(
@@ -150,73 +321,90 @@ async def test_stage2_business_analysis(
     """Test Stage 2 (Business Analysis Service) independently"""
     try:
         start_time = time.time()
+        
+        # Accept both a single dict or a list for convenience in Postman chaining
+        if isinstance(extracted_data, dict):
+            logger.debug("Stage 2 received a single dict; coercing to a list with one document.")
+            extracted_data = [extracted_data]
+        
         logger.info(f"Testing Stage 2 Business Analysis Service | Documents: {len(extracted_data)} | Model: {model}")
         
-        # Debug: Log the structure of incoming data
-        logger.debug(f"Stage 2 Input Data Structure:")
-        for i, doc in enumerate(extracted_data):
-            logger.debug(f"  Document {i+1}: {type(doc)} with keys: {list(doc.keys()) if isinstance(doc, dict) else 'N/A'}")
-            if isinstance(doc, dict) and 'data' in doc:
-                data_type = type(doc['data'])
-                logger.debug(f"    Data field type: {data_type}")
-                if isinstance(doc['data'], str):
-                    logger.debug(f"    Data content preview: {doc['data'][:200]}...")
-        
-        # Ensure data is properly structured for Stage 2
-        processed_data = []
+        # Validate input data structure with robust parsing
+        validated_inputs = []
         for doc in extracted_data:
-            if isinstance(doc, dict):
-                # If the data field contains a JSON string, parse it
-                if 'data' in doc and isinstance(doc['data'], str):
-                    try:
-                        parsed_data = json.loads(doc['data'])
-                        # Create a properly structured document
-                        structured_doc = {
-                            "filename": doc.get('filename', 'unknown'),
-                            "success": doc.get('success', True),
-                            "data": parsed_data,
-                            "raw_response": doc['data']
-                        }
-                        processed_data.append(structured_doc)
-                        logger.debug(f"✅ Parsed and structured document: {doc.get('filename', 'unknown')}")
-                    except json.JSONDecodeError as e:
-                        logger.warning(f"⚠️ Failed to parse data field for {doc.get('filename', 'unknown')}: {str(e)}")
-                        # Use the document as-is if parsing fails
-                        processed_data.append(doc)
-                else:
-                    # Data is already structured
-                    processed_data.append(doc)
-            else:
-                processed_data.append(doc)
+            try:
+                # Use robust parsing to normalize the input
+                normalized_doc = DataStructureParser.normalize_stage1_result(doc)
+                
+                # Validate against Stage1 output format
+                stage1_output = Stage1Output(**normalized_doc)
+                validated_inputs.append(stage1_output.dict())
+                logger.debug(f"✅ Valid Stage1 output: {normalized_doc.get('filename', 'unknown')}")
+            except Exception as e:
+                error = ErrorResponse(
+                    error="Invalid Stage1 output format",
+                    stage="stage2_business_analysis",
+                    timestamp=time.time(),
+                    details={
+                        "document": doc.get('filename', 'unknown'),
+                        "validation_error": str(e)
+                    }
+                )
+                logger.error(f"Invalid Stage1 output: {error.json()}")
+                raise HTTPException(status_code=400, detail=error.dict())
         
-        logger.info(f"✅ Processed {len(processed_data)} documents for Stage 2 analysis")
-        
-        # Test business analysis service directly with processed data
-        result = await business_analysis_service.analyze_business_context(processed_data, model)
+        # Test business analysis service with validated data
+        result = await business_analysis_service.analyze_business_context(validated_inputs, model)
         
         processing_time = time.time() - start_time
         
-        # Enhanced success determination
-        success = bool(result and len(result) > 0 and not result.get('error'))
+        # Validate and normalize output
+        try:
+            stage2_output = Stage2Output(
+                filename=validated_inputs[0]['filename'],
+                success=bool(result and len(result) > 0),
+                analysis=result.get('analysis', {}),
+                financial_metrics=result.get('financial_metrics', {}),
+                raw_response=str(result)
+            )
+            logger.debug(f"Stage2 output shape: {len(stage2_output.analysis.keys())} analysis fields | {len(stage2_output.financial_metrics.keys())} metrics")
+        except Exception as e:
+            error = ErrorResponse(
+                error="Invalid Stage2 output format",
+                stage="stage2_business_analysis",
+                timestamp=time.time(),
+                details={"validation_error": str(e)}
+            )
+            logger.error(f"Stage2 output validation failed: {error.json()}")
+            raise HTTPException(status_code=500, detail=error.dict())
         
         test_result = {
-            "stage": "stage2_business_analysis", 
+            "stage": "stage2_business_analysis",
             "service": "business_analysis_service",
-            "success": success,
+            "success": stage2_output.success,
             "processing_time": processing_time,
             "input_documents": len(extracted_data),
-            "processed_documents": len(processed_data),
+            "processed_documents": len(validated_inputs),
             "model_used": model,
-            "result": result,
+            "result": stage2_output.dict(),
+            "chain_ready": stage2_output.dict(),  # Directly usable as the body for Stage 3
             "timestamp": time.time()
         }
         
-        logger.info(f"Stage 2 test completed | Success: {success} | Time: {processing_time:.2f}s")
+        logger.info(f"Stage 2 test completed | Success: {stage2_output.success} | Time: {processing_time:.2f}s")
         return test_result
         
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Stage 2 test failed: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Stage 2 test failed: {str(e)}")
+        error = ErrorResponse(
+            error="Stage 2 processing failed",
+            stage="stage2_business_analysis",
+            timestamp=time.time(),
+            details={"exception": str(e)}
+        )
+        logger.error(f"Stage 2 test failed: {error.json()}")
+        raise HTTPException(status_code=500, detail=error.dict())
 
 @router.post("/test/stage3")
 async def test_stage3_projections(
@@ -260,11 +448,17 @@ async def test_full_process(
         start_time = time.time()
         logger.info(f"Testing full 3-stage process | Files: {len(files)} | Model: {model}")
         
-        # Convert files to format expected by multi_pdf_service
+        # Convert files to format expected by multi_pdf_service and collect sizes
         files_data = []
+        files_info = []
         for file in files:
             content = await file.read()
             files_data.append((file.filename, content))
+            files_info.append({
+                "filename": file.filename,
+                "size": len(content),
+                "content_type": getattr(file, "content_type", None)
+            })
         
         # Time each stage separately for analysis
         stage_timings = {}
@@ -283,13 +477,7 @@ async def test_full_process(
             "success": result.success if result else False,
             "total_processing_time": total_time,
             "stage_timings": stage_timings,
-            "files_info": [
-                {
-                    "filename": file.filename,
-                    "size": len(await file.read()) if hasattr(file, 'read') else 0,
-                    "content_type": file.content_type
-                } for file in files
-            ],
+            "files_info": files_info,
             "model_used": model,
             "result": result.dict() if result else None,
             "timestamp": time.time(),
