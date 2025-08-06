@@ -96,36 +96,86 @@ const TestingDashboard = ({ onExitTesting }) => {
         try {
           console.log('extractStageData stage1 - Input result:', result)
           console.log('extractStageData stage1 - result.result:', result.result)
-          console.log('extractStageData stage1 - result.result.data:', result.result?.data)
-          console.log('extractStageData stage1 - file_info:', result.file_info)
           
           let parsedData = null
           
-          // Handle different possible data structures
-          if (result.result?.data) {
-            if (typeof result.result.data === 'string') {
-              try {
-                parsedData = JSON.parse(result.result.data)
-              } catch (parseError) {
-                console.error('Failed to parse result.result.data as JSON:', parseError)
-                console.error('Raw data:', result.result.data)
-                return null
+          // Robust parsing function to handle data.data structure
+          const parseStage1Data = (resultObj) => {
+            // Handle different possible data structures similar to backend DataStructureParser
+            
+            // Case 1: result.result (array with data.data structure)
+            if (resultObj.result && Array.isArray(resultObj.result)) {
+              for (const item of resultObj.result) {
+                if (item.data && item.data.data) {
+                  // This is the data.data structure
+                  if (typeof item.data.data === 'string') {
+                    try {
+                      return JSON.parse(item.data.data)
+                    } catch (e) {
+                      console.warn('Failed to parse item.data.data as JSON:', e)
+                      continue
+                    }
+                  } else if (typeof item.data.data === 'object') {
+                    return item.data.data
+                  }
+                } else if (item.data && typeof item.data === 'object') {
+                  return item.data
+                }
               }
-            } else if (typeof result.result.data === 'object') {
-              parsedData = result.result.data
             }
-          } else if (result.data) {
-            // Sometimes data might be directly in result.data
-            parsedData = typeof result.data === 'string' ? JSON.parse(result.data) : result.data
-          } else {
-            console.error('No data found in Stage 1 result')
+            
+            // Case 2: result.result.data (single object)
+            if (resultObj.result?.data) {
+              if (resultObj.result.data.data) {
+                // Nested data.data structure
+                if (typeof resultObj.result.data.data === 'string') {
+                  try {
+                    return JSON.parse(resultObj.result.data.data)
+                  } catch (e) {
+                    console.warn('Failed to parse result.result.data.data as JSON:', e)
+                  }
+                } else if (typeof resultObj.result.data.data === 'object') {
+                  return resultObj.result.data.data
+                }
+              } else if (typeof resultObj.result.data === 'string') {
+                try {
+                  return JSON.parse(resultObj.result.data)
+                } catch (e) {
+                  console.warn('Failed to parse result.result.data as JSON:', e)
+                }
+              } else if (typeof resultObj.result.data === 'object') {
+                return resultObj.result.data
+              }
+            }
+            
+            // Case 3: direct data field
+            if (resultObj.data) {
+              if (typeof resultObj.data === 'string') {
+                try {
+                  return JSON.parse(resultObj.data)
+                } catch (e) {
+                  console.warn('Failed to parse result.data as JSON:', e)
+                }
+              } else if (typeof resultObj.data === 'object') {
+                return resultObj.data
+              }
+            }
+            
             return null
           }
           
+          parsedData = parseStage1Data(result)
           console.log('extractStageData stage1 - Parsed data:', parsedData)
           
           if (!parsedData) {
-            console.error('No parsed data available for Stage 2')
+            console.error('No parsed data available for Stage 2 - tried all parsing strategies')
+            console.error('Result structure keys:', Object.keys(result))
+            if (result.result) {
+              console.error('Result.result keys:', Object.keys(result.result))
+              if (Array.isArray(result.result)) {
+                console.error('Result.result[0] keys:', result.result[0] ? Object.keys(result.result[0]) : 'empty array')
+              }
+            }
             return null
           }
           
