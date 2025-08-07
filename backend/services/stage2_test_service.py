@@ -300,7 +300,7 @@ async def stage2_from_two_csvs(files_data: List[Tuple[str, bytes]], requested_mo
     pnl_cache_key, bs_cache_key, pnl_data, bs_data = await stage2_test_service.run_stage1_and_cache(
         files_data, extraction_model="gemini-2.5-pro"
     )
-    log_stage_progress(logger, "1", "COMPLETED", 
+    log_stage_progress(logger, "1", "COMPLETED",
                       f"Cache keys -> P&L: {pnl_cache_key} | BS: {bs_cache_key or 'none'}")
 
     # Stage 2 with proper cache usage - pass the data too!
@@ -320,3 +320,81 @@ async def stage2_from_two_csvs(files_data: List[Tuple[str, bytes]], requested_mo
         },
         "cash_flow": result
     }
+
+
+async def stage2_from_cache_keys(pnl_cache_key: Optional[str], bs_cache_key: Optional[str], requested_model: Optional[str]) -> Dict[str, Any]:
+    """
+    NEW: Bypass Stage 1. Accept cache keys, retrieve cached P&L and BS payloads if possible,
+    then run Stage 2 business analysis.
+
+    Request:
+      - pnl_cache_key: "cachedContents/..." (required)
+      - bs_cache_key: "cachedContents/..." (optional)
+
+    Response mirrors stage2_from_two_csvs but stage1 fields may be None if cache fetch fails.
+    """
+    try:
+        if not pnl_cache_key:
+            raise HTTPException(status_code=400, detail="pl_cache_key (P&L cache key) is required")
+
+        # Try to retrieve cached payloads. The GenerateContent API uses the cache name reference,
+        # but to compute expected periods we benefit from the actual cached JSON content.
+        pnl_data: Optional[Dict[str, Any]] = None
+        bs_data: Optional[Dict[str, Any]] = None
+
+        # Use the same cache manager as Stage1 flow
+        cache_manager = stage2_test_service.cache_manager
+
+        # We need an API key to access cache metadata/contents
+        api_key = get_next_key()
+
+        # Attempt to load cached content names (Gemini API returns metadata; content was uploaded as JSON string)
+        # multi_pdf_service.GeminiCacheManager.get_cached_content returns the cache name when successful.
+        try:
+            cached_pnl_ref = await cache_manager.get_cached_content(pnl_cache_key, api_key)
+            if not cached_pnl_ref:
+                raise HTTPException(status_code=404, detail=f"P&L cache not found for key: {pnl_cache_key}")
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=502, detail=f"Failed to access P&L cache: {str(e)}")
+
+        # Best-effort: if BS key provided, verify it exists as well
+        if bs_cache_key:
+            try:
+                cached_bs_ref = await cache_manager.get_cached_content(bs_cache_key, api_key)
+                if not cached_bs_ref:
+                    bs_cache_key = None  # degrade gracefully
+            except Exception:
+                bs_cache_key = None  # degrade gracefully
+
+        # Note: Our cache manager stores the JSON as a single content string. The SDK does not expose direct
+        # retrieval of raw payload via caches.get; however, Stage 2 prompt uses cached_content by key.
+        # To compute periods for logs/validation, we rely on placeholders if we cannot fetch raw JSON here.
+        # If future enhancements add a method to fetch stored JSON, plug it here to populate pnl_data/bs_data.
+
+        # Run Stage 2 directly using provided cache keys
+        result = await stage2_test_service.run_stage2(
+            pnl_cache_key=pnl_cache_key,
+            bs_cache_key=bs_cache_key,
+            pnl_data=pnl_data,
+            bs_data=bs_data,
+            requested_model=requested_model
+        )
+
+        return {
+            "stage1": {
+                "pnl": pnl_data,
+                "balance_sheet": bs_data,
+            },
+            "cache_keys": {
+                "pnl": pnl_cache_key,
+                "balance_sheet": bs_cache_key,
+            },
+            "cash_flow": result
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"stage2_from_cache_keys failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error during Stage 2 from cache keys")

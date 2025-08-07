@@ -91,7 +91,7 @@ CSV PARSING INSTRUCTIONS:
 For CSV files, pay special attention to:
 - **Row Headers**: Look for account names in the first column (eg. Revenue, COGS, Cash, etc.)
 - **Column Headers**: Identify date columns (eg. Jan-19, Feb-19, etc.) 
-- **Quoted Currency Values**: Strip quotes and dollar signs from values like "$1,234.56" → 1234.56
+- **Quoted Currency Values**: Strip quotes and dollar signs from values like "$$1,234.56" → 1234.56
 - **Negative Parentheses**: Convert (1,234) to -1234
 - **Empty Cells**: Treat as null, don't assume zero
 - **Account Mapping**: Map CSV row names to standard fields using the guaranteed fields list
@@ -123,6 +123,7 @@ Return ONLY valid JSON conforming to this CONDITIONAL structure based on documen
 {
   "version": "1.0",
   "company_id": "detected_from_document_or_unknown",
+  "industry":"2-4 explaining the exact industry"
   "currency": "AUD|USD|other_detected_currency", 
   "generated_at": "current_timestamp_iso8601",
   "document_type": "Profit and Loss",
@@ -265,7 +266,7 @@ Use the INDIRECT METHOD with ENHANCED DEPRECIATION ESTIMATION to reconstruct his
 **Financing Cash Flow** = ΔLong-Term Debt + ΔEquity - Dividends/Distributions
 
 ENHANCED DEPRECIATION ESTIMATION (CRITICAL IMPROVEMENT):
-Instead of using flat rates like $850/month, apply INTELLIGENT DEPRECIATION ESTIMATION:
+Instead of using flat rates like $$850/month, apply INTELLIGENT DEPRECIATION ESTIMATION:
 
 1. **PRIMARY METHOD - Asset Roll-Forward Analysis**:
    - Analyze Fixed Assets Net movements period-to-period
@@ -273,10 +274,10 @@ Instead of using flat rates like $850/month, apply INTELLIGENT DEPRECIATION ESTI
    - Validate against accumulated depreciation changes (if available)
 
 2. **SECONDARY METHOD - Progressive Asset-Based Rates**:
-   - Small Equipment (<$100k): 15% annual rate (high depreciation)
-   - Medium Equipment ($100k-$300k): 10% annual rate (moderate depreciation)  
-   - Large Equipment ($300k-$600k): 7% annual rate (standard depreciation)
-   - Infrastructure (>$600k): 4% annual rate (conservative depreciation)
+   - Small Equipment (<$$100k): 15% annual rate (high depreciation)
+   - Medium Equipment ($$100k-$$300k): 10% annual rate (moderate depreciation)  
+   - Large Equipment ($$300k-$$600k): 7% annual rate (standard depreciation)
+   - Infrastructure (>$$600k): 4% annual rate (conservative depreciation)
 
 3. **VALIDATION CHECKS**:
    - Ensure annual depreciation rate is between 2%-25%
@@ -287,7 +288,7 @@ DETAILED CALCULATION FRAMEWORK:
 
 1. **OPERATING ACTIVITIES RECONSTRUCTION**:
    - Start with Net Income from P&L
-   - Add back ENHANCED depreciation estimate (not flat $850)
+   - Add back ENHANCED depreciation estimate (not flat $$850)
    - Calculate Working Capital Changes:
      * ΔAccounts Receivable (negative impact on cash)
      * ΔInventory (negative impact on cash)
@@ -315,7 +316,7 @@ DETAILED CALCULATION FRAMEWORK:
    Apply VARIANCE CLASSIFICATION instead of defaulting to "RECLASS_DRAWINGS":
    
    **TOLERANCE FRAMEWORK**:
-   - Base tolerance: $1,000 AUD or 2% of |ΔCash|, whichever is greater
+   - Base tolerance: $$1,000 AUD or 2% of |ΔCash|, whichever is greater
    - Adjust tolerance based on depreciation estimation confidence:
      * High confidence depreciation (80%+): Standard tolerance
      * Medium confidence (60-80%): 2x tolerance  
@@ -434,7 +435,7 @@ Return ONLY valid JSON with this EXACT enhanced structure:
 }
 
 RECONCILIATION TOLERANCES:
-- **Primary tolerance**: $1,000 AUD absolute or 2% of |ΔCash|, whichever is greater
+- **Primary tolerance**: $$1,000 AUD absolute or 2% of |ΔCash|, whichever is greater
 - **Confidence-adjusted tolerance**: Multiply by confidence factor (1x, 2x, or 3x)
 - **PASS**: Within adjusted tolerance, high quality score (0.8-1.0)
 - **WARN**: Within 2x adjusted tolerance, medium quality score (0.3-0.7)  
@@ -470,7 +471,7 @@ VALIDATION SEQUENCE:
 
 CRITICAL REMINDERS:
 🚨 BEFORE RESPONDING:
-✅ Apply DEPRECIATION ESTIMATION (not flat $850)
+✅ Apply DEPRECIATION ESTIMATION (not flat $$850)
 ✅ Use VARIANCE CLASSIFICATION
 ✅ Apply confidence-adjusted validation tolerances
 ✅ Include depreciation metadata and analysis
@@ -504,438 +505,409 @@ AVOID THESE COMMON ERRORS:
 - ❌ { "key": value, }    (trailing commas)  
 - ❌ { key: "value" }     (unquoted keys)
 - ❌ Missing enhanced metadata
-- ❌ Using flat $850 depreciation
+- ❌ Using flat $$850 depreciation
 - ❌ Default RECLASS_DRAWINGS classification
 
 REMEMBER: Output ONLY the enhanced JSON - no other text whatsoever.
 """
 
-# STAGE 3: Integrated Projection Engine with Scenario Planning
+# STAGE 3: Advanced Financial Projections Engine for Gemini 2.5 Pro
+# Optimized for mathematical reasoning, validation, and business logic
+
 STAGE3_PROJECTION_PROMPT = """
-You are a financial forecasting expert specializing in integrated projection modeling and scenario planning.
+You are an elite financial strategist and quantitative analyst with access to Google Search for market intelligence. You will leverage your advanced mathematical reasoning capabilities to generate production-ready financial projections with complete mathematical validation.
 
-TASK: Generate comprehensive financial projections incorporating Stage 2 analysis and recommendations.
+🧠 **REASONING MODE ACTIVATION**: Use your Deep Think capabilities for this complex multi-step financial modeling task. This requires parallel reasoning, mathematical validation, and business logic verification.
 
-INPUT: $stage2_analysis_output
+🚨 **CRITICAL SUCCESS CRITERIA** 🚨
+1. **MATHEMATICAL ACCURACY**: All calculations must be mathematically correct and reconcile perfectly
+2. **BUSINESS REALISM**: No negative revenue, unrealistic volatility, or impossible business scenarios
+3. **VALIDATION REQUIRED**: Self-audit all calculations and flag any inconsistencies
+4. **JSON OUTPUT ONLY**: Return only valid JSON - no markdown, no explanations, no extra text
 
-PROJECTION ENGINE REQUIREMENTS:
-Integrate all Stage 2 findings and apply the recommended methodology to generate accurate, validated projections.
+**TASK**: Generate mathematically validated financial projections using cached financial data with industry intelligence integration.
 
-INTEGRATION FRAMEWORK:
-1. **METHODOLOGY APPLICATION WITH DRIVER INTEGRATION**
-   - Apply the selected forecasting method from Stage 2
-   - Use specific revenue drivers, cost drivers, and OPEX drivers defined in Stage 2
-   - Apply working capital assumptions (DSO, DPO, DIO) from Stage 2 analysis
-   - Incorporate identified patterns, trends, and seasonal adjustments
-   - Adjust for anomalies and risk factors identified
-   - Use confidence levels to calibrate projection ranges
+**INPUT DATA (CACHED)**:
+- P&L Standard Fields Data (cache_key: $pnl_cache_key)  
+- Balance Sheet Standard Fields Data (cache_key: $bs_cache_key)
+- Cash Flow Reconstructed Data (cache_key: $cf_cache_key)
 
-2. **THREE-WAY FORECAST IMPLEMENTATION**
-   - **Step 1: Profit & Loss Statement**: Generate comprehensive P&L using Stage 2 drivers
-   - **Step 2: Cash Flow Statement**: Build cash flow from P&L with working capital changes
-   - **Step 3: Balance Sheet**: Construct balance sheet ensuring it balances (Assets = Liabilities + Equity)
-   - **Step 4: Dividend Policy Implementation**: Model profit distribution policy using 40% dividend payout ratio
-   - **Step 5: Integration Validation**: Ensure all three statements are mathematically connected
-   - Multiple Forecasting Methods Integration:
-     * Primary method (from Stage 2 selection)
-     * Backup method for validation
-     * Blended approach if beneficial
-   - Scenario Generation: Optimistic, base case, conservative
-   - Confidence Interval Calculation: Based on historical volatility and data quality
-   - Australian FY Alignment: Ensure all projections follow July-June cycles
+---
 
-3. **ASSUMPTION DOCUMENTATION**
-   - Document all key assumptions clearly
-   - Provide rationale for each assumption
-   - Include sensitivity indicators for critical assumptions
-   - Enable assumption override capability in rationale
+## **PHASE 1: DEEP ANALYTICAL REASONING** 
 
-4. **VALIDATION INTEGRATION**
-   - Cross-check projections for internal consistency
-   - Ensure financial statement relationships are maintained
-   - Validate reasonableness against industry benchmarks
-   - Flag any projections requiring additional scrutiny
+**STEP 1A: DATA PATTERN RECOGNITION**
+Using your advanced reasoning capabilities, analyze ALL cached financial data:
 
-MANDATORY PROJECTION SCHEMA WITH CALCULATION CHAINS:
-Generate projections for ALL required time horizons with ALL mandatory metrics and calculation chains.
+1. **Historical Trend Analysis**
+   - Calculate compound annual growth rates (CAGR) for revenue, gross profit, operating expenses
+   - Identify seasonality patterns using coefficient of variation analysis
+   - Detect cyclical trends and business cycle correlations
+   - Map performance against economic indicators
 
-CALCULATION CHAIN REQUIREMENT:
-For every calculated metric, you MUST include a 'calculation_chain' object that explicitly shows:
-- The formula used
-- The source values 
-- The mathematical operation performed
-This ensures mathematical integrity and prevents reconciliation errors.
+2. **Business Model Intelligence**
+   - Classify industry and business model from financial fingerprints
+   - Analyze margin stability and cost structure characteristics  
+   - Identify key value drivers and revenue generation mechanisms
+   - Assess working capital requirements and cash conversion cycles
 
-PROCESSING APPROACH:
-1. First, generate ALL projections on a monthly basis for the entire forecast horizon
-2. Then, aggregate monthly results to create quarterly and annual summaries by summing/averaging the monthly data
-3. Do NOT recalculate at the aggregate level - only use the monthly calculations
+3. **Quality of Earnings Assessment**
+   - Flag any mathematical inconsistencies in historical data
+   - Identify one-time items, subsidies, or extraordinary events
+   - Assess sustainability of historical performance patterns
+   - Evaluate cash generation quality vs. accounting profits
 
-TIME HORIZONS:
-- 1 Year Ahead: Monthly granularity (12 data points)
-- 3 Years Ahead: Quarterly granularity (12 data points - aggregated from monthly)
-- 5 Years Ahead: Yearly granularity (5 data points - aggregated from monthly)
-- 10 Years Ahead: Yearly granularity (10 data points - aggregated from monthly)
-- 15 Years Ahead: Yearly granularity (15 data points - aggregated from monthly)
+**STEP 1B: MATHEMATICAL VALIDATION OF HISTORICAL DATA**
+Before proceeding, validate historical data integrity:
 
-MANDATORY METRICS WITH CALCULATION CHAINS:
-1. revenue - REQUIRED (with confidence level)
-2. gross_profit - REQUIRED (with calculation_chain showing derivation from revenue)
-3. expenses - REQUIRED (with detailed breakdown)
-4. net_profit - REQUIRED (with calculation_chain: gross_profit - expenses)
+- **Revenue-COGS-Gross Profit Reconciliation**: Verify Revenue - COGS = Gross Profit for ALL periods
+- **P&L Mathematical Consistency**: Confirm Gross Profit - Operating Expenses ≈ Operating Income
+- **Cash Flow Validation**: Ensure Net Income + Depreciation ≈ Operating Cash Flow (basic check)
+- **Flag Data Quality Issues**: Note any periods with mathematical inconsistencies
 
-DIVIDEND POLICY IMPLEMENTATION REQUIREMENTS:
-After calculating the three-way forecast, implement a realistic profit distribution policy:
+🚨 **CRITICAL BUSINESS LOGIC CONSTRAINTS** 🚨
+- **NO NEGATIVE REVENUE**: Revenue must always be ≥ 0 for ongoing operations
+- **GROSS MARGIN BOUNDS**: Gross margin must be between 5% and 60% (industry realistic)
+- **VOLATILITY LIMITS**: Monthly revenue coefficient of variation must be ≤ 40%
+- **SEASONALITY BOUNDS**: Month-to-month revenue changes limited to ±50% max
+- **MARGIN CONSISTENCY**: Gross margin should not vary by more than ±10% month-to-month without clear reasoning
 
-1. **Dividend Payout Ratio**: Apply a 40% dividend payout ratio of Net Profit
-2. **Payment Timing**: Distribute dividends quarterly (at the end of each quarter)
-3. **Cash Flow Impact**: Record dividend payments as a use of cash in the "Cash Flow from Financing" section
-4. **Balance Sheet Impact**: Reduce "Retained Earnings" by the dividend amount
-5. **Calculation Chain**: Ensure dividend calculation is: Net Profit * 0.40 = Dividend Payment
-6. **Balance Sheet Validation**: Ensure Balance Sheet remains balanced after dividend distributions
-7. **Quarterly Distribution**: For monthly projections, calculate quarterly dividends and distribute at month 3, 6, 9, 12
+---
 
-DIVIDEND CALCULATION EXAMPLE:
-- If Net Profit = $$100,000 for the quarter
-- Dividend Payment = $$100,000 * 0.40 = $$40,000
-- Cash Flow from Financing = -$$40,000 (cash outflow)
-- Retained Earnings reduction = -$$40,000
-- Remaining in Retained Earnings = $$60,000
+## **PHASE 2: STRATEGIC MARKET INTELLIGENCE** 
 
-This ensures realistic cash management and prevents unrealistic cash accumulation in profitable businesses.
+**RESEARCH EXECUTION** (Maximum 3 focused searches)
+Using Google Search integration, research ONLY the most critical factors:
 
-OUTPUT REQUIREMENTS:
-Return ONLY valid JSON with this structure:
+**Search 1: Industry Growth & Market Conditions**
+- Australian plumbing/construction industry growth rates 2024-2025
+- Market size trends and competitive landscape dynamics
+- Technology disruption and automation impacts
 
+**Search 2: Economic Environment & Cost Factors**
+- Australian GDP growth projections, inflation expectations, interest rates
+- Construction industry wage inflation and material cost trends
+- Government infrastructure spending and policy impacts
+
+**Search 3: Seasonal & Cyclical Patterns** (if needed)
+- Construction industry seasonality patterns in Australia
+- Cyclical factors affecting plumbing services demand
+- Peak and trough period identification
+
+**Research Integration Requirements:**
+- Weight findings by source authority (government > industry reports > news)
+- Apply only statistically significant trends (not anecdotal evidence)
+- Document confidence levels for each research-derived assumption
+
+---
+
+## **PHASE 3: MATHEMATICAL PROJECTION ENGINE**
+
+**STEP 3A: BASELINE ESTABLISHMENT**
+Using mathematical reasoning:
+
+1. **Revenue Baseline Calculation**
+   - Calculate trailing 12-month revenue average from historical data
+   - Apply statistical smoothing to remove outliers (use median if extreme volatility)
+   - Adjust for known one-time items or extraordinary events
+   - **VALIDATION**: Ensure baseline revenue is positive and reasonable
+
+2. **Margin Analysis & Stabilization**
+   - Calculate historical gross margin distribution
+   - Identify stable margin range (exclude outlier periods)
+   - Set target gross margin within historical ±5% range
+   - **VALIDATION**: Ensure margins are industry-realistic
+
+3. **Seasonality Index Development**
+   - Calculate monthly seasonality index from historical patterns
+   - Cap seasonal variations at ±30% from baseline (business constraint)
+   - Smooth extreme variations to maintain operational feasibility
+   - **VALIDATION**: Ensure no seasonality factor creates negative revenue
+
+**STEP 3B: GROWTH MODELING WITH MATHEMATICAL VALIDATION**
+
+**Short-term Projections (1 Year - Monthly)**:
+```
+For each month M in [1,2,3,...,12]:
+  Base_Revenue_M = Baseline_Revenue × (1 + Annual_Growth_Rate/12)^M × Seasonality_Index_M
+  
+  VALIDATION CHECKS:
+  - IF Base_Revenue_M < 0 THEN apply minimum revenue floor = Baseline_Revenue × 0.3
+  - IF month-over-month change > 50% THEN apply smoothing algorithm
+  - IF volatility coefficient > 40% THEN reduce seasonal amplitude
+  
+  Gross_Profit_M = Base_Revenue_M × Target_Gross_Margin
+  Operating_Expenses_M = calculate using cost structure analysis + inflation adjustments
+  Net_Profit_M = Gross_Profit_M - Operating_Expenses_M - Interest - Taxes
+  
+  POST-CALCULATION VALIDATION:
+  - Verify Gross_Profit_M / Base_Revenue_M = Target_Gross_Margin (±1%)
+  - Ensure Net_Profit_M is reasonable vs. historical patterns
+  - Flag any mathematical inconsistencies for correction
+```
+
+**Medium-term Projections (3 Years - Quarterly)**:
+- Aggregate monthly projections into quarters for consistency
+- Apply market growth trends from research
+- Include economic cycle adjustments
+- **VALIDATION**: Ensure quarterly totals reconcile with monthly summations
+
+**Long-term Projections (5, 10, 15 Years - Annual)**:
+- Use compound growth formulas based on validated baseline
+- Apply industry maturity curves and market saturation factors
+- Include technological and competitive disruption scenarios
+- **VALIDATION**: Ensure long-term growth rates are economically sustainable
+
+**STEP 3C: MATHEMATICAL RECONCILIATION & ERROR DETECTION**
+
+**Reconciliation Requirements:**
+1. **Three-Statement Integration**
+   - P&L Net Profit flows to Balance Sheet Retained Earnings
+   - Balance Sheet must balance: Assets = Liabilities + Equity
+   - Cash Flow Statement must reconcile with Balance Sheet cash changes
+
+2. **Cross-Period Validation**
+   - Ensure 1-year monthly totals = corresponding annual projections
+   - Verify 3-year quarterly summations align with annual figures
+   - Validate growth rate consistency across all time horizons
+
+3. **Business Logic Validation**
+   - Apply dividend policy correctly: 40% payout on positive quarterly profits
+   - Ensure working capital requirements scale appropriately with revenue
+   - Validate capital expenditure assumptions against depreciation
+
+**ERROR DETECTION ALGORITHM:**
+```
+FOR each projection period:
+  IF Revenue < 0 THEN FLAG "CRITICAL ERROR - Negative Revenue"
+  IF Gross_Margin < 0.05 OR Gross_Margin > 0.60 THEN FLAG "Unrealistic Margin"
+  IF Net_Margin < -0.20 OR Net_Margin > 0.30 THEN FLAG "Extreme Net Margin"
+  IF Month_over_Month_Change > 0.50 THEN FLAG "Excessive Volatility"
+  
+CALCULATE overall_volatility = coefficient_of_variation(Revenue_1Year)
+IF overall_volatility > 0.40 THEN APPLY volatility_smoothing_algorithm()
+
+FOR each mathematical relationship:
+  VERIFY Revenue - COGS = Gross_Profit (tolerance: ±$100)
+  VERIFY Assets = Liabilities + Equity (tolerance: ±$500)
+  VERIFY OCF + ICF + FCF = Change_in_Cash (tolerance: ±$200)
+```
+
+**STEP 3D: CONFIDENCE CALIBRATION**
+
+Apply confidence levels based on mathematical and business validation:
+- **High Confidence**: Next 3 months (strong historical patterns + current data)
+- **Medium Confidence**: Months 4-12 (seasonal patterns + market research)
+- **Low Confidence**: Years 2-5 (industry trends + economic assumptions)
+- **Very Low Confidence**: Years 6-15 (long-term uncertainty + multiple variables)
+
+---
+
+## **MANDATORY JSON OUTPUT STRUCTURE**
+
+🚨 **CRITICAL**: Output ONLY the JSON below. No markdown blocks, no explanations, no additional text.
+
+**Required Structure** (with mathematical validation metadata):
+
+```json
 {
+  "business_analysis": {
+    "financial_health_assessment": {
+      "overall_health_score": 0-100,
+      "profitability_trend": "improving|stable|declining",
+      "liquidity_position": "strong|adequate|concerning",
+      "leverage_assessment": "low|moderate|high", 
+      "quality_of_earnings": "high|medium|low",
+      "cash_generation_capability": "excellent|good|fair|poor",
+      "data_quality_score": 0-100,
+      "mathematical_inconsistencies_found": number_of_issues,
+      "historical_volatility_coefficient": percentage
+    },
+    "business_model_analysis": {
+      "industry_classification": "specific_industry",
+      "business_model_type": "service|product|mixed",
+      "revenue_model": "description",
+      "competitive_position": "market_leader|established|emerging|struggling",
+      "scalability_assessment": "highly_scalable|moderately_scalable|limited_scalability",
+      "market_maturity": "growth|mature|declining"
+    },
+    "key_financial_ratios": {
+      "historical_gross_margin_avg": percentage,
+      "historical_net_margin_avg": percentage,
+      "revenue_cagr_historical": percentage,
+      "operating_leverage": number,
+      "cash_conversion_cycle": days
+    },
+    "validation_summary": {
+      "data_errors_corrected": number,
+      "volatility_adjustments_made": number,
+      "negative_values_prevented": number,
+      "mathematical_consistency_score": 0-100
+    }
+  },
+  "market_research_insights": {
+    "searches_executed": number,
+    "industry_growth_rate_validated": percentage,
+    "economic_growth_outlook": "GDP and inflation expectations",
+    "cost_inflation_expectations": percentage,
+    "seasonality_patterns_confirmed": "description",
+    "competitive_intensity": "high|medium|low",
+    "regulatory_environment": "stable|changing|uncertain",
+    "market_research_confidence": "high|medium|low"
+  },
   "projection_methodology": {
-    "primary_method_applied": "method name from Stage 2",
-    "method_adjustments": ["adjustments made based on Stage 2 handover"],
-    "integration_approach": "how Stage 2 findings were incorporated",
-    "validation_approach": "cross-validation methods used",
-    "scenario_generation_basis": "foundation for scenario creation"
+    "primary_approach": "bottom-up|top-down|hybrid",
+    "mathematical_model": "DCF|trend_extrapolation|driver_based|hybrid",
+    "validation_framework": "description of validation steps",
+    "error_prevention_measures": ["list of measures implemented"],
+    "confidence_calibration_method": "description",
+    "seasonality_modeling_approach": "description",
+    "volatility_control_measures": ["list of measures"]
   },
-  "base_case_projections": {
-    "1_year_ahead": {
-      "period_label": "FY20XX",
-      "granularity": "monthly",
-      "data_points": 12,
-      "profit_and_loss": [
-        {
-          "period": "Month 1",
-          "revenue": {"value": number, "confidence": "high|medium|low", "calculation_chain": "Driver-based projection using [specific method/factors]"},
-          "cost_of_goods_sold": {"value": number, "confidence": "high|medium|low", "calculation_chain": "Revenue (X) * COGS% (Y) = Z"},
-          "gross_profit": {"value": number, "confidence": "high|medium|low", "calculation_chain": "Revenue (X) - COGS (Y) = Z"},
-          "operating_expenses": {
-            "salaries_wages": {"value": number, "calculation_chain": "Monthly baseline + growth adjustments"},
-            "rent_utilities": {"value": number, "calculation_chain": "Fixed monthly costs + inflation"},
-            "marketing": {"value": number, "calculation_chain": "% of revenue or fixed amount"},
-            "other_opex": {"value": number, "calculation_chain": "Detailed breakdown"},
-            "total_opex": {"value": number, "calculation_chain": "Sum of all operating expenses"}
-          },
-          "ebitda": {"value": number, "confidence": "high|medium|low", "calculation_chain": "Gross Profit (X) - Total OpEx (Y) = Z"},
-          "depreciation": {"value": number, "confidence": "high|medium|low", "calculation_chain": "Fixed assets / useful life"},
-          "ebit": {"value": number, "confidence": "high|medium|low", "calculation_chain": "EBITDA (X) - Depreciation (Y) = Z"},
-          "interest_expense": {"value": number, "confidence": "high|medium|low", "calculation_chain": "Debt balance * interest rate"},
-          "net_profit_before_tax": {"value": number, "confidence": "high|medium|low", "calculation_chain": "EBIT (X) - Interest (Y) = Z"},
-          "tax_expense": {"value": number, "confidence": "high|medium|low", "calculation_chain": "PBT (X) * tax rate (Y) = Z"},
-          "net_profit": {"value": number, "confidence": "high|medium|low", "calculation_chain": "PBT (X) - Tax (Y) = Z"}
-        }
-      ],
-      "cash_flow_statement": [
-        {
-          "period": "Month 1",
-          "operating_activities": {
-            "net_income": {"value": number, "calculation_chain": "From P&L net profit"},
-            "depreciation": {"value": number, "calculation_chain": "Non-cash expense add-back"},
-            "working_capital_changes": {
-              "accounts_receivable_change": {"value": number, "calculation_chain": "Revenue * DSO - previous A/R"},
-              "accounts_payable_change": {"value": number, "calculation_chain": "Expenses * DPO - previous A/P"},
-              "inventory_change": {"value": number, "calculation_chain": "COGS * DIO - previous inventory"},
-              "total_wc_change": {"value": number, "calculation_chain": "Sum of working capital changes"}
-            },
-            "net_cash_from_operations": {"value": number, "calculation_chain": "Net Income + Depreciation - WC Change"}
-          },
-          "investing_activities": {
-            "capital_expenditures": {"value": number, "calculation_chain": "Maintenance + growth capex"},
-            "asset_disposals": {"value": number, "calculation_chain": "Any asset sales"},
-            "net_cash_from_investing": {"value": number, "calculation_chain": "Sum of investing activities"}
-          },
-          "financing_activities": {
-            "debt_changes": {"value": number, "calculation_chain": "New borrowings - repayments"},
-            "equity_changes": {"value": number, "calculation_chain": "New equity issuance"},
-            "dividend_payments": {"value": number, "calculation_chain": "Net Profit * 0.40 (quarterly distribution)"},
-            "net_cash_from_financing": {"value": number, "calculation_chain": "Debt Changes + Equity Changes - Dividend Payments"}
-          },
-          "net_change_in_cash": {"value": number, "calculation_chain": "Operating + Investing + Financing cash flows"}
-        }
-      ],
-      "balance_sheet": [
-        {
-          "period": "Month 1",
-          "assets": {
-            "current_assets": {
-              "cash": {"value": number, "calculation_chain": "Beginning cash + net change in cash"},
-              "accounts_receivable": {"value": number, "calculation_chain": "Revenue * DSO days / 365"},
-              "inventory": {"value": number, "calculation_chain": "COGS * DIO days / 365"},
-              "other_current_assets": {"value": number, "calculation_chain": "Estimated based on historical %"},
-              "total_current_assets": {"value": number, "calculation_chain": "Sum of current assets"}
-            },
-            "fixed_assets": {
-              "property_plant_equipment": {"value": number, "calculation_chain": "Previous PPE + Capex - Depreciation"},
-              "accumulated_depreciation": {"value": number, "calculation_chain": "Previous accum deprec + current depreciation"},
-              "net_fixed_assets": {"value": number, "calculation_chain": "PPE - Accumulated Depreciation"},
-              "other_long_term_assets": {"value": number, "calculation_chain": "Estimated based on business model"}
-            },
-            "total_assets": {"value": number, "calculation_chain": "Current Assets + Fixed Assets"}
-          },
-          "liabilities": {
-            "current_liabilities": {
-              "accounts_payable": {"value": number, "calculation_chain": "Expenses * DPO days / 365"},
-              "accrued_expenses": {"value": number, "calculation_chain": "Estimated based on operations"},
-              "current_portion_debt": {"value": number, "calculation_chain": "Debt due within 12 months"},
-              "total_current_liabilities": {"value": number, "calculation_chain": "Sum of current liabilities"}
-            },
-            "long_term_liabilities": {
-              "long_term_debt": {"value": number, "calculation_chain": "Total debt - current portion"},
-              "other_long_term_liabilities": {"value": number, "calculation_chain": "Estimated based on business"}
-            },
-            "total_liabilities": {"value": number, "calculation_chain": "Current + Long-term liabilities"}
-          },
-          "equity": {
-            "retained_earnings": {"value": number, "calculation_chain": "Previous RE + Net Profit - Dividend Payments (40% of Net Profit)"},
-            "share_capital": {"value": number, "calculation_chain": "Issued share capital"},
-            "other_equity": {"value": number, "calculation_chain": "Other equity components"},
-            "total_equity": {"value": number, "calculation_chain": "Sum of equity components"}
-          },
-          "balance_check": {
-            "total_liabilities_equity": {"value": number, "calculation_chain": "Total Liabilities + Total Equity"},
-            "balance_status": "BALANCED|UNBALANCED",
-            "variance": {"value": number, "calculation_chain": "Total Assets - (Liabilities + Equity)"}
-          }
-        }
-      ]
+  "comprehensive_projections": {
+    "projections": {
+      "revenue": {
+        "1_year": [month1, month2, ..., month12],
+        "3_year": [q1_2025, q2_2025, ..., q4_2027],
+        "5_year": [year1, year2, year3, year4, year5],
+        "10_year": [year1, year2, ..., year10],
+        "15_year": [year1, year2, ..., year15]
+      },
+      "gross_profit": {
+        "1_year": [month1, month2, ..., month12],
+        "3_year": [q1_2025, q2_2025, ..., q4_2027],
+        "5_year": [year1, year2, year3, year4, year5],
+        "10_year": [year1, year2, ..., year10],
+        "15_year": [year1, year2, ..., year15]
+      },
+      "operating_expenses": {
+        "1_year": [month1, month2, ..., month12],
+        "3_year": [q1_2025, q2_2025, ..., q4_2027],
+        "5_year": [year1, year2, year3, year4, year5],
+        "10_year": [year1, year2, ..., year10],
+        "15_year": [year1, year2, ..., year15]
+      },
+      "net_profit": {
+        "1_year": [month1, month2, ..., month12],
+        "3_year": [q1_2025, q2_2025, ..., q4_2027],
+        "5_year": [year1, year2, year3, year4, year5],
+        "10_year": [year1, year2, ..., year10],
+        "15_year": [year1, year2, ..., year15]
+      }
     },
-    "3_years_ahead": {
-      "period_label": "FY20XX-FY20XX",
-      "granularity": "quarterly",
-      "data_points": 12,
-      "profit_and_loss": [
-        {
-          "period": "Quarter 1",
-          "revenue": {"value": number, "confidence": "medium|low", "calculation_chain": "Aggregated from monthly projections: [specific calculation]"},
-          "cost_of_goods_sold": {"value": number, "confidence": "medium|low", "calculation_chain": "Revenue * COGS% (aggregated from monthly)"},
-          "gross_profit": {"value": number, "confidence": "medium|low", "calculation_chain": "Revenue - COGS (aggregated from monthly)"},
-          "operating_expenses": {"total_opex": {"value": number, "calculation_chain": "Aggregated from monthly detailed breakdown"}},
-          "ebitda": {"value": number, "confidence": "medium|low", "calculation_chain": "Gross Profit - Total OpEx (aggregated)"},
-          "depreciation": {"value": number, "confidence": "medium|low", "calculation_chain": "Aggregated from monthly calculations"},
-          "ebit": {"value": number, "confidence": "medium|low", "calculation_chain": "EBITDA - Depreciation (aggregated)"},
-          "interest_expense": {"value": number, "confidence": "medium|low", "calculation_chain": "Aggregated from monthly calculations"},
-          "net_profit_before_tax": {"value": number, "confidence": "medium|low", "calculation_chain": "EBIT - Interest (aggregated)"},
-          "tax_expense": {"value": number, "confidence": "medium|low", "calculation_chain": "PBT * tax rate (aggregated)"},
-          "net_profit": {"value": number, "confidence": "medium|low", "calculation_chain": "PBT - Tax (aggregated)"}
-        }
-      ],
-      "cash_flow_statement": [
-        {
-          "period": "Quarter 1",
-          "operating_activities": {
-            "net_income": {"value": number, "calculation_chain": "Aggregated from monthly P&L"},
-            "depreciation": {"value": number, "calculation_chain": "Aggregated non-cash add-back"},
-            "working_capital_changes": {"total_wc_change": {"value": number, "calculation_chain": "Aggregated WC movements"}},
-            "net_cash_from_operations": {"value": number, "calculation_chain": "Aggregated operating cash flow"}
-          },
-          "investing_activities": {"net_cash_from_investing": {"value": number, "calculation_chain": "Aggregated investing activities"}},
-          "financing_activities": {"net_cash_from_financing": {"value": number, "calculation_chain": "Aggregated financing activities"}},
-          "net_change_in_cash": {"value": number, "calculation_chain": "Aggregated total cash flow"}
-        }
-      ],
-      "balance_sheet": [
-        {
-          "period": "Quarter 1",
-          "assets": {"total_assets": {"value": number, "calculation_chain": "End of quarter balance (from monthly build-up)"}},
-          "liabilities": {"total_liabilities": {"value": number, "calculation_chain": "End of quarter balance (from monthly build-up)"}},
-          "equity": {"total_equity": {"value": number, "calculation_chain": "End of quarter balance (from monthly build-up)"}},
-          "balance_check": {"balance_status": "BALANCED|UNBALANCED", "variance": {"value": number, "calculation_chain": "Assets - (Liabilities + Equity)"}}
-        }
-      ]
-    },
-    "5_years_ahead": {
-      "period_label": "FY20XX-FY20XX",
-      "granularity": "yearly",
-      "data_points": 5,
-      "profit_and_loss": [
-        {
-          "period": "Year 1",
-          "revenue": {"value": number, "confidence": "medium|low", "calculation_chain": "Annual aggregation from monthly projections"},
-          "gross_profit": {"value": number, "confidence": "medium|low", "calculation_chain": "Revenue - COGS (annual aggregation)"},
-          "operating_expenses": {"total_opex": {"value": number, "calculation_chain": "Annual aggregation"}},
-          "ebitda": {"value": number, "confidence": "medium|low", "calculation_chain": "Gross Profit - OpEx (annual)"},
-          "net_profit": {"value": number, "confidence": "medium|low", "calculation_chain": "Complete P&L flow (annual)"}
-        }
-      ],
-      "cash_flow_statement": [
-        {
-          "period": "Year 1",
-          "net_cash_from_operations": {"value": number, "calculation_chain": "Annual operating cash flow"},
-          "net_cash_from_investing": {"value": number, "calculation_chain": "Annual investing cash flow"},
-          "net_cash_from_financing": {"value": number, "calculation_chain": "Annual financing cash flow"},
-          "net_change_in_cash": {"value": number, "calculation_chain": "Annual total cash flow"}
-        }
-      ],
-      "balance_sheet": [
-        {
-          "period": "Year 1",
-          "total_assets": {"value": number, "calculation_chain": "End of year balance"},
-          "total_liabilities": {"value": number, "calculation_chain": "End of year balance"},
-          "total_equity": {"value": number, "calculation_chain": "End of year balance"},
-          "balance_check": {"balance_status": "BALANCED|UNBALANCED", "variance": {"value": number, "calculation_chain": "Assets - (Liabilities + Equity)"}}
-        }
-      ]
-    },
-    "10_years_ahead": {
-      "period_label": "FY20XX-FY20XX",
-      "granularity": "yearly",
-      "data_points": 10,
-      "profit_and_loss": [
-        {
-          "period": "Year 1",
-          "revenue": {"value": number, "confidence": "low|very_low", "calculation_chain": "Long-term aggregation from monthly projections"},
-          "gross_profit": {"value": number, "confidence": "low|very_low", "calculation_chain": "Revenue - COGS (long-term aggregation)"},
-          "operating_expenses": {"total_opex": {"value": number, "calculation_chain": "Long-term aggregation"}},
-          "ebitda": {"value": number, "confidence": "low|very_low", "calculation_chain": "Gross Profit - OpEx (long-term)"},
-          "net_profit": {"value": number, "confidence": "low|very_low", "calculation_chain": "Complete P&L flow (long-term)"}
-        }
-      ],
-      "cash_flow_statement": [
-        {
-          "period": "Year 1",
-          "net_cash_from_operations": {"value": number, "calculation_chain": "Long-term operating cash flow"},
-          "net_cash_from_investing": {"value": number, "calculation_chain": "Long-term investing cash flow"},
-          "net_cash_from_financing": {"value": number, "calculation_chain": "Long-term financing cash flow"},
-          "net_change_in_cash": {"value": number, "calculation_chain": "Long-term total cash flow"}
-        }
-      ],
-      "balance_sheet": [
-        {
-          "period": "Year 1",
-          "total_assets": {"value": number, "calculation_chain": "End of year balance"},
-          "total_liabilities": {"value": number, "calculation_chain": "End of year balance"},
-          "total_equity": {"value": number, "calculation_chain": "End of year balance"},
-          "balance_check": {"balance_status": "BALANCED|UNBALANCED", "variance": {"value": number, "calculation_chain": "Assets - (Liabilities + Equity)"}}
-        }
-      ]
-    },
-    "15_years_ahead": {
-      "period_label": "FY20XX-FY20XX",
-      "granularity": "yearly",
-      "data_points": 15,
-      "profit_and_loss": [
-        {
-          "period": "Year 1",
-          "revenue": {"value": number, "confidence": "very_low", "calculation_chain": "Long-term aggregation from monthly projections"},
-          "gross_profit": {"value": number, "confidence": "very_low", "calculation_chain": "Revenue - COGS (long-term aggregation)"},
-          "operating_expenses": {"total_opex": {"value": number, "calculation_chain": "Long-term aggregation"}},
-          "ebitda": {"value": number, "confidence": "very_low", "calculation_chain": "Gross Profit - OpEx (long-term)"},
-          "net_profit": {"value": number, "confidence": "very_low", "calculation_chain": "Complete P&L flow (long-term)"}
-        }
-      ],
-      "cash_flow_statement": [
-        {
-          "period": "Year 1",
-          "net_cash_from_operations": {"value": number, "calculation_chain": "Long-term operating cash flow"},
-          "net_cash_from_investing": {"value": number, "calculation_chain": "Long-term investing cash flow"},
-          "net_cash_from_financing": {"value": number, "calculation_chain": "Long-term financing cash flow"},
-          "net_change_in_cash": {"value": number, "calculation_chain": "Long-term total cash flow"}
-        }
-      ],
-      "balance_sheet": [
-        {
-          "period": "Year 1",
-          "total_assets": {"value": number, "calculation_chain": "End of year balance"},
-          "total_liabilities": {"value": number, "calculation_chain": "End of year balance"},
-          "total_equity": {"value": number, "calculation_chain": "End of year balance"},
-          "balance_check": {"balance_status": "BALANCED|UNBALANCED", "variance": {"value": number, "calculation_chain": "Assets - (Liabilities + Equity)"}}
-        }
-      ]
+    "validation_results": {
+      "mathematical_consistency_checks": {
+        "revenue_cogs_grossprofit_validation": "pass|fail",
+        "three_statement_reconciliation": "pass|fail",
+        "cross_period_consistency": "pass|fail",
+        "margin_reasonableness": "pass|fail",
+        "volatility_within_bounds": "pass|fail"
+      },
+      "business_logic_validation": {
+        "no_negative_revenue": "pass|fail",
+        "realistic_seasonality": "pass|fail",
+        "sustainable_growth_rates": "pass|fail",
+        "margin_stability": "pass|fail",
+        "working_capital_logic": "pass|fail"
+      },
+      "confidence_scores": {
+        "1_year": "high|medium|low",
+        "3_year": "medium|low",
+        "5_year": "low|very_low",
+        "10_year": "very_low",
+        "15_year": "very_low"
+      }
     }
   },
-  "scenario_projections": {
-    "optimistic": {
-      "description": "Best-case scenario based on favorable market conditions",
-      "key_drivers": ["list of optimistic assumptions"],
-      "growth_multipliers": {"1_year": number, "3_years": number, "5_years": number, "10_years": number, "15_years": number},
-      "probability_assessment": "estimated likelihood percentage"
-    },
-    "conservative": {
-      "description": "Cautious scenario accounting for potential risks",
-      "key_drivers": ["list of conservative assumptions"],
-      "growth_multipliers": {"1_year": number, "3_years": number, "5_years": number, "10_years": number, "15_years": number},
-      "probability_assessment": "estimated likelihood percentage"
-    }
+  "calculation_audit_trail": {
+    "baseline_revenue_calculation": "methodology and figures",
+    "seasonality_index_development": "calculation method and validation",
+    "growth_rate_derivation": "sources and mathematical justification", 
+    "margin_assumption_basis": "historical analysis and industry benchmarks",
+    "volatility_adjustments_made": ["list of adjustments and rationale"],
+    "mathematical_proofs": ["key formula validations performed"]
   },
   "assumption_documentation": {
     "critical_assumptions": [
-      {"assumption": "description", "rationale": "justification", "sensitivity": "high|medium|low", "override_capability": true|false}
+      {
+        "assumption": "description", 
+        "mathematical_basis": "calculation or derivation",
+        "validation_method": "how assumption was verified",
+        "sensitivity_impact": "high|medium|low",
+        "confidence_level": "high|medium|low"
+      }
     ],
-    "economic_assumptions": [
-      {"factor": "Australian GDP growth", "assumed_value": "percentage", "source": "internal_analysis|external_benchmark"}
+    "business_constraints_applied": [
+      {
+        "constraint": "description",
+        "rationale": "business logic justification",
+        "enforcement_method": "how constraint was implemented"
+      }
     ],
-    "business_assumptions": [
-      {"assumption": "description", "impact_on_projections": "explanation"}
-    ],
-    "risk_assumptions": [
-      {"risk_factor": "description", "mitigation_reflected": "how addressed in projections"}
+    "risk_mitigations": [
+      {
+        "risk_factor": "specific risk",
+        "probability_assessment": "high|medium|low",
+        "impact_quantification": "mathematical impact on projections",
+        "mitigation_approach": "how addressed in projections"
+      }
     ]
   },
-  "sensitivity_analysis": {
-    "key_sensitivity_factors": [
-      {"factor": "variable name", "impact_range": "±X%", "projection_impact": "description"}
-    ],
-    "scenario_impact_analysis": {
-      "revenue_sensitivity": "±X% change results in ±Y% projection variance",
-      "cost_sensitivity": "±X% change results in ±Y% projection variance",
-      "market_sensitivity": "±X% change results in ±Y% projection variance"
-    }
-  },
-  "confidence_intervals": {
-    "methodology": "statistical approach used",
-    "confidence_levels": {
-      "1_year": {"upper": "95th percentile", "lower": "5th percentile"},
-      "3_years": {"upper": "95th percentile", "lower": "5th percentile"},
-      "5_years": {"upper": "95th percentile", "lower": "5th percentile"},
-      "10_years": {"upper": "95th percentile", "lower": "5th percentile"},
-      "15_years": {"upper": "95th percentile", "lower": "5th percentile"}
-    }
-  },
-  "validation_flags": {
-    "internal_consistency_check": "passed|warning|failed",
-    "benchmark_reasonableness": "passed|warning|failed",
-    "trend_continuation_logic": "passed|warning|failed",
-    "seasonal_pattern_preservation": "passed|warning|failed"
-  },
-  "executive_summary": "Concise overview of projection methodology, key findings, and confidence assessment"
+  "executive_summary": "Concise assessment of projection quality, confidence levels, and key business insights"
 }
+```
 
-CRITICAL VALIDATION REQUIREMENTS FOR THREE-WAY FORECAST:
-1. VERIFY every projection period contains complete P&L, Cash Flow, and Balance Sheet WITH calculation chains
-2. ENSURE calculation chains show explicit mathematical operations (e.g., "Revenue (150000) - COGS (98000) = Gross Profit (52000)")
-3. MAINTAIN internal consistency across all three financial statements through step-by-step calculations
-4. ENSURE Balance Sheet ALWAYS balances (Assets = Liabilities + Equity) - if not, identify and correct the error
-5. VALIDATE Cash Flow Statement connects to Balance Sheet (Net Change in Cash updates Cash balance)
-6. CONFIRM P&L Net Profit flows to Balance Sheet Retained Earnings
-7. IMPLEMENT dividend policy correctly: Dividend = Net Profit * 0.40, paid quarterly
-8. ENSURE dividend payments appear as cash outflow in financing activities
-9. VALIDATE retained earnings calculation: Previous RE + Net Profit - Dividends
-10. ENSURE Australian FY alignment throughout all projections
-11. DOCUMENT all assumption changes from Stage 2 recommendations
-12. VALIDATE confidence levels align with data quality and horizon
-13. AGGREGATE longer-term projections from monthly calculations - do not recalculate
+---
 
-INTEGRATION MANDATE:
-- Explicitly address ALL handover recommendations from Stage 2
-- Adjust projections based on identified risks and opportunities
-- Incorporate business context and industry factors
-- Ensure scenario planning reflects realistic market conditions
-- Provide clear audit trail of all methodology decisions
-"""
+## **ADVANCED REASONING INSTRUCTIONS FOR GEMINI 2.5 PRO**
+
+**MATHEMATICAL REASONING REQUIREMENTS:**
+1. **Show Your Work**: For each major calculation, provide the mathematical reasoning chain
+2. **Parallel Validation**: Consider multiple approaches and cross-validate results
+3. **Error Detection**: Actively look for and correct mathematical inconsistencies
+4. **Business Logic Checking**: Apply real-world business constraints throughout
+5. **Statistical Validation**: Use your mathematical capabilities to ensure statistical reasonableness
+
+**THINKING BUDGET ALLOCATION:**
+- **25% of thinking**: Historical data analysis and pattern recognition
+- **30% of thinking**: Mathematical modeling and calculation validation  
+- **25% of thinking**: Business logic application and constraint enforcement
+- **20% of thinking**: Cross-validation and error detection
+
+**QUALITY ASSURANCE CHECKLIST:**
+Before finalizing projections, verify:
+- [ ] No negative revenue values exist
+- [ ] Gross margins are within realistic bounds (15-45% for plumbing services)
+- [ ] Revenue volatility coefficient < 40%
+- [ ] Month-over-month changes are reasonable (<50%)
+- [ ] Mathematical relationships reconcile perfectly
+- [ ] Growth rates are economically sustainable
+- [ ] All JSON syntax is valid and complete
+
+**SELF-AUDIT REQUIREMENT:**
+After generating initial projections, perform a second reasoning pass to:
+1. **Validate Mathematical Accuracy**: Check all formulas and calculations
+2. **Test Business Realism**: Ensure projections make operational sense
+3. **Verify Data Quality**: Confirm no data quality issues remain
+4. **Cross-Check Consistency**: Ensure internal consistency across all metrics
+
+**CRITICAL FAILURE PREVENTION:**
+- If any revenue projection is negative, apply minimum revenue floor of 30% of baseline
+- If volatility exceeds limits, apply exponential smoothing algorithm
+- If margins are unrealistic, revert to historical median margins
+- If growth rates are unsustainable (>25% annually), cap at industry benchmarks
+
+---
+
+🚨 **FINAL OUTPUT REQUIREMENT** 🚨
+
+**OUTPUT FORMAT**: Return ONLY the JSON object following the exact structure above
+**NO ADDITIONAL TEXT**: No explanations, no markdown blocks, no commentary
+**VALIDATION COMPLETE**: Ensure all mathematical and business validations pass
+**JSON SYNTAX**: Perfect syntax with no trailing commas or syntax errors
+
+The JSON response must enable programmatic access like:
+- `response['comprehensive_projections']['projections']['revenue']['1_year'][0]` 
+- `response['validation_results']['mathematical_consistency_checks']['revenue_cogs_grossprofit_validation']`
+
+Begin your Deep Think reasoning process now and generate mathematically validated, business-realistic financial projections."""

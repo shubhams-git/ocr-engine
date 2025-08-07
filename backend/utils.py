@@ -158,7 +158,7 @@ class JSONValidator:
     @staticmethod
     def validate_financial_data(data: Dict[str, Any]) -> bool:
         """
-        Validate that the parsed data contains expected financial structure
+        Validate that the parsed data contains expected financial structure with flexible field matching
         
         Args:
             data: Parsed financial data
@@ -167,9 +167,9 @@ class JSONValidator:
             True if structure is valid, False otherwise
         """
         try:
-            required_fields = ["document_type", "company_id", "periods"]
+            required_fields = ["document_type", "periods"]
             
-            # Check for required top-level fields
+            # Check for required top-level fields (relaxed requirements)
             for field in required_fields:
                 if field not in data:
                     logger.warning(f"❌ Missing required field: {field}")
@@ -181,16 +181,46 @@ class JSONValidator:
                 logger.warning("❌ Periods must be a non-empty list")
                 return False
             
-            # Check first period has some financial data
+            # Check first period has some financial data with flexible field matching
             first_period = periods[0]
-            financial_fields = ["revenue", "net_income", "cash", "total_assets"]
-            has_financial_data = any(field in first_period for field in financial_fields)
+            
+            # Define flexible field mappings for different document types
+            pnl_fields = [
+                "revenue", "net_income", "net_profit", "gross_profit", "opex", 
+                "operating_expenses", "total_expenses", "ebitda", "earnings_before_tax"
+            ]
+            bs_fields = [
+                "cash", "total_assets", "total_liabilities", "equity", "current_assets", 
+                "fixed_assets", "ar", "ap", "inventory", "total_liabilities_equity"
+            ]
+            cf_fields = [
+                "ocf", "icf", "fcf", "operating_cash_flow", "investing_cash_flow", 
+                "financing_cash_flow", "capex", "delta_cash"
+            ]
+            
+            # Combine all possible financial fields
+            all_financial_fields = pnl_fields + bs_fields + cf_fields
+            
+            # Check if first period contains any recognizable financial data
+            period_keys = set(first_period.keys())
+            financial_field_matches = period_keys.intersection(set(all_financial_fields))
+            
+            # Also check for nested structures (like opex.total)
+            nested_financial_data = False
+            for key, value in first_period.items():
+                if isinstance(value, dict):
+                    nested_keys = set(value.keys())
+                    if nested_keys.intersection(set(["total", "breakdown"])):
+                        nested_financial_data = True
+                        break
+            
+            has_financial_data = len(financial_field_matches) > 0 or nested_financial_data
             
             if not has_financial_data:
-                logger.warning("❌ No recognizable financial data in periods")
+                logger.warning(f"❌ No recognizable financial data in periods | Available keys: {list(period_keys)} | Expected any of: {all_financial_fields[:10]}...")
                 return False
             
-            logger.debug("✅ Financial data structure validation passed")
+            logger.debug(f"✅ Financial data structure validation passed | Matched fields: {financial_field_matches}")
             return True
             
         except Exception as e:

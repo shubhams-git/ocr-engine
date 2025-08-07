@@ -24,7 +24,7 @@ from fastapi import HTTPException
 
 from google import genai
 from google.genai import types
-from config import API_KEYS, OVERALL_PROCESS_TIMEOUT
+from config import API_KEYS
 from models import MultiPDFAnalysisResponse, OCRResponse
 from utils import DataStructureParser, JSONValidator
 from logging_config import (get_logger, log_request_start, log_request_end, 
@@ -53,22 +53,29 @@ class GeminiCacheManager:
             self.client = genai.Client(api_key=api_key)
         return self.client
     
-    async def create_cache_for_stage1_result(self, stage1_data: Dict[str, Any], api_key: str, document_type: str) -> str:
+    async def create_cache_for_stage1_result(self, stage1_data: Dict[str, Any], api_key: str, document_type: str, ttl_override: Optional[int] = None) -> str:
         """
         Create explicit cache for Stage 1 result (P&L or BS data)
         Returns the cache resource name for later reference
+
+        ttl_override: Optional seconds to override default cache TTL. If None, uses self.cache_ttl.
         """
         try:
             client = self.get_client(api_key)
-            
+
             # Convert stage1 data to JSON string for caching
             content_to_cache = json.dumps(stage1_data, indent=2)
-            
+
             # Create cache with appropriate display name
             cache_display_name = f"stage1_{document_type.lower().replace(' ', '_')}_data"
-            
-            logger.info(f"🔄 Creating Gemini cache for {document_type} data ({len(content_to_cache)} chars) | ttl={self.cache_ttl}")
-            
+
+            # Determine TTL to use
+            ttl_str = self.cache_ttl
+            if isinstance(ttl_override, int) and ttl_override > 0:
+                ttl_str = f"{ttl_override}s"
+
+            logger.info(f"🔄 Creating Gemini cache for {document_type} data ({len(content_to_cache)} chars) | ttl={ttl_str}")
+
             # Create cache using explicit caching API
             cache = await asyncio.to_thread(
                 client.caches.create,
@@ -77,13 +84,13 @@ class GeminiCacheManager:
                     display_name=cache_display_name,
                     system_instruction=f"This cached content contains normalized {document_type} financial data from Stage 1 extraction.",
                     contents=[content_to_cache],
-                    ttl=self.cache_ttl
+                    ttl=ttl_str
                 )
             )
-            
+
             logger.info(f"✅ Cache created successfully: {cache.name} for {document_type}")
             return cache.name or f"cache_creation_failed_{document_type}"
-            
+
         except Exception as e:
             logger.error(f"❌ Failed to create cache for {document_type}: {str(e)}")
             return f"cache_creation_failed_{document_type}"
@@ -110,9 +117,6 @@ class EnhancedMultiPDFService:
         self.max_csv_size = 25 * 1024 * 1024   # 25MB for CSV files
         self.max_files = 10
         
-        # Timeout configuration
-        self.overall_process_timeout = OVERALL_PROCESS_TIMEOUT
-        
         # TIERED MODEL SELECTION & CONCURRENCY CONTROL
         # Stage 1: Use Flash for data extraction (higher quotas, simpler task)
         self.stage1_model = "gemini-2.5-pro"
@@ -128,7 +132,6 @@ class EnhancedMultiPDFService:
             logger.info(f"⚡ CONCURRENCY CONTROL | Pro model semaphore limit: {self.pro_model_semaphore._value}")
         
         logger.debug(f"Service configuration | Max files: {self.max_files} | PDF limit: {self.max_pdf_size//1024//1024}MB | CSV limit: {self.max_csv_size//1024//1024}MB")
-        logger.debug(f"Overall process timeout: {self.overall_process_timeout}s")
         logger.debug("Using separate services: OCR Service (Stage 1), Business Analysis Service (Stage 2), Projection Service (Stage 3)")
         logger.debug(f"Model strategy: Stage 1 extraction uses {self.stage1_model}, Stages 2-3 analysis uses gemini-2.5-pro")
     
@@ -228,10 +231,18 @@ class EnhancedMultiPDFService:
             failed_extractions = []
             doc_types = {}
             
-            for result in stage1_results:
+            # Create mapping from results to original filenames
+            result_to_filename = {}
+            for i, (filename, _) in enumerate(files_data):
+                if i < len(stage1_results):
+                    result_to_filename[i] = filename
+            
+            for i, result in enumerate(stage1_results):
+                original_filename = result_to_filename.get(i, f"file_{i}")
+                
                 if isinstance(result, Exception):
                     failed_extractions.append(str(result))
-                    logger.error(f"Stage 1 exception | Error: {str(result)}")
+                    logger.error(f"Stage 1 exception | File: {original_filename} | Error: {str(result)}")
                     continue
                 
                 ocr_response = cast(OCRResponse, result)
@@ -248,22 +259,37 @@ class EnhancedMultiPDFService:
                         # Use robust parsing to handle data structure
                         normalized_result = DataStructureParser.normalize_stage1_result(ocr_result_dict)
                         
-                        # Validate the financial data
+                        # Validate the financial data with enhanced logging
                         data_valid = False
                         if normalized_result["data"]:
+                            logger.debug(f"🔍 Validating financial data for {original_filename} | Document type: {normalized_result['data'].get('document_type', 'Unknown')}")
                             data_valid = JSONValidator.validate_financial_data(normalized_result["data"])
+                            if not data_valid:
+                                logger.warning(f"❌ Financial data validation FAILED for {original_filename} | Document type: {normalized_result['data'].get('document_type', 'Unknown')}")
+                                # Log the structure for debugging
+                                logger.debug(f"📋 Data structure keys for {original_filename}: {list(normalized_result['data'].keys())}")
+                                if 'periods' in normalized_result['data'] and normalized_result['data']['periods']:
+                                    first_period_keys = list(normalized_result['data']['periods'][0].keys()) if normalized_result['data']['periods'] else []
+                                    logger.debug(f"📋 First period keys for {original_filename}: {first_period_keys}")
+                            else:
+                                logger.debug(f"✅ Financial data validation PASSED for {original_filename}")
+                        else:
+                            logger.warning(f"❌ No data found in normalized result for {original_filename}")
+                        
+                        # Always capture document type for P&L validation, even if validation fails
+                        doc_type = normalized_result["data"].get('document_type', 'Other') if normalized_result["data"] else 'Other'
+                        filename = original_filename
+                        doc_types[filename] = doc_type
+                        logger.debug(f"📋 Document type captured: {filename} -> {doc_type}")
                         
                         if data_valid:
+                            # Use original filename instead of trying to extract from data
                             extraction_result = {
-                                "filename": normalized_result["data"].get('source_filename', 'Unknown'),
+                                "filename": original_filename,
                                 "success": True,
                                 "data": normalized_result["data"],
                                 "raw_response": ocr_response.data
                             }
-                            
-                            filename = extraction_result.get('filename', 'Unknown')
-                            doc_type = normalized_result["data"].get('document_type', 'Other')
-                            doc_types[filename] = doc_type
                             
                             # Create Gemini cache for P&L and Balance Sheet documents
                             cache_key = None
@@ -289,8 +315,16 @@ class EnhancedMultiPDFService:
                             
                             logger.info(f"Stage 1 SUCCESS | File: {filename} | Type: {doc_type} | Cache: {cache_key} | Model: {extraction_model}")
                         else:
-                            logger.warning(f"❌ OCR result failed financial data validation")
-                            failed_extractions.append("Financial data validation failed")
+                            logger.warning(f"❌ OCR result failed financial data validation for {filename} | Type: {doc_type} | Will still use for P&L detection")
+                            # Create a minimal extraction result for P&L detection purposes
+                            minimal_extraction = {
+                                "filename": original_filename,
+                                "success": False,
+                                "data": normalized_result["data"] if normalized_result["data"] else {},
+                                "raw_response": ocr_response.data,
+                                "validation_failed": True
+                            }
+                            failed_extractions.append(f"Financial data validation failed for {filename} (type: {doc_type})")
                     else:
                         error_msg = ocr_response.error or 'Unknown error'
                         failed_extractions.append(error_msg)
@@ -306,10 +340,23 @@ class EnhancedMultiPDFService:
                     detail=f"Data extraction failed for all files. Errors: {failed_extractions}"
                 )
             
-            # Check for mandatory P&L
+            # Check for mandatory P&L with enhanced debugging
+            logger.debug(f"📋 Document types detected: {doc_types}")
+            doc_type_values = list(doc_types.values())
+            logger.debug(f"📋 All document types: {doc_type_values}")
+            
             has_profit_loss = any(doc_type == 'Profit and Loss' for doc_type in doc_types.values())
+            logger.debug(f"🔍 P&L check result: has_profit_loss = {has_profit_loss}")
+            
             if not has_profit_loss:
-                logger.error("P&L validation FAILED | No Profit & Loss statement detected")
+                logger.error(f"P&L validation FAILED | No Profit & Loss statement detected | Detected types: {doc_type_values} | Successful extractions: {len(successful_extractions)}")
+                # Additional debugging: check if any files had P&L in their names
+                pnl_filenames = [filename for filename in doc_types.keys() if 'profit' in filename.lower() or 'loss' in filename.lower()]
+                if pnl_filenames:
+                    logger.error(f"📋 Files with P&L in name but wrong type detected: {pnl_filenames}")
+                    for fname in pnl_filenames:
+                        logger.error(f"📋 {fname} -> {doc_types[fname]}")
+                
                 raise HTTPException(
                     status_code=400,
                     detail="No Profit & Loss statement detected. Please upload at least one P&L document for accurate financial projections."
@@ -491,39 +538,14 @@ class EnhancedMultiPDFService:
         Applies a 10-minute timeout to the entire process
         """
         try:
-            logger.info(f"🚀 Starting multi-file analysis with {self.overall_process_timeout}s overall timeout")
+            logger.info("🚀 Starting multi-file analysis")
             logger.info(f"🎯 Requested model: {requested_model} | Strategy: Flash for extraction, Pro for analysis")
             
-            # Apply overall timeout to the entire analysis process
-            result = await asyncio.wait_for(
-                self._internal_analyze_multiple_files(files_data, requested_model),
-                timeout=self.overall_process_timeout
-            )
-            
-            logger.info("✅ Multi-file analysis completed within timeout")
+            # Run analysis without timeout
+            result = await self._internal_analyze_multiple_files(files_data, requested_model)
+            logger.info("✅ Multi-file analysis completed")
             return result
             
-        except asyncio.TimeoutError:
-            logger.error(f"❌ Overall process timeout exceeded ({self.overall_process_timeout}s)")
-            return MultiPDFAnalysisResponse(
-                success=False,
-                extracted_data=[],
-                normalized_data={},
-                projections={},
-                explanation="",
-                error=f"Analysis timeout: Process exceeded {self.overall_process_timeout} seconds limit",
-                data_quality_score=None,
-                confidence_levels=None,
-                assumptions=None,
-                risk_factors=None,
-                methodology=None,
-                scenarios=None,
-                period_granularity=None,
-                total_data_points=None,
-                time_span=None,
-                seasonality_detected=None,
-                data_analysis_summary=None
-            )
         except Exception as e:
             logger.error(f"❌ Unexpected error in multi-file analysis: {str(e)}")
             return MultiPDFAnalysisResponse(

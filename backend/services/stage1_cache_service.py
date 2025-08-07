@@ -46,7 +46,8 @@ class Stage1CacheService:
     async def run_stage1_and_cache(
         self,
         files_data: List[Tuple[str, bytes]],
-        extraction_model: str = "gemini-2.5-pro"
+        extraction_model: str = "gemini-2.5-pro",
+        ttl: Optional[int] = None,
     ) -> Tuple[Optional[str], Optional[str], Optional[Dict[str, Any]], Optional[Dict[str, Any]]]:
         """
         Run Stage 1 for two CSVs and cache the validated normalized data.
@@ -117,7 +118,9 @@ class Stage1CacheService:
                 try:
                     key = get_next_key()
                     cache_payload: Dict[str, Any] = dict(data) if isinstance(data, dict) else {}
-                    cache_name = await self.cache_manager.create_cache_for_stage1_result(cache_payload, key, document_type)
+                    cache_name = await self.cache_manager.create_cache_for_stage1_result(
+                        cache_payload, key, document_type, ttl_override=ttl
+                    )
                     if document_type == "Profit and Loss":
                         pnl_cache_key = cache_name or pnl_cache_key
                         pnl_data = cache_payload

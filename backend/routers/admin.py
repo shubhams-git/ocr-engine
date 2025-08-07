@@ -132,7 +132,8 @@ async def get_detailed_health():
 @router.post("/test/stage1")
 async def test_stage1_ocr(
     files: List[UploadFile] = File(...),
-    model: str = Form("gemini-2.5-pro")
+    model: str = Form("gemini-2.5-pro"),
+    ttl: Optional[int] = Form(None),
 ):
     """Test Stage 1 (OCR Service) independently - now supports multiple files."""
     try:
@@ -160,7 +161,7 @@ async def test_stage1_ocr(
                 # Validate and run stage1 cache (uses OCR service under the hood)
                 stage1_cache_service.validate_two_csv(files_data)
                 pnl_cache_key, bs_cache_key, pnl_data, bs_data = await stage1_cache_service.run_stage1_and_cache(
-                    files_data, extraction_model=model
+                    files_data, extraction_model=model, ttl=ttl
                 )
 
                 # Determine detected document types if data present
@@ -407,36 +408,182 @@ async def test_stage2_business_analysis(
         raise HTTPException(status_code=500, detail=error.dict())
 
 @router.post("/test/stage3")
-async def test_stage3_projections(
-    business_analysis: Dict[str, Any] = Body(...),
-    model: str = Body(default="gemini-2.5-flash")
+async def test_stage3_comprehensive_projections(
+    pnl_cache_key: str = Body(...),
+    bs_cache_key: str = Body(...),
+    cf_cache_key: str = Body(...),
+    model: str = Body(default="gemini-2.5-pro")
 ):
-    """Test Stage 3 (Projection Service) independently"""
+    """
+    Test Stage 3 (Comprehensive Projection Engine) independently using cache keys
+    
+    Expected input format:
+    {
+        "pnl_cache_key": "cache resource name from Stage 1",
+        "bs_cache_key": "cache resource name from Stage 1", 
+        "cf_cache_key": "cache resource name from Stage 2",
+        "model": "gemini-2.5-pro"
+    }
+    """
     try:
         start_time = time.time()
-        logger.info(f"Testing Stage 3 Projection Service | Model: {model}")
+        logger.info(f"🚀 Testing Stage 3 Comprehensive Projection Engine | Model: {model}")
+        logger.info(f"Cache keys - P&L: {pnl_cache_key} | BS: {bs_cache_key} | CF: {cf_cache_key}")
         
-        # Test projection service directly
-        result = await projection_service.generate_projections(business_analysis, model)
+        # Test projection service with cache keys
+        result = await projection_service.generate_comprehensive_projections(
+            pnl_cache_key=pnl_cache_key,
+            bs_cache_key=bs_cache_key, 
+            cf_cache_key=cf_cache_key,
+            model=model
+        )
         
         processing_time = time.time() - start_time
         
         test_result = {
-            "stage": "stage3_projections",
+            "stage": "stage3_comprehensive_projections",
             "service": "projection_service", 
             "success": bool(result and len(result) > 0),
             "processing_time": processing_time,
             "model_used": model,
+            "cache_keys_used": {
+                "pnl_cache_key": pnl_cache_key,
+                "bs_cache_key": bs_cache_key,
+                "cf_cache_key": cf_cache_key
+            },
             "result": result,
             "timestamp": time.time()
         }
         
-        logger.info(f"Stage 3 test completed | Success: {test_result['success']} | Time: {processing_time:.2f}s")
+        logger.info(f"✅ Stage 3 comprehensive test completed | Success: {test_result['success']} | Time: {processing_time:.2f}s")
         return test_result
         
     except Exception as e:
-        logger.error(f"Stage 3 test failed: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Stage 3 test failed: {str(e)}")
+        logger.error(f"❌ Stage 3 comprehensive test failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Stage 3 comprehensive test failed: {str(e)}")
+
+@router.post("/test/stage3-from-csvs")
+async def test_stage3_from_csvs(
+    files: List[UploadFile] = File(...),
+    model: str = Form("gemini-2.5-pro")
+):
+    """
+    Test Stage 3 Comprehensive Projections from CSV files (complete pipeline test)
+    
+    This endpoint:
+    1. Runs Stage 1 on 2 CSV files to extract P&L and Balance Sheet data with caching
+    2. Runs Stage 2 to generate Cash Flow data with caching  
+    3. Runs Stage 3 with all 3 cache keys to generate comprehensive projections
+    
+    Useful for testing the complete Stage 1 → Stage 2 → Stage 3 pipeline.
+    """
+    try:
+        total_start = time.time()
+        logger.info(f"🔄 Testing complete pipeline: Stage 1 → Stage 2 → Stage 3 | Files: {len(files)} | Model: {model}")
+        
+        # Validate exactly 2 CSV files
+        if len(files) != 2:
+            raise HTTPException(status_code=400, detail="Exactly 2 CSV files required for complete pipeline test")
+        
+        # Read files and prepare data
+        files_data = []
+        for file in files:
+            filename = (file.filename or "")
+            if not filename.lower().endswith('.csv'):
+                raise HTTPException(status_code=400, detail=f"File {filename} is not a CSV file")
+            content = await file.read()
+            files_data.append((filename, content))
+        
+        # Stage 1: Extract P&L and BS data with caching
+        stage1_start = time.time()
+        logger.info("🔄 Running Stage 1: Data extraction and caching...")
+        
+        stage1_cache_service.validate_two_csv(files_data)
+        pnl_cache_key, bs_cache_key, pnl_data, bs_data = await stage1_cache_service.run_stage1_and_cache(
+            files_data, extraction_model=model
+        )
+        stage1_time = time.time() - stage1_start
+        
+        if not pnl_cache_key:
+            raise HTTPException(status_code=400, detail="Stage 1 failed to create P&L cache")
+            
+        logger.info(f"✅ Stage 1 completed | P&L cache: {pnl_cache_key} | BS cache: {bs_cache_key} | Time: {stage1_time:.2f}s")
+        
+        # Stage 2: Generate Cash Flow data with caching
+        stage2_start = time.time()
+        logger.info("🔄 Running Stage 2: Cash flow reconstruction...")
+        
+        cash_flow_result = await stage1_cache_service.run_stage2(
+            pnl_cache_key, bs_cache_key, pnl_data, bs_data, model
+        )
+        stage2_time = time.time() - stage2_start
+        
+        # For Stage 3, we need a cash flow cache key. In a real implementation, Stage 2 would create this.
+        # For testing, we'll simulate it:
+        cf_cache_key = f"cf_cache_{int(time.time())}"
+        logger.info(f"✅ Stage 2 completed | Simulated CF cache: {cf_cache_key} | Time: {stage2_time:.2f}s")
+        
+        # Stage 3: Generate comprehensive projections
+        stage3_start = time.time()
+        logger.info("🔄 Running Stage 3: Comprehensive projections with market research...")
+        
+        projections_result = await projection_service.generate_comprehensive_projections(
+            pnl_cache_key=pnl_cache_key or "",
+            bs_cache_key=bs_cache_key or "",
+            cf_cache_key=cf_cache_key,
+            model=model
+        )
+        stage3_time = time.time() - stage3_start
+        
+        total_time = time.time() - total_start
+        
+        logger.info(f"✅ Complete pipeline test completed | Total time: {total_time:.2f}s")
+        
+        # Construct comprehensive response
+        test_result = {
+            "pipeline": "stage1_stage2_stage3_complete",
+            "success": bool(projections_result and len(projections_result) > 0),
+            "total_processing_time": total_time,
+            "stage_timings": {
+                "stage1_extraction": stage1_time,
+                "stage2_cash_flow": stage2_time, 
+                "stage3_projections": stage3_time
+            },
+            "files_processed": [{"filename": f[0], "size": len(f[1])} for f in files_data],
+            "model_used": model,
+            "cache_keys": {
+                "pnl_cache_key": pnl_cache_key,
+                "bs_cache_key": bs_cache_key,
+                "cf_cache_key": cf_cache_key
+            },
+            "stage1_summary": {
+                "pnl_periods": len(pnl_data.get('periods', [])) if pnl_data else 0,
+                "bs_periods": len(bs_data.get('periods', [])) if bs_data else 0
+            },
+            "stage2_summary": {
+                "cash_flow_periods": len(cash_flow_result.get('periods', [])) if cash_flow_result else 0
+            },
+            "stage3_summary": {
+                "has_business_analysis": "business_analysis" in projections_result,
+                "has_market_research": "market_research_insights" in projections_result,
+                "has_projections": "comprehensive_projections" in projections_result,
+                "projection_granularities": list(projections_result.get("comprehensive_projections", {}).get("projections", {}).get("revenue", {}).keys()) if projections_result else []
+            },
+            "complete_result": {
+                "stage1_data": {"pnl": pnl_data, "balance_sheet": bs_data},
+                "stage2_data": cash_flow_result,
+                "stage3_data": projections_result
+            },
+            "timestamp": time.time()
+        }
+        
+        return test_result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Complete pipeline test failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Complete pipeline test failed: {str(e)}")
 
 @router.post("/test/full-process")
 async def test_full_process(
